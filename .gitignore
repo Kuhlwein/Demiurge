@@ -33,3 +33,9 @@
 
 #imgui.ini
 *.ini
+
+#Clion stuff
+CMakeLists.txt
+cmake-build-debug
+.idea/
+
