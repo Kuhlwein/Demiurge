@@ -19,7 +19,7 @@ IMGUI = $(LIB)/imgui
 GL3W = $(LIB)/gl3w
 glfw = $(LIB)/glfw
 
-EXE = example_glfw_opengl3
+EXE = example_glfw_opengl3.out
 SOURCES = main.cpp
 SOURCES += $(IMGUI)/imgui_impl_glfw.cpp $(IMGUI)/imgui_impl_opengl3.cpp
 SOURCES += $(IMGUI)/imgui.cpp $(IMGUI)/imgui_demo.cpp $(IMGUI)/imgui_draw.cpp $(IMGUI)/imgui_widgets.cpp
