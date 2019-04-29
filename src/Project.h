@@ -5,6 +5,7 @@
 #ifndef DEMIURGE_PROJECT_H
 #define DEMIURGE_PROJECT_H
 #include <GL/gl3w.h>
+#include "ShaderProgram.h"
 
 
 class Project {
@@ -12,7 +13,7 @@ class Project {
     GLuint a;
     GLuint id;
     GLuint programId;
-    int shaderProgram;
+    ShaderProgram *program;
     GLuint VAO;
     Project();
     ~Project();

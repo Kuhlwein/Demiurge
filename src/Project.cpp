@@ -7,10 +7,37 @@
 #include <vector>
 #include "Project.h"
 #include "Vbo.h"
+#include "ShaderProgram.h"
 
 Project::Project() {
 
+    std::string code =  R"(
+#version 430
+layout (location = 0) in vec2 vp;
+layout (location = 1) in vec2 vt;
+out vec2 st;
 
+void main () {
+   st = vt;
+   gl_Position = vec4 (vp, 0.0, 1.0);
+}
+    )";
+
+    std::string code2 =  R"(
+#version 430
+in vec2 st;
+out vec4 fc;
+
+void main () {
+    fc = vec4(st,1,0);
+}
+    )";
+
+    program = ShaderProgram::builder()
+            .addShader(code,GL_VERTEX_SHADER)
+            .addShader(code2,GL_FRAGMENT_SHADER)
+            .link();
+    
 }
 
 void Project::update(){
@@ -19,7 +46,7 @@ void Project::update(){
 
 void Project::render(){
 
-    //glUseProgram(0);
+    program->bind();
 
 
     //glBindVertexArray(VAO);
@@ -28,7 +55,7 @@ void Project::render(){
             -0.5, 0.5, 0,
             -0.5, -0.5, 0,
             0.5, -0.5, 0,
-            1, 1, 0
+            0.5, 0.5, 0
     };
     std::vector<float> textures = {
             0.0, 0.0,
@@ -43,14 +70,6 @@ void Project::render(){
 
     Vbo vbo(positions, textures, indices);
     vbo.render();
-
-
-    //glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT, 0);
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    //std::cout << glGetError() << "\n";
-
-    //glBindVertexArray(0);
 
 }
 
