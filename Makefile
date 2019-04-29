@@ -20,7 +20,8 @@ GL3W = $(LIB)/gl3w
 glfw = $(LIB)/glfw
 
 EXE = example_glfw_opengl3.out
-SOURCES = main.cpp
+SOURCES = src/main.cpp
+SOURCES += src/Project.cpp Vbo.cpp
 SOURCES += $(IMGUI)/imgui_impl_glfw.cpp $(IMGUI)/imgui_impl_opengl3.cpp
 SOURCES += $(IMGUI)/imgui.cpp $(IMGUI)/imgui_demo.cpp $(IMGUI)/imgui_draw.cpp $(IMGUI)/imgui_widgets.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
@@ -80,7 +81,7 @@ endif
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-%.o:%.cpp
+%.o:src/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o:$(IMGUI)/%.cpp
