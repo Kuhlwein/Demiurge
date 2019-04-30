@@ -6,20 +6,18 @@
 #define DEMIURGE_PROJECT_H
 #include <GL/gl3w.h>
 #include "ShaderProgram.h"
+#include "Vbo.h"
+#include "Canvas.h"
 
 
 class Project {
     public:
-    GLuint a;
-    GLuint id;
-    GLuint programId;
     ShaderProgram *program;
-    GLuint VAO;
+    Canvas *canvas;
     Project();
     ~Project();
     void update();
     void render();
-    void cleanup();
 };
 
 

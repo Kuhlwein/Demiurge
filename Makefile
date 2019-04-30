@@ -21,7 +21,7 @@ glfw = $(LIB)/glfw
 
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
-SOURCES += src/Project.cpp src/Vbo.cpp src/ShaderProgram.cpp
+SOURCES += src/Project.cpp src/Vbo.cpp src/ShaderProgram.cpp src/Canvas.cpp
 SOURCES += $(IMGUI)/imgui_impl_glfw.cpp $(IMGUI)/imgui_impl_opengl3.cpp
 SOURCES += $(IMGUI)/imgui.cpp $(IMGUI)/imgui_demo.cpp $(IMGUI)/imgui_draw.cpp $(IMGUI)/imgui_widgets.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
@@ -52,7 +52,7 @@ ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
 	LIBS = -lGL `pkg-config --static --libs glfw3`
 
-	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3`
+	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I lib
 	CXXFLAGS += -Wall -Wformat
 	CFLAGS = $(CXXFLAGS)
 endif

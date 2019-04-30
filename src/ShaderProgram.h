@@ -5,7 +5,6 @@
 #ifndef DEMIURGE_SHADERPROGRAM_H
 #define DEMIURGE_SHADERPROGRAM_H
 
-
 #include <string>
 #include <GL/gl.h>
 #include <vector>
@@ -27,7 +26,5 @@ public:
 private:
     std::vector<int> shaders;
 };
-
-
 
 #endif //DEMIURGE_SHADERPROGRAM_H

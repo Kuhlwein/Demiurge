@@ -14,6 +14,9 @@ class Vbo {
 public:
     void render();
     Vbo(std::vector<float> positions,std::vector<float> texCoords, std::vector<int> indices);
+
+    Vbo();
+
     ~Vbo();
 private:
     GLuint vaoId;
