@@ -14,6 +14,7 @@ public:
     class builder;
     ShaderProgram(int id);
     void bind();
+    int getId();
 private:
     int id;
 

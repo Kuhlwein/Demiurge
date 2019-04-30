@@ -12,18 +12,30 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+//todo remove
+
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+
 Project::Project() {
 
     std::string code =  R"(
 #version 430
-layout (location = 0) in vec2 vp;
-layout (location = 1) in vec2 vt;
+
+layout (location=0) in vec3 position;
+layout (location=1) in vec2 texCoord;
+
 out vec2 st;
 
-void main () {
-   st = vt;
-   gl_Position = vec4 (vp, 0.0, 1.0);
+uniform mat4 worldMatrix;
+uniform mat4 projectionMatrix;
+
+void main()
+{
+    gl_Position = projectionMatrix * worldMatrix * vec4(position, 1.0);
+    st = texCoord;
 }
+
     )";
 
     std::string code2 =  R"(
@@ -83,7 +95,30 @@ void Project::update(){
 }
 
 void Project::render(){
+    float FOVY = glm::radians(60.0); //radian
+    float TANFOV = glm::tan(FOVY *0.5);
+    float aspectRatio = 1.7777;
+    float Z_NEAR = 0.001f;
+    float Z_FAR = 1000.f;
+
+    glm::mat4 model(1.f);
+
+
+    glm::mat4 projection = glm::perspective(FOVY,aspectRatio,Z_NEAR,Z_FAR);
+    glm::mat4 world = glm::translate(model,glm::vec3(0.0,0.0,-5.0));
+
+
     program->bind();
+
+    int id = glGetUniformLocation(program->getId(),"projectionMatrix");
+
+
+
+    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(projection));
+
+    id = glGetUniformLocation(program->getId(),"worldMatrix");
+    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
+
     canvas->render();
 }
 

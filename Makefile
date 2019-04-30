@@ -18,6 +18,7 @@ LIB = lib
 IMGUI = $(LIB)/imgui
 GL3W = $(LIB)/gl3w
 glfw = $(LIB)/glfw
+glm = $(LIB)/glm
 
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
@@ -52,7 +53,7 @@ ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
 	LIBS = -lGL `pkg-config --static --libs glfw3`
 
-	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I lib
+	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib
 	CXXFLAGS += -Wall -Wformat
 	CFLAGS = $(CXXFLAGS)
 endif

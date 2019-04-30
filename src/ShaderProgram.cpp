@@ -14,6 +14,9 @@ void ShaderProgram::bind() {
     glUseProgram(id);
 }
 
+int ShaderProgram::getId() {
+    return id;
+}
 
 
 ShaderProgram * ShaderProgram::builder::link() {

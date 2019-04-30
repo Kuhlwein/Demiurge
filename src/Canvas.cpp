@@ -3,6 +3,8 @@
 //
 
 #include "Canvas.h"
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
 
 
 Canvas::Canvas(int height, int width) {
@@ -27,6 +29,9 @@ Canvas::Canvas(int height, int width) {
     };
 
     vbo = new Vbo(positions, textures, indices);
+
+
+
 }
 
 void Canvas::render() {
