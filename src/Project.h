@@ -5,6 +5,7 @@
 #ifndef DEMIURGE_PROJECT_H
 #define DEMIURGE_PROJECT_H
 #include <GL/gl3w.h>
+#include <glfw/include/GLFW/glfw3.h>
 #include "ShaderProgram.h"
 #include "Vbo.h"
 #include "Canvas.h"
@@ -14,10 +15,14 @@ class Project {
     public:
     ShaderProgram *program;
     Canvas *canvas;
-    Project();
+    Project(GLFWwindow* window);
     ~Project();
     void update();
     void render();
+    int getWindowWidth();
+    int getWindowHeight();
+private:
+    GLFWwindow* window;
 };
 
 

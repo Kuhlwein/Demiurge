@@ -16,8 +16,11 @@
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+#include <imgui/imgui.h>
 
-Project::Project() {
+Project::Project(GLFWwindow* window) {
+    this->window = window;
+
 
     std::string code =  R"(
 #version 430
@@ -47,6 +50,7 @@ out vec4 fc;
 void main () {
     float r = texture(img,st).r;
     fc = vec4(r,r,r,0);
+    if(st.x<0.9 && st.x>0.8) fc = vec4(1,0,0,0);
 }
     )";
 
@@ -86,40 +90,17 @@ void main () {
         glBindTexture( GL_TEXTURE_2D, id );
     }
 
-    canvas = new Canvas(h,w);
+    canvas = new Canvas(h,w,this);
 
 }
 
 void Project::update(){
-
+    canvas->update();
 }
 
 void Project::render(){
-    float FOVY = glm::radians(60.0); //radian
-    float TANFOV = glm::tan(FOVY *0.5);
-    float aspectRatio = 1.7777;
-    float Z_NEAR = 0.001f;
-    float Z_FAR = 1000.f;
-
-    glm::mat4 model(1.f);
-
-
-    glm::mat4 projection = glm::perspective(FOVY,aspectRatio,Z_NEAR,Z_FAR);
-    glm::mat4 world = glm::translate(model,glm::vec3(0.0,0.0,-5.0));
-
-
     program->bind();
-
-    int id = glGetUniformLocation(program->getId(),"projectionMatrix");
-
-
-
-    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(projection));
-
-    id = glGetUniformLocation(program->getId(),"worldMatrix");
-    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
-
-    canvas->render();
+    canvas->render(program->getId());
 }
 
 Project::~Project() {
@@ -127,3 +108,17 @@ Project::~Project() {
     delete(canvas);
     std::cout << "a\n";
 }
+
+int Project::getWindowWidth() {
+    int width, height;
+    glfwGetWindowSize(window,&width,&height);
+    return width;
+}
+
+int Project::getWindowHeight() {
+    int width, height;
+    glfwGetWindowSize(window,&width,&height);
+    return height;
+}
+
+
