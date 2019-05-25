@@ -9,6 +9,7 @@
 #include "ShaderProgram.h"
 #include "Vbo.h"
 #include "Canvas.h"
+#include "Menu.h"
 
 
 class Project {
@@ -23,6 +24,7 @@ class Project {
     int getWindowHeight();
 private:
     GLFWwindow* window;
+    Menu* menu;
 };
 
 

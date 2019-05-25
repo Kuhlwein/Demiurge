@@ -14,8 +14,8 @@ class Canvas {
 public:
     Canvas(int height, int width, Project* project);
     ~Canvas();
-    void render(int id);
-    void update();
+    void render();
+    void update(int id);
 private:
     Vbo *vbo;
     float x, y, z;
@@ -25,6 +25,8 @@ private:
     float FOVY; //radian
     float TANFOV;
     float windowAspect;
+    int windowWidth;
+    int windowHeight;
     float Z_NEAR;
     float Z_FAR;
     float ZOOM;

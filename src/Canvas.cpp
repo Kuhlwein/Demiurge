@@ -8,6 +8,7 @@
 #include <glm/ext.hpp>
 #include <iostream>
 #include <imgui/imgui.h>
+#include <chrono>
 #include "Project.h"
 
 
@@ -32,6 +33,42 @@ Canvas::Canvas(int height, int width, Project* project) {
             2, 3, 1
     };
 
+//    std::vector<float> pos;
+//    std::vector<float> tex;
+//    std::vector<int> ind;
+//
+//    int w = 25, h = 25;
+//    for (int i = 0; i <= w; i++) {
+//        pos.push_back(0.0 * cos((float) i / w * 2 * M_PI));
+//        pos.push_back(0.0 * sin((float) i / w * 2 * M_PI));
+//        pos.push_back(1);
+//
+//        tex.push_back((float) i / w);
+//        tex.push_back(0);
+//    }
+//    for (int j = 1; j <= h; j++) {
+//        for (int i = 0; i <= w; i++) {
+//            pos.push_back(j*cos((float) i / w * 2 * M_PI));
+//            pos.push_back(j*sin((float) i / w * 2 * M_PI));
+//            pos.push_back(1);
+//            std::cout << cos((float) i / w * 2 * M_PI) << " " << sin((float) i / w * 2 * M_PI) << "\n";
+//            tex.push_back((float) i / w);
+//            tex.push_back((float)j/h);
+//        }
+//        for (int i = 0; i <= w - 1; i++) {
+//            int offset = (j-1)*(w+1);
+//            ind.push_back(offset+i);
+//            ind.push_back(offset+i + 1);
+//            ind.push_back(offset+(w + 1) + i);
+//
+//            ind.push_back(offset+(w + 1) + i);
+//            ind.push_back(offset+(w + 1) + i + 1);
+//            ind.push_back(offset+i + 1);
+//        }
+//    }
+
+
+
     vbo = new Vbo(positions, textures, indices);
     z=0;
 
@@ -46,21 +83,10 @@ Canvas::Canvas(int height, int width, Project* project) {
 
 }
 
-void Canvas::render(int programId) {
+void Canvas::render() {
 
 
-    glm::mat4 model(1.f);
 
-
-    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
-    glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z))-Z_NEAR);
-
-
-    int id = glGetUniformLocation(programId,"projectionMatrix");
-    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(projection));
-
-    id = glGetUniformLocation(programId,"worldMatrix");
-    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
 
     vbo->render();
 }
@@ -70,7 +96,7 @@ Canvas::~Canvas() {
 }
 
 void Canvas::pan(float dx, float dy) {
-    float scaling = (float) (pow(ZOOM,z)+Z_NEAR)*TANFOV*2/project->getWindowHeight();
+    float scaling = (float) (pow(ZOOM,z)+Z_NEAR)*TANFOV*2/windowHeight;
     x+=dx * scaling;
     y-=dy * scaling;
 
@@ -80,14 +106,15 @@ void Canvas::pan(float dx, float dy) {
     else if(y>1) y=1;
 }
 
-void Canvas::update() {
+void Canvas::update(int programId) {
     ImGuiIO io = ImGui::GetIO();
-    windowAspect = (float)project->getWindowWidth()/project->getWindowHeight();
+    windowHeight = project->getWindowHeight();
+    windowWidth = project->getWindowWidth();
+    windowAspect = (float)windowWidth/windowHeight;
 
     if(io.WantCaptureMouse) return;
 
-    if(io.MouseDown[2]) {
-        //pan
+    if(io.MouseDown[0]) {
         float dx = io.MouseDelta.x, dy=io.MouseDelta.y;
         pan(dx,dy);
     }
@@ -96,10 +123,51 @@ void Canvas::update() {
         float delta = io.MouseWheel;
 
         z+=delta;
-        float deltax = (io.MousePos.x-project->getWindowWidth()*0.5f)*(ZOOM-1);
-        float deltay = (io.MousePos.y-project->getWindowHeight()*0.5f)*(ZOOM-1);
+        float deltax = (io.MousePos.x-windowWidth*0.5f)*(ZOOM-1);
+        float deltay = (io.MousePos.y-windowHeight*0.5f)*(ZOOM-1);
         pan(delta*deltax,delta*deltay);
 
     }
+
+
+    glm::mat4 model(1.f);
+    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
+    glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
+
+    if(true) {
+        glm::vec2 viewpoint(io.MousePos.x,io.MousePos.y);
+
+        glm::vec4 normalized(2*viewpoint.x/windowWidth-1,-(2*viewpoint.y/windowHeight-1),-1,1); //REVERSED
+
+        glm::vec4 unprojected = glm::inverse(projection) * normalized;
+
+
+        unprojected = unprojected / unprojected.w;
+
+        glm::vec3 unprojected3(unprojected.x,unprojected.y,unprojected.z);
+
+        glm::vec3 worldvec = glm::inverse(world) * unprojected;
+
+        glm::vec3 ray = unprojected3 / (unprojected3.z) * (-(float) pow(ZOOM,z));
+        ray = glm::vec3(ray.x-x,ray.y-y,ray.z);
+
+        glm::vec2 texcoord((ray.x+canvasAspect)/(2*canvasAspect),-(ray.y-1)/2);
+
+        //std::cout << texcoord.x << "," << texcoord.y << "\n";
+        int id = glGetUniformLocation(programId,"mouse");
+        //std::cout << id << "\n";
+        glUniform2f(id,texcoord.x,texcoord.y);
+
+
+    }
+
+    int id = glGetUniformLocation(programId,"projectionMatrix");
+    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(projection));
+
+    id = glGetUniformLocation(programId,"worldMatrix");
+    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
+    
+    id = glGetUniformLocation(programId,"u_time");
+    glUniform1f(id,(float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count())/1000);
 
 }

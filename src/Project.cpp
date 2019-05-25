@@ -11,6 +11,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "Menu.h"
 
 //todo remove
 
@@ -47,10 +48,36 @@ in vec2 st;
 uniform sampler2D img;
 out vec4 fc;
 
+uniform vec2 mouse;
+
+uniform float u_time;
+
 void main () {
-    float r = texture(img,st).r;
-    fc = vec4(r,r,r,0);
-    if(st.x<0.9 && st.x>0.8) fc = vec4(1,0,0,0);
+    float dx = dFdx(st.x);
+    float dy = dFdy(st.y);
+
+    float r = distance(mouse*vec2(1000,500),st*vec2(1000,500));
+    if (r<5 && r>5-length(vec2(dx,dy)*vec2(1000,500))) {
+        fc = texture(img, st).rrrr + 0.5;
+    } else {
+        fc = texture(img, st).rrrr;
+
+    }
+
+    float m = dFdx(st.x);
+
+
+
+    float x1 = texture(img, st-vec2(dx,0)).r;
+    float x2 = texture(img, st+vec2(dx,0)).r;
+    float y1 = texture(img, st-vec2(0,dy)).r;
+    float y2 = texture(img, st+vec2(0,dy)).r;
+
+    float k = round(dx*20000);
+    float test = round(mod(gl_FragCoord.x/8-gl_FragCoord.y/8+u_time,1));
+
+    if (abs(x1-mod(x1,0.2)-(x2-mod(x2,0.2)))>0) fc = vec4(test,test,test,0);
+    if (abs(y1-mod(y1,0.2)-(y2-mod(y2,0.2)))>0) fc = vec4(test,test,test,0);
 }
     )";
 
@@ -63,7 +90,7 @@ void main () {
     int w;
     int h;
     int comp;
-    std::string filename = "/home/kuhlwein/Desktop/heightdata.png";
+    std::string filename = "/home/kuhlwein/Desktop/eu.png";
 
     stbi_info(filename.c_str(),&w,&h,&comp);
 
@@ -91,16 +118,33 @@ void main () {
     }
 
     canvas = new Canvas(h,w,this);
+    menu = new Menu(this);
 
 }
 
-void Project::update(){
-    canvas->update();
+void Project::update() {
+    /*
+     File
+     Edit
+     Select
+     View
+     Render
+     filters
+    */
+
+
+
+    if (ImGui::BeginMainMenuBar()) {
+        menu->update();
+
+        ImGui::EndMainMenuBar();
+    }
+    canvas->update(program->getId());
 }
 
-void Project::render(){
+void Project::render() {
     program->bind();
-    canvas->render(program->getId());
+    canvas->render();
 }
 
 Project::~Project() {
