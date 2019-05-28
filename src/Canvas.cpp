@@ -84,10 +84,6 @@ Canvas::Canvas(int height, int width, Project* project) {
 }
 
 void Canvas::render() {
-
-
-
-
     vbo->render();
 }
 
@@ -114,7 +110,7 @@ void Canvas::update(int programId) {
 
     if(io.WantCaptureMouse) return;
 
-    if(io.MouseDown[0]) {
+    if(io.MouseDown[1]) {
         float dx = io.MouseDelta.x, dy=io.MouseDelta.y;
         pan(dx,dy);
     }
@@ -166,7 +162,7 @@ void Canvas::update(int programId) {
 
     id = glGetUniformLocation(programId,"worldMatrix");
     glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
-    
+
     id = glGetUniformLocation(programId,"u_time");
     glUniform1f(id,(float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count())/1000);
 

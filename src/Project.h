@@ -10,6 +10,7 @@
 #include "Vbo.h"
 #include "Canvas.h"
 #include "Menu.h"
+#include "Texture.h"
 
 
 class Project {
@@ -25,6 +26,10 @@ class Project {
 private:
     GLFWwindow* window;
     Menu* menu;
+    Texture* terrain;
+    Texture* scratchPad;
+    Texture* selection;
+    Vbo* vbo;
 };
 
 
