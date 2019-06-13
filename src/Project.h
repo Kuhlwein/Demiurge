@@ -9,8 +9,8 @@
 #include "ShaderProgram.h"
 #include "Vbo.h"
 #include "Canvas.h"
-#include "Menu.h"
 #include "Texture.h"
+#include "Window.h"
 
 
 class Project {
@@ -23,9 +23,10 @@ class Project {
     void render();
     int getWindowWidth();
     int getWindowHeight();
+    void brush(float x, float y);
 private:
     GLFWwindow* window;
-    Menu* menu;
+    Window* window1;
     Texture* terrain;
     Texture* scratchPad;
     Texture* selection;

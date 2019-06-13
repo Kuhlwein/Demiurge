@@ -84,6 +84,21 @@ Canvas::Canvas(int height, int width, Project* project) {
 }
 
 void Canvas::render() {
+    glm::mat4 model(1.f);
+    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
+    glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
+
+    int programId = project->program->getId();
+
+    int id = glGetUniformLocation(programId,"projectionMatrix");
+    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(projection));
+
+    id = glGetUniformLocation(programId,"worldMatrix");
+    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
+
+    id = glGetUniformLocation(programId,"u_time");
+    glUniform1f(id,(float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count())/1000);
+
     vbo->render();
 }
 
@@ -154,16 +169,11 @@ void Canvas::update(int programId) {
         //std::cout << id << "\n";
         glUniform2f(id,texcoord.x,texcoord.y);
 
+        if(io.MouseDown[0]) project->brush(texcoord.x,texcoord.y);
+
 
     }
 
-    int id = glGetUniformLocation(programId,"projectionMatrix");
-    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(projection));
 
-    id = glGetUniformLocation(programId,"worldMatrix");
-    glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
-
-    id = glGetUniformLocation(programId,"u_time");
-    glUniform1f(id,(float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count())/1000);
 
 }

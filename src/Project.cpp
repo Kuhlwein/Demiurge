@@ -11,8 +11,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include "Menu.h"
 #include "Texture.h"
+
 
 //todo remove
 
@@ -21,6 +21,8 @@
 #include <imgui/imgui.h>
 
 Project::Project(GLFWwindow* window) {
+    ImGui::GetIO().IniFilename = NULL;
+
     this->window = window;
 
 
@@ -58,8 +60,8 @@ void main () {
     float dx = dFdx(st.x);
     float dy = dFdy(st.y);
 
-    float r = distance(mouse*vec2(1000,500),st*vec2(1000,500));
-    if (r<20 && r>20-length(vec2(dx,dy)*vec2(1000,500))) {
+    float r = distance(mouse*vec2(5001,2500),st*vec2(5001,2500));
+    if (r<20 && r>20-length(vec2(dx,dy)*vec2(5001,2500))) {
         fc = texture(img, st).rrrr + 0.5;
     } else {
         fc = texture(img, st).rrrr;
@@ -160,7 +162,8 @@ void main () {
     selection->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
 
     canvas = new Canvas(h,w,this);
-    menu = new Menu(this);
+    //menu = new Menu(this);
+    window1 = new Window("test",testnamespace::test);
 
 }
 
@@ -174,59 +177,25 @@ void Project::update() {
      filters
     */
 
-    ImGuiIO io = ImGui::GetIO();
-    static bool hej = false;
-    if(io.MouseDown[0] && hej) {
-        ShaderProgram *program2 = ShaderProgram::builder()
-                .addShader(R"(
-#version 430
-
-layout (location=0) in vec3 position;
-layout (location=1) in vec2 texCoord;
-
-out vec2 st;
-
-void main()
-{
-    gl_Position =  vec4(position, 1.0);
-    st = texCoord;
-}
-    )", GL_VERTEX_SHADER)
-                .addShader(R"(
-#version 430
-in vec2 st;
-layout(binding=0) uniform sampler2D img;
-layout(binding=1) uniform sampler2D sel;
-out float fc;
-
-void main () {
-    fc = texture(img, st).r + 0.01;
-}
-    )", GL_FRAGMENT_SHADER)
-                .link();
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 1);
-        glViewport(0, 0, terrain->getWidth(), terrain->getHeight());
-        glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,scratchPad->getId(),0);
-        glBindTexture(GL_TEXTURE_2D, terrain->getId());
-        program2->bind();
-
-        vbo->render();
-
-        scratchPad->swap(terrain);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        hej = false;
-    } else if (true) hej = true;
 
 
-    if (ImGui::BeginMainMenuBar()) {
-        menu->update();
 
+
+
+    if(ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File",true)) {
+            if (ImGui::BeginMenu("hej",true)) {
+                window1->menu();
+                ImGui::EndMenu();
+            }
+
+
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
+    window1->update(this);
+
     canvas->update(program->getId());
 }
 
@@ -253,5 +222,61 @@ int Project::getWindowHeight() {
     glfwGetWindowSize(window,&width,&height);
     return height;
 }
+
+void Project::brush(float x, float y) {
+    ShaderProgram *program2 = ShaderProgram::builder()
+            .addShader(R"(
+#version 430
+
+layout (location=0) in vec3 position;
+layout (location=1) in vec2 texCoord;
+
+out vec2 st;
+
+void main()
+{
+    gl_Position =  vec4(position, 1.0);
+    st = texCoord;
+}
+    )", GL_VERTEX_SHADER)
+            .addShader(R"(
+#version 430
+in vec2 st;
+layout(binding=0) uniform sampler2D img;
+layout(binding=1) uniform sampler2D sel;
+out float fc;
+
+uniform vec2 mouse;
+
+void main () {
+    if(distance(st*vec2(5001,2500),mouse*vec2(5001,2500))<20) {
+    fc = texture(img, st).r + texture(img,(st+vec2(100,0))/2).r;
+    }
+    else {
+        fc = texture(img, st).r;
+    }
+}
+    )", GL_FRAGMENT_SHADER)
+            .link();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 1);
+    glViewport(0, 0, terrain->getWidth(), terrain->getHeight());
+    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,scratchPad->getId(),0);
+    glBindTexture(GL_TEXTURE_2D, terrain->getId());
+    program2->bind();
+    int id = glGetUniformLocation(program2->getId(),"mouse");
+    std::cout << x << "\n";
+    glUniform2f(id,x,y);
+
+    vbo->render();
+
+    scratchPad->swap(terrain);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+
+
 
 
