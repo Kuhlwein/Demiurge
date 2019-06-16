@@ -29,12 +29,9 @@ void Window::menu() {
 }
 
 void testnamespace::test(Project* project) {
-    ImGui::Bullet();
     static float a;
-    ImGui::DragFloat("float",&a);
-    ImGui::Text("hejhejhehjh");
-    static ImVec2 vec(0,0); if(ImGui::Button("label",vec)) {
-        std::cout<<"hej\n";
-    }
-    ImGui::Text("hej");
+    ImGui::SliderFloat("Size",&a,0,1,"%.3f",1);
+    ImGui::SliderFloat("Hardness",&a,0,1,"%.3f",1);
+    ImGui::SliderFloat("Flow",&a,0,1,"%.3f",1);
+
 }

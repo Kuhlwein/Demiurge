@@ -23,12 +23,15 @@ class Project {
     void render();
     int getWindowWidth();
     int getWindowHeight();
+    void clearbrush();
     void brush(float x, float y);
+    void apply(ShaderProgram* program, Texture* texture);
 private:
     GLFWwindow* window;
     Window* window1;
     Texture* terrain;
     Texture* scratchPad;
+    Texture* scratchPad2;
     Texture* selection;
     Vbo* vbo;
 };

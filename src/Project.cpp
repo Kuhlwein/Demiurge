@@ -12,6 +12,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "Texture.h"
+#include "Shader.h"
 
 
 //todo remove
@@ -26,24 +27,7 @@ Project::Project(GLFWwindow* window) {
     this->window = window;
 
 
-    std::string code =  R"(
-#version 430
-
-layout (location=0) in vec3 position;
-layout (location=1) in vec2 texCoord;
-
-out vec2 st;
-
-uniform mat4 worldMatrix;
-uniform mat4 projectionMatrix;
-
-void main()
-{
-    gl_Position = projectionMatrix * worldMatrix * vec4(position, 1.0);
-    st = texCoord;
-}
-
-    )";
+    std::string code = vertex3D->getCode();
 
     std::string code2 =  R"(
 #version 430
@@ -127,11 +111,6 @@ void main () {
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,terrain->getId(),0);
     std::cout << fbo << "\n";
 
-    GLuint fbo2;
-    glGenFramebuffers(1,&fbo2);
-    glBindFramebuffer(GL_FRAMEBUFFER,fbo2);
-    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,scratchPad->getId(),0);
-    std::cout << fbo2 << "\n";
 
     glBindFramebuffer(GL_FRAMEBUFFER,0);
 
@@ -177,11 +156,6 @@ void Project::update() {
      filters
     */
 
-
-
-
-
-
     if(ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File",true)) {
             if (ImGui::BeginMenu("hej",true)) {
@@ -225,20 +199,7 @@ int Project::getWindowHeight() {
 
 void Project::brush(float x, float y) {
     ShaderProgram *program2 = ShaderProgram::builder()
-            .addShader(R"(
-#version 430
-
-layout (location=0) in vec3 position;
-layout (location=1) in vec2 texCoord;
-
-out vec2 st;
-
-void main()
-{
-    gl_Position =  vec4(position, 1.0);
-    st = texCoord;
-}
-    )", GL_VERTEX_SHADER)
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
             .addShader(R"(
 #version 430
 in vec2 st;
@@ -250,7 +211,7 @@ uniform vec2 mouse;
 
 void main () {
     if(distance(st*vec2(5001,2500),mouse*vec2(5001,2500))<20) {
-    fc = texture(img, st).r + texture(img,(st+vec2(100,0))/2).r;
+    fc = texture(img, st).r + 0.001;
     }
     else {
         fc = texture(img, st).r;
@@ -259,21 +220,39 @@ void main () {
     )", GL_FRAGMENT_SHADER)
             .link();
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 1);
-    glViewport(0, 0, terrain->getWidth(), terrain->getHeight());
-    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,scratchPad->getId(),0);
-    glBindTexture(GL_TEXTURE_2D, terrain->getId());
     program2->bind();
     int id = glGetUniformLocation(program2->getId(),"mouse");
-    std::cout << x << "\n";
+    //std::cout << x << "\n";
     glUniform2f(id,x,y);
+
+
+    apply(program2,scratchPad);
+
+    scratchPad->swap(terrain);
+}
+
+void Project::apply(ShaderProgram *program, Texture *texture) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 1);
+    glViewport(0, 0, texture->getWidth(), texture->getHeight());
+    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,texture->getId(),0);
+    program->bind();
 
     vbo->render();
 
-    scratchPad->swap(terrain);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+
+
+    //unsigned char* image;
+    //glReadPixels(0,0,5001,2500,GL_R32F,GL_UNSIGNED_BYTE,image);
+
+}
+
+void Project::clearbrush() {
+
 }
 
 

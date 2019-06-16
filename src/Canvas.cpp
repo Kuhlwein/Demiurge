@@ -169,6 +169,8 @@ void Canvas::update(int programId) {
         //std::cout << id << "\n";
         glUniform2f(id,texcoord.x,texcoord.y);
 
+
+
         if(io.MouseDown[0]) project->brush(texcoord.x,texcoord.y);
 
 
