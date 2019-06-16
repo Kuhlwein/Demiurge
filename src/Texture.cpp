@@ -23,9 +23,9 @@ Texture::Texture(int width, int height, GLenum format, GLuint unit) {
     glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, 0, 0, nullptr);
 
     // bind to image unit so can write to specific pixels from the shader
-    glBindImageTexture( unit, id, 0, false, 0, GL_READ_WRITE,  format); //todo: for compute shader???
-    glActiveTexture(GL_TEXTURE0+unit);
-    glBindTexture( GL_TEXTURE_2D, id );
+    //glBindImageTexture( unit, id, 0, false, 0, GL_READ_WRITE,  format); //todo: for compute shader???
+    //glActiveTexture(GL_TEXTURE0+unit);
+    //glBindTexture( GL_TEXTURE_2D, id );
 }
 
 void Texture::uploadData(GLenum format, GLenum type, const GLvoid *data) {
@@ -48,4 +48,9 @@ void Texture::swap(Texture* texture) {
     int id = this->id;
     this->id = texture->id;
     texture->id = id;
+}
+
+void Texture::bind(GLuint point) {
+    glActiveTexture(GL_TEXTURE0+point);
+    glBindTexture( GL_TEXTURE_2D, id );
 }

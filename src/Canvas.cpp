@@ -145,6 +145,7 @@ void Canvas::update(int programId) {
     glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
     glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
 
+    static bool first;
     if(true) {
         glm::vec2 viewpoint(io.MousePos.x,io.MousePos.y);
 
@@ -171,7 +172,15 @@ void Canvas::update(int programId) {
 
 
 
-        if(io.MouseDown[0]) project->brush(texcoord.x,texcoord.y);
+        if(io.MouseDown[0] & first) {
+            project->clearbrush();
+            project->brush(texcoord.x,texcoord.y);
+            first = false;
+        } else if (io.MouseDown[0]) {
+            project->brush(texcoord.x,texcoord.y);
+        } else {
+            first = true;
+        }
 
 
     }

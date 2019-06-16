@@ -16,6 +16,7 @@ public:
     int getWidth();
     int getHeight();
     void swap(Texture* texture);
+    void bind(GLuint point);
 private:
     GLuint id;
     GLint internalformat;

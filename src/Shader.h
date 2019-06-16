@@ -30,6 +30,9 @@ private:
     std::vector<Shader*> includes;
 };
 
+/*
+ *  Vertex shaders
+ */
 Shader* vertexSetup = Shader::builder()
         .create(R"(
 layout (location=0) in vec3 position;
@@ -56,7 +59,29 @@ st = texCoord;
 )");
 
 
+/*
+ * Fragment shaders
+ */
 
+Shader* fragmentBase = Shader::builder()
+        .create(R"(
+in vec2 st;
+layout(binding=0) uniform sampler2D img;
+layout(binding=1) uniform sampler2D sel;
+out float fc;
+)");
+
+Shader* fragmentCopy = Shader::builder()
+        .include(fragmentBase)
+        .create(R"(
+fc = texture(img, st).r;
+)");
+
+Shader* fragmentClear = Shader::builder()
+        .include(fragmentBase)
+        .create(R"(
+fc = 0;
+)");
 
 
 

@@ -37,6 +37,7 @@ layout(binding=1) uniform sampler2D sel;
 out vec4 fc;
 
 uniform vec2 mouse;
+uniform float fisk;
 
 uniform float u_time;
 
@@ -45,7 +46,7 @@ void main () {
     float dy = dFdy(st.y);
 
     float r = distance(mouse*vec2(5001,2500),st*vec2(5001,2500));
-    if (r<20 && r>20-length(vec2(dx,dy)*vec2(5001,2500))) {
+    if (r<20 && r>20-1.5*length(vec2(dx,dy)*vec2(5001,2500))) {
         fc = texture(img, st).rrrr + 0.5;
     } else {
         fc = texture(img, st).rrrr;
@@ -102,8 +103,13 @@ void main () {
     terrain->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
 
     //TODO something
-    scratchPad = new Texture(w,h,GL_R32F,0);
+    scratchPad2 = new Texture(w,h,GL_R32F,2);
+    scratchPad2->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
+
+    scratchPad = new Texture(w,h,GL_R32F,2);
     scratchPad->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
+
+
 
     GLuint fbo;
     glGenFramebuffers(1,&fbo);
@@ -176,6 +182,8 @@ void Project::update() {
 void Project::render() {
 
     program->bind();
+    terrain->bind(0);
+    selection->bind(1);
     canvas->render();
 }
 
@@ -225,14 +233,39 @@ void main () {
     //std::cout << x << "\n";
     glUniform2f(id,x,y);
 
+    scratchPad2->bind(0);
+    apply(program2,terrain);
+    terrain->swap(scratchPad2);
 
-    apply(program2,scratchPad);
+    ShaderProgram *program3 = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(R"(
+#version 430
+in vec2 st;
+layout(binding=0) uniform sampler2D img;
+layout(binding=1) uniform sampler2D sel;
+out float fc;
 
-    scratchPad->swap(terrain);
+uniform vec2 mouse;
+
+void main () {
+    fc = texture(img, st).r + min(texture(sel,st).r,0.3);
+}
+    )", GL_FRAGMENT_SHADER)
+            .link();
+
+    scratchPad2->bind(1);
+    scratchPad->bind(0);
+    apply(program3,terrain);
+
+    //scratchPad->swap(terrain);
+
+    //clearbrush();
+
 }
 
 void Project::apply(ShaderProgram *program, Texture *texture) {
-    glActiveTexture(GL_TEXTURE0);
+    //glActiveTexture(GL_TEXTURE0);
     glBindFramebuffer(GL_FRAMEBUFFER, 1);
     glViewport(0, 0, texture->getWidth(), texture->getHeight());
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,texture->getId(),0);
@@ -252,7 +285,19 @@ void Project::apply(ShaderProgram *program, Texture *texture) {
 }
 
 void Project::clearbrush() {
+    terrain->bind(0);
+    ShaderProgram *program = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(fragmentCopy->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+    apply(program,scratchPad);
 
+    ShaderProgram *program2 = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(fragmentClear->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+    apply(program2,scratchPad2);
+    std::cout << "hej\n";
 }
 
 
