@@ -33,7 +33,7 @@ private:
 /*
  *  Vertex shaders
  */
-Shader* vertexSetup = Shader::builder()
+static Shader* vertexSetup = Shader::builder()
         .create(R"(
 layout (location=0) in vec3 position;
 layout (location=1) in vec2 texCoord;
@@ -44,14 +44,14 @@ uniform mat4 worldMatrix;
 uniform mat4 projectionMatrix;
 )");
 
-Shader* vertex3D = Shader::builder()
+static Shader* vertex3D = Shader::builder()
         .include(vertexSetup)
         .create(R"(
 gl_Position = projectionMatrix * worldMatrix * vec4(position, 1.0);
 st = texCoord;
 )");
 
-Shader* vertex2D = Shader::builder()
+static Shader* vertex2D = Shader::builder()
         .include(vertexSetup)
         .create(R"(
 gl_Position =  vec4(position, 1.0);
@@ -63,7 +63,7 @@ st = texCoord;
  * Fragment shaders
  */
 
-Shader* fragmentBase = Shader::builder()
+static Shader* fragmentBase = Shader::builder()
         .create(R"(
 in vec2 st;
 layout(binding=0) uniform sampler2D img;
@@ -71,13 +71,19 @@ layout(binding=1) uniform sampler2D sel;
 out float fc;
 )");
 
-Shader* fragmentCopy = Shader::builder()
+static Shader* mouseLocation = Shader::builder()
+        .create(R"(
+uniform vec2 mouse;
+uniform vec2 mousePrev;
+)");
+
+static Shader* fragmentCopy = Shader::builder()
         .include(fragmentBase)
         .create(R"(
 fc = texture(img, st).r;
 )");
 
-Shader* fragmentClear = Shader::builder()
+static Shader* fragmentClear = Shader::builder()
         .include(fragmentBase)
         .create(R"(
 fc = 0;

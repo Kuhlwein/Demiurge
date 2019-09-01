@@ -41,19 +41,40 @@ uniform float fisk;
 
 uniform float u_time;
 
-void main () {
-    float dx = dFdx(st.x);
-    float dy = dFdy(st.y);
 
+float dx = dFdx(st.x);
+float dy = dFdy(st.y);
+
+
+void draw_brush_outline(inout vec4 fc) {
     float r = distance(mouse*vec2(5001,2500),st*vec2(5001,2500));
     if (r<20 && r>20-1.5*length(vec2(dx,dy)*vec2(5001,2500))) {
-        fc = texture(img, st).rrrr + 0.5;
-    } else {
-        fc = texture(img, st).rrrr;
-
+        vec2 test = mouse*vec2(5001,2500)-st*vec2(5001,2500);
+        float k = round(mod(atan(test.y,test.x)/(2*3.1415)*1/dx/1000,1));
+        fc = vec4(1,1,1,0);
     }
+}
 
-    float m = dFdx(st.x);
+void main () {
+
+
+
+    fc = texture(img, st).rrrr;
+    float omega = atan(st.y-0.5,st.x-0.5); // -pi:pi
+    float theta = length((st-0.5)*vec2(1,0.5));
+
+    float L = 4;
+    float R = 1;
+    float phi = asin(L*sin(theta)/R)-theta;
+
+    vec2 n = vec2(phi*cos(omega)/2+0.5,phi*sin(omega)/2+0.5);
+
+    //fc = vec4(phi,phi,phi,0);
+    //fc = texture(img, vec2(omega/3.14/2+0.5,phi/3.14)).rrrr;
+
+    draw_brush_outline(fc);
+
+
 
 
 
@@ -205,33 +226,31 @@ int Project::getWindowHeight() {
     return height;
 }
 
-void Project::brush(float x, float y) {
+void Project::brush(glm::vec2 pos, glm::vec2 prev) {
+    Shader* brusher = Shader::builder()
+            .include(fragmentBase)
+            .include(mouseLocation)
+            .create(R"(
+    vec2 dims = vec2(5001,2500);
+    if(distance(st*dims,mouse*dims)<20) {
+      fc = texture(img, st).r + 1;
+    } else {
+      fc = texture(img, st).r;
+    }
+)");
+
     ShaderProgram *program2 = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-            .addShader(R"(
-#version 430
-in vec2 st;
-layout(binding=0) uniform sampler2D img;
-layout(binding=1) uniform sampler2D sel;
-out float fc;
-
-uniform vec2 mouse;
-
-void main () {
-    if(distance(st*vec2(5001,2500),mouse*vec2(5001,2500))<20) {
-    fc = texture(img, st).r + 0.001;
-    }
-    else {
-        fc = texture(img, st).r;
-    }
-}
-    )", GL_FRAGMENT_SHADER)
+            .addShader(brusher->getCode(), GL_FRAGMENT_SHADER)
             .link();
 
     program2->bind();
     int id = glGetUniformLocation(program2->getId(),"mouse");
     //std::cout << x << "\n";
-    glUniform2f(id,x,y);
+    glUniform2f(id,pos.x,pos.y);
+    id = glGetUniformLocation(program2->getId(),"mousePrev");
+    //std::cout << x << "\n";
+    glUniform2f(id,prev.x,prev.y);
 
     scratchPad2->bind(0);
     apply(program2,terrain);
@@ -247,6 +266,7 @@ layout(binding=1) uniform sampler2D sel;
 out float fc;
 
 uniform vec2 mouse;
+uniform vec2 mousePrev;
 
 void main () {
     fc = texture(img, st).r + min(texture(sel,st).r,0.3);
@@ -265,7 +285,6 @@ void main () {
 }
 
 void Project::apply(ShaderProgram *program, Texture *texture) {
-    //glActiveTexture(GL_TEXTURE0);
     glBindFramebuffer(GL_FRAMEBUFFER, 1);
     glViewport(0, 0, texture->getWidth(), texture->getHeight());
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,texture->getId(),0);

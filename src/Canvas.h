@@ -6,6 +6,8 @@
 #define DEMIURGE_CANVAS_H
 
 
+#include <glm/glm.hpp>
+#include <imgui/imgui.h>
 #include "Vbo.h"
 
 class Project;
@@ -30,8 +32,11 @@ private:
     float Z_NEAR;
     float Z_FAR;
     float ZOOM;
+    glm::vec2 lastMouse;
 
     float canvasAspect;
+
+    glm::vec2 mousePos(ImVec2 pos);
 };
 
 

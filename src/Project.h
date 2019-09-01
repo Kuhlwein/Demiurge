@@ -24,7 +24,7 @@ class Project {
     int getWindowWidth();
     int getWindowHeight();
     void clearbrush();
-    void brush(float x, float y);
+    void brush(glm::vec2 pos, glm::vec2 prev);
     void apply(ShaderProgram* program, Texture* texture);
 private:
     GLFWwindow* window;

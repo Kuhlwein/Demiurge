@@ -33,40 +33,6 @@ Canvas::Canvas(int height, int width, Project* project) {
             2, 3, 1
     };
 
-//    std::vector<float> pos;
-//    std::vector<float> tex;
-//    std::vector<int> ind;
-//
-//    int w = 25, h = 25;
-//    for (int i = 0; i <= w; i++) {
-//        pos.push_back(0.0 * cos((float) i / w * 2 * M_PI));
-//        pos.push_back(0.0 * sin((float) i / w * 2 * M_PI));
-//        pos.push_back(1);
-//
-//        tex.push_back((float) i / w);
-//        tex.push_back(0);
-//    }
-//    for (int j = 1; j <= h; j++) {
-//        for (int i = 0; i <= w; i++) {
-//            pos.push_back(j*cos((float) i / w * 2 * M_PI));
-//            pos.push_back(j*sin((float) i / w * 2 * M_PI));
-//            pos.push_back(1);
-//            std::cout << cos((float) i / w * 2 * M_PI) << " " << sin((float) i / w * 2 * M_PI) << "\n";
-//            tex.push_back((float) i / w);
-//            tex.push_back((float)j/h);
-//        }
-//        for (int i = 0; i <= w - 1; i++) {
-//            int offset = (j-1)*(w+1);
-//            ind.push_back(offset+i);
-//            ind.push_back(offset+i + 1);
-//            ind.push_back(offset+(w + 1) + i);
-//
-//            ind.push_back(offset+(w + 1) + i);
-//            ind.push_back(offset+(w + 1) + i + 1);
-//            ind.push_back(offset+i + 1);
-//        }
-//    }
-
 
 
     vbo = new Vbo(positions, textures, indices);
@@ -117,6 +83,31 @@ void Canvas::pan(float dx, float dy) {
     else if(y>1) y=1;
 }
 
+glm::vec2 Canvas::mousePos(ImVec2 pos) {
+    glm::mat4 model(1.f);
+    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
+    glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
+
+    glm::vec2 viewpoint(pos.x,pos.y);
+
+    glm::vec4 normalized(2*viewpoint.x/windowWidth-1,-(2*viewpoint.y/windowHeight-1),-1,1); //REVERSED
+
+    glm::vec4 unprojected = glm::inverse(projection) * normalized;
+
+
+    unprojected = unprojected / unprojected.w;
+
+    glm::vec3 unprojected3(unprojected.x,unprojected.y,unprojected.z);
+
+    glm::vec3 worldvec = glm::inverse(world) * unprojected;
+
+    glm::vec3 ray = unprojected3 / (unprojected3.z) * (-(float) pow(ZOOM,z));
+    ray = glm::vec3(ray.x-x,ray.y-y,ray.z);
+
+    glm::vec2 texcoord((ray.x+canvasAspect)/(2*canvasAspect),-(ray.y-1)/2);
+    return texcoord;
+}
+
 void Canvas::update(int programId) {
     ImGuiIO io = ImGui::GetIO();
     windowHeight = project->getWindowHeight();
@@ -141,48 +132,31 @@ void Canvas::update(int programId) {
     }
 
 
-    glm::mat4 model(1.f);
-    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
-    glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
 
     static bool first;
     if(true) {
-        glm::vec2 viewpoint(io.MousePos.x,io.MousePos.y);
 
-        glm::vec4 normalized(2*viewpoint.x/windowWidth-1,-(2*viewpoint.y/windowHeight-1),-1,1); //REVERSED
-
-        glm::vec4 unprojected = glm::inverse(projection) * normalized;
-
-
-        unprojected = unprojected / unprojected.w;
-
-        glm::vec3 unprojected3(unprojected.x,unprojected.y,unprojected.z);
-
-        glm::vec3 worldvec = glm::inverse(world) * unprojected;
-
-        glm::vec3 ray = unprojected3 / (unprojected3.z) * (-(float) pow(ZOOM,z));
-        ray = glm::vec3(ray.x-x,ray.y-y,ray.z);
-
-        glm::vec2 texcoord((ray.x+canvasAspect)/(2*canvasAspect),-(ray.y-1)/2);
+        glm::vec2 texcoord = mousePos(io.MousePos);
+        glm::vec2 texcoordPrev = mousePos(io.MousePosPrev);
 
         //std::cout << texcoord.x << "," << texcoord.y << "\n";
         int id = glGetUniformLocation(programId,"mouse");
         //std::cout << id << "\n";
         glUniform2f(id,texcoord.x,texcoord.y);
-
+        id = glGetUniformLocation(programId,"mousePrev");
+        //std::cout << id << "\n";
+        glUniform2f(id,texcoordPrev.x,texcoordPrev.y);
 
 
         if(io.MouseDown[0] & first) {
             project->clearbrush();
-            project->brush(texcoord.x,texcoord.y);
+            project->brush(texcoord,texcoordPrev);
             first = false;
         } else if (io.MouseDown[0]) {
-            project->brush(texcoord.x,texcoord.y);
+            project->brush(texcoord,texcoordPrev);
         } else {
             first = true;
         }
-
-
     }
 
 
