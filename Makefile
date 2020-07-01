@@ -22,7 +22,7 @@ glm = $(LIB)/glm
 
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
-SOURCES += src/Project.cpp src/Vbo.cpp src/ShaderProgram.cpp src/Canvas.cpp src/Shader.cpp src/imgui/imgui_color_gradient.cpp src/Texture.cpp src/Window.cpp
+SOURCES += src/Project.cpp src/Vbo.cpp src/ShaderProgram.cpp src/Canvas.cpp src/Shader.cpp src/imgui/imgui_color_gradient.cpp src/Texture.cpp src/Menu.cpp src/UndoHistory.cpp src/menus/selection.cpp src/menus/view.cpp src/menus/edit.cpp
 SOURCES += $(IMGUI)/imgui_impl_glfw.cpp $(IMGUI)/imgui_impl_opengl3.cpp
 SOURCES += $(IMGUI)/imgui.cpp $(IMGUI)/imgui_demo.cpp $(IMGUI)/imgui_draw.cpp $(IMGUI)/imgui_widgets.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
@@ -83,7 +83,10 @@ endif
 ##---------------------------------------------------------------------
 
 %.o:src/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/menus/ -I src/
+
+%.o:src/menus/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/menus/ -I src/
 
 %.o:src/imgui/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<

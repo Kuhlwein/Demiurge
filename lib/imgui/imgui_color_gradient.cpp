@@ -14,6 +14,8 @@ static const float GRADIENT_MARK_DELETE_DIFFY = 40;
 
 ImGradient::ImGradient()
 {
+	static int counter = 0;
+	id = counter++;
     addMark(0.0f, ImColor(0.0f,0.0f,0.0f));
     addMark(1.0f, ImColor(1.0f,1.0f,1.0f));
 }
@@ -304,7 +306,7 @@ namespace ImGui
         // ImDrawList* draw_list = ImGui::GetWindowDrawList();
         
         float maxWidth = ImMax(250.0f, ImGui::GetContentRegionAvailWidth() - 100.0f);
-        bool clicked = ImGui::InvisibleButton("gradient_bar", ImVec2(maxWidth, GRADIENT_BAR_WIDGET_HEIGHT));
+        bool clicked = ImGui::InvisibleButton(("gradient_bar"+std::to_string(gradient->id)).c_str(), ImVec2(maxWidth, GRADIENT_BAR_WIDGET_HEIGHT));
         
         DrawGradientBar(gradient, widget_pos, maxWidth, GRADIENT_BAR_WIDGET_HEIGHT);
         

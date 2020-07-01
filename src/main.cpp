@@ -66,7 +66,7 @@ int main(int, char**)
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(0.5); // Enable vsync
+    glfwSwapInterval(1); // Enable vsync
 
     // Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
@@ -115,9 +115,11 @@ int main(int, char**)
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
 
-    bool show_demo_window = true;
+    bool show_demo_window = false;
     bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(0.2f, 0.2f, 0.2f, 1.00f);
+
+    //ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg,ImVec4(0,0,0,0));
 
     Project project(window);
 
@@ -143,7 +145,7 @@ int main(int, char**)
             ImGui::ShowDemoWindow(&show_demo_window);
 
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-        {
+        if (true) {
             static float f = 0.0f;
             static int counter = 0;
 

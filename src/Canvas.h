@@ -9,34 +9,62 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 #include "Vbo.h"
+#include "Shader.h"
 
 class Project;
 
 class Canvas {
 public:
-    Canvas(int height, int width, Project* project);
-    ~Canvas();
-    void render();
-    void update(int id);
-private:
-    Vbo *vbo;
-    float x, y, z;
-    void pan(float dx, float dy);
+    Canvas(Project* project);
+    virtual void render() = 0;
+    virtual void update() = 0;
+	virtual glm::vec2 mousePos(ImVec2 pos) = 0;
+	virtual Shader* projection_shader() = 0;
+
+protected:
     Project* project;
+};
 
-    float FOVY; //radian
-    float TANFOV;
-    float windowAspect;
-    int windowWidth;
-    int windowHeight;
-    float Z_NEAR;
-    float Z_FAR;
-    float ZOOM;
-    glm::vec2 lastMouse;
+class Equiretangular : public Canvas {
+public:
+	Equiretangular(Project* project);
+	~Equiretangular();
+	void render() override;
+	void update() override;
+	glm::vec2 mousePos(ImVec2 pos) override;
+	Shader* projection_shader() override;
 
-    float canvasAspect;
+private:
+	Vbo *vbo;
+	float x, y, z;
+	void pan(float dx, float dy);
 
-    glm::vec2 mousePos(ImVec2 pos);
+	float FOVY; //radian
+	float TANFOV;
+	float windowAspect;
+	int windowWidth;
+	int windowHeight;
+	float Z_NEAR;
+	float Z_FAR;
+	float ZOOM;
+
+	float canvasAspect;
+};
+
+class Globe : public Canvas {
+public:
+	Globe(Project* p);
+	void render() override;
+	void update() override;
+	glm::vec2 mousePos(ImVec2 pos) override;
+	Shader* projection_shader() override;
+private:
+	Vbo *vbo;
+	float windowAspect;
+	float delta_phi=M_PI/2;
+	float delta_theta=-M_PI/2;
+	float z;
+	double ZOOM;
 };
 
 

@@ -30,6 +30,11 @@ ShaderProgram * ShaderProgram::builder::link() {
     glValidateProgram(programId);
     glGetProgramiv(programId, GL_LINK_STATUS,&status);
     if(status == GL_FALSE) std::cout << "Error linking program\n";
+	if (status==GL_FALSE) {
+		GLchar infoLog[512];
+		glGetShaderInfoLog(programId, 512, NULL, infoLog);
+		std::cout << infoLog << "\n";
+	}
 
     for(int shaderId : shaders) {
         glDetachShader(programId,shaderId);
@@ -57,6 +62,11 @@ ShaderProgram::builder& ShaderProgram::builder::addShader(std::string shader, GL
     GLint success = 0;
     glGetShaderiv(shaderid, GL_COMPILE_STATUS, &success);
     if (success==GL_FALSE) std::cout << "ERROR compiling shader!\n";
-
+	if (success==GL_FALSE) {
+		GLchar infoLog[512];
+		glGetShaderInfoLog(shaderid, 512, NULL, infoLog);
+		std::cout << infoLog << "\n";
+		std::cout << shader << "\n";
+	}
     return *this;
 }

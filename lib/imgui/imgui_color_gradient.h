@@ -50,6 +50,7 @@
 #include "imgui.h"
 
 #include <list>
+#include <string>
 
 struct ImGradientMark
 {
@@ -68,10 +69,12 @@ public:
     void removeMark(ImGradientMark* mark);
     void refreshCache();
     std::list<ImGradientMark*> & getMarks(){ return m_marks; }
+	int id;
 private:
     void computeColorAt(float position, float* color) const;
     std::list<ImGradientMark*> m_marks;
     float m_cachedValues[256 * 3];
+
 };
 
 namespace ImGui
