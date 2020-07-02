@@ -13,7 +13,7 @@
 #include "edit.h"
 #include "ShaderProgram.h"
 #include "Vbo.h"
-#include "Canvas.h"
+#include "projections/Canvas.h"
 #include "Texture.h"
 #include "Menu.h"
 #include "Shader.h"

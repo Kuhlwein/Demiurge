@@ -51,20 +51,26 @@ private:
 	float canvasAspect;
 };
 
-class Globe : public Canvas {
+
+
+class AbstractCanvas : public Canvas {
 public:
-	Globe(Project* p);
+	AbstractCanvas(Project* project);
+	~AbstractCanvas();
 	void render() override;
 	void update() override;
-	glm::vec2 mousePos(ImVec2 pos) override;
-	Shader* projection_shader() override;
-private:
+	virtual glm::vec2 mousePos(ImVec2 pos) override = 0;
+	virtual Shader* projection_shader() override = 0;
+
+protected:
 	Vbo *vbo;
+	float x, y, z;
+	void pan(float dx, float dy);
+
 	float windowAspect;
-	float delta_phi=M_PI/2;
-	float delta_theta=-M_PI/2;
-	float z;
-	double ZOOM;
+	int windowWidth;
+	int windowHeight;
+	float ZOOM;
 };
 
 

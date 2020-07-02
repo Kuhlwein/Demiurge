@@ -22,6 +22,8 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <imgui/imgui.h>
+#include <projections/Orthographic.h>
+#include <projections/Mollweide.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -120,7 +122,12 @@ Project::Project(GLFWwindow* window) {
 		return true;
 	}));
 	projection->addMenu(new Menu("Orthographic", [](Project* p){
-		p->canvas = new Globe(p);
+		p->canvas = new Orthographic(p);
+		p->update_terrain_shader();
+		return true;
+	}));
+	projection->addMenu(new Menu("Mollweide", [](Project* p){
+		p->canvas = new Mollweide(p);
 		p->update_terrain_shader();
 		return true;
 	}));

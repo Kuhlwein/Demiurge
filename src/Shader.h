@@ -222,11 +222,13 @@ static Shader* selection_outline = Shader::builder()
         .include(deltaxy)
         .create(R"(
 uniform float u_time;
-void draw_selection_outline(inout vec4 fc) {
-    float x1 = texture(sel, st-vec2(dx,0)).r;
-    float x2 = texture(sel, st+vec2(dx,0)).r;
-    float y1 = texture(sel, st-vec2(0,dy)).r;
-    float y2 = texture(sel, st+vec2(0,dy)).r;
+void draw_selection_outline(inout vec4 fc, in vec2 st) {
+	float dx2 = dFdx(st.x);
+    float dy2 = dFdy(st.y);
+    float x1 = texture(sel, st-vec2(dx2,0)).r;
+    float x2 = texture(sel, st+vec2(dx2,0)).r;
+    float y1 = texture(sel, st-vec2(0,dy2)).r;
+    float y2 = texture(sel, st+vec2(0,dy2)).r;
 
     float k = round(dx*20000);
     float test = round(mod(gl_FragCoord.x/8-gl_FragCoord.y/8+u_time,1));
@@ -234,7 +236,7 @@ void draw_selection_outline(inout vec4 fc) {
     if (abs(x1-mod(x1,0.2)-(x2-mod(x2,0.2)))>0) fc = vec4(test,test,test,0);
     if (abs(y1-mod(y1,0.2)-(y2-mod(y2,0.2)))>0) fc = vec4(test,test,test,0);
 }
-)","draw_selection_outline(fc);");
+)","draw_selection_outline(fc,st_p);");
 
 
 
