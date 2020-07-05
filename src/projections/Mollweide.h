@@ -15,6 +15,9 @@ class Mollweide : public AbstractCanvas {
 		Mollweide(Project* project);
 		glm::vec2 inverseTransform(glm::vec2 xy) override;
 		Shader* inverseShader() override;
+protected:
+		glm::vec2 getScale() override;
+		glm::vec2 getLimits() override;
 };
 
 

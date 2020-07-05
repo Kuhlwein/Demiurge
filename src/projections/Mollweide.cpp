@@ -5,7 +5,7 @@
 #include "Project.h"
 #include "Mollweide.h"
 
-Mollweide::Mollweide(Project *project) : AbstractCanvas(project, glm::vec2(2*sqrt(2),2*sqrt(2))) {
+Mollweide::Mollweide(Project *project) : AbstractCanvas(project) {
 
 }
 
@@ -35,4 +35,12 @@ vec2 inverseshader(vec2 coord) {
 	return vec2(lambda,phi);
 }
 )");
+}
+
+glm::vec2 Mollweide::getScale() {
+	return glm::vec2(2*sqrt(2),2*sqrt(2));
+}
+
+glm::vec2 Mollweide::getLimits() {
+	return glm::vec2(1,0.5);
 }

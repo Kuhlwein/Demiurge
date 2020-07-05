@@ -22,7 +22,6 @@ public:
 	Shader* projection_shader() override;
 private:
 	Vbo *vbo;
-	float windowAspect;
 	float delta_phi=M_PI/2;
 	float delta_theta=-M_PI/2;
 	float z;

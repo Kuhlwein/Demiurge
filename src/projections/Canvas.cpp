@@ -16,8 +16,19 @@ Canvas::Canvas(Project *project) {
 	this->project = project;
 }
 
-Equiretangular::Equiretangular(Project* project) : Canvas(project) {
-    //this->project = project;
+float Canvas::windowWidth() {
+	return project->getWindowWidth();
+}
+
+float Canvas::windowHeight() {
+	return project->getWindowHeight();
+}
+
+float Canvas::windowAspect() {
+	return windowWidth()/windowHeight();
+}
+
+img::img(Project* project) : Canvas(project) {
     canvasAspect = (float) project->getWidth() / project->getHeight();
 
     std::vector<float> positions = {
@@ -44,15 +55,14 @@ Equiretangular::Equiretangular(Project* project) : Canvas(project) {
     FOVY = glm::radians(60.0); //radian
     TANFOV = glm::tan(FOVY *0.5);
 
-    windowAspect = 1.7777;
     Z_NEAR = 0.001f;
     Z_FAR = 1000.f;
     ZOOM = 1.1;
 }
 
-void Equiretangular::render() {
+void img::render() {
     glm::mat4 model(1.f);
-    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
+    glm::mat4 projection = glm::perspective(FOVY,windowAspect(),Z_NEAR,Z_FAR);
     glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
 
     int programId = project->program->getId();
@@ -69,12 +79,12 @@ void Equiretangular::render() {
     vbo->render();
 }
 
-Equiretangular::~Equiretangular() {
+img::~img() {
     delete(vbo);
 }
 
-void Equiretangular::pan(float dx, float dy) {
-    float scaling = (float) (pow(ZOOM,z)+Z_NEAR)*TANFOV*2/windowHeight;
+void img::pan(float dx, float dy) {
+    float scaling = (float) (pow(ZOOM,z)+Z_NEAR)*TANFOV*2/windowHeight();
     x+=dx * scaling;
     y-=dy * scaling;
 
@@ -84,15 +94,15 @@ void Equiretangular::pan(float dx, float dy) {
     else if(y>1) y=1;
 }
 
-glm::vec2 Equiretangular::mousePos(ImVec2 pos) {
+glm::vec2 img::mousePos(ImVec2 pos) {
     glm::mat4 model(1.f);
-    glm::mat4 projection = glm::perspective(FOVY,windowAspect,Z_NEAR,Z_FAR);
+    glm::mat4 projection = glm::perspective(FOVY,windowAspect(),Z_NEAR,Z_FAR);
     glm::mat4 world = glm::translate(model,glm::vec3(x,y,-pow(ZOOM,z)));
 
 
     glm::vec2 viewpoint(pos.x,pos.y);
 
-    glm::vec4 normalized(2*viewpoint.x/windowWidth-1,-(2*viewpoint.y/windowHeight-1),-1,1); //REVERSED
+    glm::vec4 normalized(2*viewpoint.x/windowWidth()-1,-(2*viewpoint.y/windowHeight()-1),-1,1); //REVERSED
 
     glm::vec4 unprojected = glm::inverse(projection) * normalized;
 
@@ -110,11 +120,8 @@ glm::vec2 Equiretangular::mousePos(ImVec2 pos) {
     return texcoord;
 }
 
-void Equiretangular::update() {
+void img::update() {
     ImGuiIO io = ImGui::GetIO();
-    windowHeight = project->getWindowHeight();
-    windowWidth = project->getWindowWidth();
-    windowAspect = (float)windowWidth/windowHeight;
 
     if(io.WantCaptureMouse) return;
 
@@ -128,14 +135,14 @@ void Equiretangular::update() {
         float delta = io.MouseWheel;
 
         z+=delta;
-        float deltax = (io.MousePos.x-windowWidth*0.5f)*(ZOOM-1);
-        float deltay = (io.MousePos.y-windowHeight*0.5f)*(ZOOM-1);
+        float deltax = (io.MousePos.x-windowWidth()*0.5f)*(ZOOM-1);
+        float deltay = (io.MousePos.y-windowHeight()*0.5f)*(ZOOM-1);
         pan(delta*deltax,delta*deltay);
 
     }
 }
 
-Shader *Equiretangular::projection_shader() {
+Shader *img::projection_shader() {
 	return Shader::builder().create(R"(
 vec2 projection(in vec2 st) {
     return st;
@@ -148,7 +155,7 @@ vec2 projection(in vec2 st) {
 
 
 
-AbstractCanvas::AbstractCanvas(Project *project, glm::vec2 scale) : Canvas(project), scale(scale) {
+AbstractCanvas::AbstractCanvas(Project *project) : Canvas(project) {
 	std::vector<float> positions = {
 			-1, 1, 0,
 			-1, -1, 0,
@@ -172,7 +179,6 @@ AbstractCanvas::AbstractCanvas(Project *project, glm::vec2 scale) : Canvas(proje
 	z = 1;
 	x = y = 0;
 
-	windowAspect = 1.7777;
 }
 
 void AbstractCanvas::render() {
@@ -189,7 +195,7 @@ void AbstractCanvas::render() {
 	glUniform1f(id,(float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count())/1000);
 
 	id = glGetUniformLocation(programId,"windowaspect");
-	glUniform1f(id,windowAspect);
+	glUniform1f(id,windowAspect());
 
 	id = glGetUniformLocation(programId,"zoom");
 	glUniform1f(id,pow(ZOOM,z));
@@ -202,18 +208,17 @@ void AbstractCanvas::render() {
 	id = glGetUniformLocation(programId,"xyoffset");
 	glUniform2fv(id, 1, std::vector<float>{x,y}.data());
 
-
 	vbo->render();
 }
 
 void AbstractCanvas::pan(float dx, float dy) {
 	float scaling = (float) (pow(ZOOM,z))*2;
 
-	x-=dx * scaling/windowWidth;
-	y-=dy * scaling/windowHeight/windowAspect;
+	x-=dx * scaling/windowWidth();
+	y-=dy * scaling/windowHeight()/windowAspect();
 
-	float xlim = 1.0;
-	float ylim = 0.5;
+	float xlim = getLimits().x;
+	float ylim = getLimits().y;
 
 	if(x<-xlim) x=-xlim;
 	else if(x>xlim) x=xlim;
@@ -224,9 +229,6 @@ void AbstractCanvas::pan(float dx, float dy) {
 
 void AbstractCanvas::update() {
 	ImGuiIO io = ImGui::GetIO();
-	windowHeight = project->getWindowHeight();
-	windowWidth = project->getWindowWidth();
-	windowAspect = (float)windowWidth/windowHeight;
 
 	if(io.WantCaptureMouse) return;
 
@@ -239,8 +241,8 @@ void AbstractCanvas::update() {
 		float delta = io.MouseWheel;
 
 		z+=delta;
-		float deltax = (io.MousePos.x-windowWidth*0.5f)*(ZOOM-1);
-		float deltay = (io.MousePos.y-windowHeight*0.5f)*(ZOOM-1);
+		float deltax = (io.MousePos.x-windowWidth()*0.5f)*(ZOOM-1);
+		float deltay = (io.MousePos.y-windowHeight()*0.5f)*(ZOOM-1);
 		pan(delta*deltax,delta*deltay);
 
 	}
@@ -250,10 +252,10 @@ glm::vec2 AbstractCanvas::mousePos(ImVec2 pos) {
 	glm::vec2 st = glm::vec2(pos.x/project->getWindowWidth(),pos.y/project->getWindowHeight());
 
 	float x_ = 2.0 * (st.x - 0.5) * pow(ZOOM,z) + x;
-	float y_ = 2.0 * (st.y - 0.5 )/windowAspect * pow(ZOOM,z) + y;
+	float y_ = 2.0 * (st.y - 0.5 )/windowAspect() * pow(ZOOM,z) + y;
 
-	x_ = x_ * scale.x;
-	y_ = y_ * scale.y;
+	x_ = x_ * getScale().x;
+	y_ = y_ * getScale().y;
 
 	glm::vec2 coord = inverseTransform(glm::vec2(x_,y_));
 
@@ -279,7 +281,7 @@ vec2 projection(in vec2 st) {
 float x = 2.0 * (st.x - 0.5 )*zoom+ xyoffset.x;
 float y = 2.0 * (st.y - 0.5 ) / windowaspect * zoom+ xyoffset.y;
 
-x = x*)" + std::to_string(scale.x) + ";" + "y = y*" + std::to_string(scale.y) + ";" + R"(
+x = x*)" + std::to_string(getScale().x) + ";" + "y = y*" + std::to_string(getScale().y) + ";" + R"(
 
 vec2 coord = inverseshader(vec2(x,y));
 float phi = coord.y;
@@ -297,3 +299,4 @@ return vec2(theta,phi);
 }
 )","vec2 st_p = projection(st);");
 }
+

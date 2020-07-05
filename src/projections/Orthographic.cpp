@@ -35,7 +35,6 @@ Orthographic::Orthographic(Project *p) : Canvas(p) {
 	ZOOM = 1.1;
 	z = 1;
 
-	windowAspect = 1.7777;
 }
 
 void Orthographic::render() {
@@ -56,7 +55,7 @@ void Orthographic::render() {
 
 
 	id = glGetUniformLocation(programId,"windowaspect");
-	glUniform1f(id,windowAspect);
+	glUniform1f(id,windowAspect());
 
 	id = glGetUniformLocation(programId,"globeRotation");
 	glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(rotation));
@@ -74,8 +73,6 @@ void Orthographic::render() {
 
 void Orthographic::update() {
 	auto io = ImGui::GetIO();
-	windowAspect = (float)project->getWindowWidth()/project->getWindowHeight();
-
 
 	if(io.MouseDown[1]) {
 		auto mouse = io.MousePos;
@@ -106,7 +103,7 @@ glm::vec2 Orthographic::mousePos(ImVec2 pos) {
 	glm::vec2 st = glm::vec2(pos.x/project->getWindowWidth(),pos.y/project->getWindowHeight());
 
 	float x = 2.0 * (st.x - 0.5) * pow(ZOOM,z);
-	float y = 2.0 * (st.y - 0.5)/windowAspect * pow(ZOOM,z);
+	float y = 2.0 * (st.y - 0.5)/windowAspect() * pow(ZOOM,z);
 	float r = sqrt(x * x + y * y);
 
 	float z = sqrt(1-r*r);

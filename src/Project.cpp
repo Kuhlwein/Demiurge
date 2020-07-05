@@ -24,6 +24,8 @@
 #include <imgui/imgui.h>
 #include <projections/Orthographic.h>
 #include <projections/Mollweide.h>
+#include <projections/Mercator.h>
+#include <projections/Equiretangular.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -70,7 +72,7 @@ void Project::file_new(int w, int h) {
 	while(!undo_list.empty()) undo_list.pop();
 	while(!redo_list.empty()) redo_list.pop();
 
-	canvas = new Equiretangular(this);
+	canvas = new img(this);
 	update_terrain_shader();
 
 }
@@ -116,6 +118,11 @@ Project::Project(GLFWwindow* window) {
 	std::vector<Menu*> view_menu = {};
 
 	auto projection = new SubMenu("Projection");
+	projection->addMenu(new Menu("None", [](Project* p) {
+		p->canvas = new img(p);
+		p->update_terrain_shader();
+		return true;
+	}));
 	projection->addMenu(new Menu("Equiretangular", [](Project* p) {
 		p->canvas = new Equiretangular(p);
 		p->update_terrain_shader();
@@ -128,7 +135,11 @@ Project::Project(GLFWwindow* window) {
 	}));
 	projection->addMenu(new Menu("Mollweide", [](Project* p){
 		p->canvas = new Mollweide(p);
-		std::cout << p->canvas->projection_shader()->getCode();
+		p->update_terrain_shader();
+		return true;
+	}));
+	projection->addMenu(new Menu("Mercator", [](Project* p){
+		p->canvas = new Mercator(p);
 		p->update_terrain_shader();
 		return true;
 	}));
@@ -168,7 +179,7 @@ Project::Project(GLFWwindow* window) {
 
 	geometryShader = new NoneShader(this);
 
-	canvas = new Equiretangular(this);
+	canvas = new img(this);
 	set_terrain_shader(draw_grayscale);
 
 	brush_tex = new Texture(brush_tex_size,brush_tex_size,GL_R32F,"brush_tex",GL_LINEAR);

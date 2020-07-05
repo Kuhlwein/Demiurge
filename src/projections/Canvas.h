@@ -23,12 +23,15 @@ public:
 
 protected:
     Project* project;
+	float windowWidth();
+	float windowHeight();
+	float windowAspect();
 };
 
-class Equiretangular : public Canvas {
+class img : public Canvas {
 public:
-	Equiretangular(Project* project);
-	~Equiretangular();
+	img(Project* project);
+	~img();
 	void render() override;
 	void update() override;
 	glm::vec2 mousePos(ImVec2 pos) override;
@@ -41,9 +44,6 @@ private:
 
 	float FOVY; //radian
 	float TANFOV;
-	float windowAspect;
-	int windowWidth;
-	int windowHeight;
 	float Z_NEAR;
 	float Z_FAR;
 	float ZOOM;
@@ -51,30 +51,26 @@ private:
 	float canvasAspect;
 };
 
-
-
 class AbstractCanvas : public Canvas {
 public:
-	AbstractCanvas(Project* project, glm::vec2 scale = glm::vec2(1,1));
+	AbstractCanvas(Project* project);
 	~AbstractCanvas();
 	void render() override;
 	void update() override;
 	glm::vec2 mousePos(ImVec2 pos) override;
 	Shader* projection_shader() override;
-	virtual glm::vec2 inverseTransform(glm::vec2 xy) = 0;
-	virtual Shader* inverseShader() = 0;
-
 
 protected:
+	virtual glm::vec2 inverseTransform(glm::vec2 coord) = 0;
+	virtual Shader* inverseShader() = 0;
+	virtual glm::vec2 getScale() = 0;
+	virtual glm::vec2 getLimits() = 0;
+
+private:
 	Vbo *vbo;
 	float x, y, z;
 	void pan(float dx, float dy);
-
-	float windowAspect;
-	int windowWidth;
-	int windowHeight;
 	float ZOOM;
-	glm::vec2 scale;
 };
 
 
