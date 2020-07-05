@@ -22,9 +22,7 @@ glm = $(LIB)/glm
 
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
-SOURCES += src/Project.cpp src/Vbo.cpp src/ShaderProgram.cpp src/projections/Canvas.cpp src/projections/Orthographic.cpp src/projections/Mollweide.cpp src/projections/Mercator.cpp src/projections/Equiretangular.cpp src/Shader.cpp src/imgui/imgui_color_gradient.cpp src/Texture.cpp src/Menu.cpp src/UndoHistory.cpp src/menus/selection.cpp src/menus/view.cpp src/menus/edit.cpp
-SOURCES += $(IMGUI)/imgui_impl_glfw.cpp $(IMGUI)/imgui_impl_opengl3.cpp
-SOURCES += $(IMGUI)/imgui.cpp $(IMGUI)/imgui_demo.cpp $(IMGUI)/imgui_draw.cpp $(IMGUI)/imgui_widgets.cpp
+SOURCES += $(wildcard src/*.cpp) $(wildcard src/projections/*.cpp)  $(wildcard src/menus/*.cpp) $(wildcard $(IMGUI)/*.cpp)
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
 
