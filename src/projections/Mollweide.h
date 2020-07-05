@@ -13,8 +13,8 @@ class Project;
 class Mollweide : public AbstractCanvas {
 	public:
 		Mollweide(Project* project);
-		glm::vec2 mousePos(ImVec2 pos) override;
-		Shader* projection_shader() override;
+		glm::vec2 inverseTransform(glm::vec2 xy) override;
+		Shader* inverseShader() override;
 };
 
 

@@ -55,12 +55,15 @@ private:
 
 class AbstractCanvas : public Canvas {
 public:
-	AbstractCanvas(Project* project);
+	AbstractCanvas(Project* project, glm::vec2 scale = glm::vec2(1,1));
 	~AbstractCanvas();
 	void render() override;
 	void update() override;
-	virtual glm::vec2 mousePos(ImVec2 pos) override = 0;
-	virtual Shader* projection_shader() override = 0;
+	glm::vec2 mousePos(ImVec2 pos) override;
+	Shader* projection_shader() override;
+	virtual glm::vec2 inverseTransform(glm::vec2 xy) = 0;
+	virtual Shader* inverseShader() = 0;
+
 
 protected:
 	Vbo *vbo;
@@ -71,6 +74,7 @@ protected:
 	int windowWidth;
 	int windowHeight;
 	float ZOOM;
+	glm::vec2 scale;
 };
 
 

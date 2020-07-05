@@ -128,6 +128,7 @@ Project::Project(GLFWwindow* window) {
 	}));
 	projection->addMenu(new Menu("Mollweide", [](Project* p){
 		p->canvas = new Mollweide(p);
+		std::cout << p->canvas->projection_shader()->getCode();
 		p->update_terrain_shader();
 		return true;
 	}));

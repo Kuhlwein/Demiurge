@@ -148,7 +148,7 @@ vec2 projection(in vec2 st) {
 
 
 
-AbstractCanvas::AbstractCanvas(Project *project) : Canvas(project) {
+AbstractCanvas::AbstractCanvas(Project *project, glm::vec2 scale) : Canvas(project), scale(scale) {
 	std::vector<float> positions = {
 			-1, 1, 0,
 			-1, -1, 0,
@@ -244,4 +244,56 @@ void AbstractCanvas::update() {
 		pan(delta*deltax,delta*deltay);
 
 	}
+}
+
+glm::vec2 AbstractCanvas::mousePos(ImVec2 pos) {
+	glm::vec2 st = glm::vec2(pos.x/project->getWindowWidth(),pos.y/project->getWindowHeight());
+
+	float x_ = 2.0 * (st.x - 0.5) * pow(ZOOM,z) + x;
+	float y_ = 2.0 * (st.y - 0.5 )/windowAspect * pow(ZOOM,z) + y;
+
+	x_ = x_ * scale.x;
+	y_ = y_ * scale.y;
+
+	glm::vec2 coord = inverseTransform(glm::vec2(x_,y_));
+
+	auto v = project->getCoords();
+	for (auto &e : v) e=e/180.0f*M_PI;
+	float theta = (coord.x-v[2])/(v[3]-v[2]);
+	float phi = (coord.y-v[0])/(v[1]-v[0]);
+	return glm::vec2(theta,phi);
+}
+
+Shader *AbstractCanvas::projection_shader() {
+	return Shader::builder()
+			.include(def_pi)
+			.include(cornerCoords)
+			.include(inverseShader())
+			.create(R"(
+uniform float windowaspect=1.0f;
+uniform float zoom = 2;
+uniform vec2 xyoffset;
+
+vec2 projection(in vec2 st) {
+
+float x = 2.0 * (st.x - 0.5 )*zoom+ xyoffset.x;
+float y = 2.0 * (st.y - 0.5 ) / windowaspect * zoom+ xyoffset.y;
+
+x = x*)" + std::to_string(scale.x) + ";" + "y = y*" + std::to_string(scale.y) + ";" + R"(
+
+vec2 coord = inverseshader(vec2(x,y));
+float phi = coord.y;
+float theta = coord.x;
+
+phi = (phi-cornerCoords[0])/(cornerCoords[1]-cornerCoords[0]);
+theta = (theta-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
+
+if (phi<0.0f) discard;
+if (phi>1.0f) discard;
+if (theta<0.0f) discard;
+if (theta>1.0f) discard;
+
+return vec2(theta,phi);
+}
+)","vec2 st_p = projection(st);");
 }
