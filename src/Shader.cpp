@@ -50,3 +50,4 @@ Shader::builder Shader::builder::include(Shader *shader) {
 Shader *Shader::builder::create(std::string include_code, std::string main_code) {
     return new Shader(include_code,includes,main_code);
 }
+

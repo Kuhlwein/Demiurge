@@ -494,6 +494,7 @@ void Project::update_terrain_shader() {
 			.include(terrain_shader)
 			.include(brush_outline)
 			.include(selection_outline)
+			.include(graticules)
 			.create();
 	program = ShaderProgram::builder()
 			.addShader(vertex3D->getCode(),GL_VERTEX_SHADER)
@@ -587,7 +588,7 @@ fc = texture(tmp,st).r - texture(target, st).r;
 		remove_texture(tmp);
 		delete (tmp);
 		void *data = get_scratch1()->downloadData();
-		for (int i=0; i<width*height; i++) std::cout << ((float*)data)[i] << " ";
+		//for (int i=0; i<width*height; i++) std::cout << ((float*)data)[i] << " ";
 
 		auto h = new SnapshotHistory(data,filter_target);
 		add_history(h);

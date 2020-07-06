@@ -122,7 +122,7 @@ fc = blur13(img,st,direction);
 
 		//todo: needs work on consistensy at  low R
 		float R = radius*radius/2;
-		std::cout << "R " << R << "\n";
+		//std::cout << "R " << R << "\n";
 		std::vector<float> rlist = {};
 		float i = 0.5f;
 		float incrementer = 0.5f;
@@ -138,8 +138,8 @@ fc = blur13(img,st,direction);
 		}
 		if (R>0.0f) rlist.push_back(sqrt(R));
 		std::sort(rlist.begin(),rlist.end());
-		std::cout << "begin: ";
-		for (auto a : rlist) std::cout << a << " ";
+		//std::cout << "begin: ";
+		//for (auto a : rlist) std::cout << a << " hej ";
 
 
 		for (float a : rlist) {

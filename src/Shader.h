@@ -5,11 +5,8 @@
 #ifndef DEMIURGE_SHADER_H
 #define DEMIURGE_SHADER_H
 
-
 #include <string>
 #include <vector>
-
-
 
 class Shader {
 public:
@@ -27,7 +24,7 @@ public:
     builder include(Shader* shader);
     Shader* create(std::string include_code="",std::string main_code="");
 private:
-    std::vector<Shader*> includes;
+    std::vector<Shader*> includes = {};
 };
 
 static Shader* cornerCoords = Shader::builder()
@@ -218,6 +215,37 @@ if (r<brush_size && r>brush_size-1.2*delta) {
 }
 )","draw_brush_outline(fc,st_p);");
 
+
+static Shader* graticules = Shader::builder()
+		.include(def_pi)
+		.include(cornerCoords)
+		.create(R"(
+void draw_graticules(inout vec4 fc, in vec2 st) {
+
+st.x = (st.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])/M_PI/2*360;
+st.y = (st.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0])/M_PI*180;
+
+float grat = 45;
+
+vec2 dx = dFdx(st);
+vec2 dy = dFdy(st);
+
+float xdiff = 1.2*length(vec2(dx.x,dy.x));
+float absdiff = mod(abs(st.x),grat);
+float r = min(absdiff,grat-absdiff);
+float w = r/(xdiff);
+if (r<xdiff) fc = fc*(w) + vec4(1,1,1,0)*(1-w);
+
+
+float ydiff = 1.2*length(vec2(dx.y,dy.y));;
+absdiff = mod(abs(st.y),grat);
+r = min(absdiff,grat-absdiff);
+w = r/(ydiff);
+if (r<ydiff) fc = fc*(w) + vec4(1,1,1,0)*(1-w);
+
+}
+)","draw_graticules(fc,st_p);");
+
 static Shader* selection_outline = Shader::builder()
         .include(deltaxy)
         .create(R"(
@@ -237,6 +265,8 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
     if (abs(y1-mod(y1,0.2)-(y2-mod(y2,0.2)))>0) fc = vec4(test,test,test,0);
 }
 )","draw_selection_outline(fc,st_p);");
+
+
 
 
 
