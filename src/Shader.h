@@ -208,9 +208,11 @@ static Shader* brush_outline = Shader::builder()
         .create(R"(
 void draw_brush_outline(inout vec4 fc, in vec2 st) {
 float r = geodistance(mouse,st,textureSize(img,0));
-float delta = length(vec2(dFdx(r),dFdy(r)));
-if (r<brush_size && r>brush_size-1.2*delta) {
-  fc = vec4(1,1,1,0);
+float delta = 2*length(vec2(dFdx(r),dFdy(r)));
+if (r<brush_size && r>brush_size-delta) {
+  //fc = vec4(1,1,1,0);
+float w = abs(r-(brush_size-0.5*delta))/(0.5*delta);
+    fc = fc*(w) + vec4(1,1,1,0)*(1-w);
 }
 }
 )","draw_brush_outline(fc,st_p);");
@@ -231,13 +233,13 @@ vec2 dx = dFdx(st);
 vec2 dy = dFdy(st);
 
 float xdiff = 1.2*length(vec2(dx.x,dy.x));
+float ydiff = 1.2*length(vec2(dx.y,dy.y));
+
 float absdiff = mod(abs(st.x),grat);
 float r = min(absdiff,grat-absdiff);
 float w = r/(xdiff);
 if (r<xdiff) fc = fc*(w) + vec4(1,1,1,0)*(1-w);
 
-
-float ydiff = 1.2*length(vec2(dx.y,dy.y));;
 absdiff = mod(abs(st.y),grat);
 r = min(absdiff,grat-absdiff);
 w = r/(ydiff);

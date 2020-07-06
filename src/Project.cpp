@@ -20,12 +20,12 @@
 //todo remove
 
 #include <glm/glm.hpp>
-#include <glm/ext.hpp>
 #include <imgui/imgui.h>
 #include <projections/Orthographic.h>
 #include <projections/Mollweide.h>
 #include <projections/Mercator.h>
 #include <projections/Equiretangular.h>
+#include <projections/img.h>
 
 
 void Project::file_load(const std::string& filename) {
