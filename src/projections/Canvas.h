@@ -13,6 +13,10 @@
 
 class Project;
 
+//namespace canvas_menu {
+//	bool projection(Project* p, bool isInterruptible);
+//}
+
 class Canvas {
 public:
     Canvas(Project* project);
@@ -36,6 +40,9 @@ public:
 	void update() override;
 	glm::vec2 mousePos(ImVec2 pos) override;
 	Shader* projection_shader() override;
+	void set_rotation(float theta, float phi, float rho);
+	//virtual bool isInterruptible() = 0;
+	void set_interruptions(std::vector<std::vector<float>> interruptions, bool active);
 
 protected:
 	virtual glm::vec2 inverseTransform(glm::vec2 coord) = 0;
@@ -48,6 +55,9 @@ private:
 	float x, y, z;
 	void pan(float dx, float dy);
 	float ZOOM;
+	glm::mat4 rotation;
+	std::vector<std::vector<float>> interruptions = {{0, M_PI}};
+	float isinterrupted = 0.0;
 };
 
 

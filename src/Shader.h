@@ -227,11 +227,12 @@ void draw_graticules(inout vec4 fc, in vec2 st) {
 st.x = (st.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])/M_PI/2*360;
 st.y = (st.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0])/M_PI*180;
 
-float grat = 45;
+float grat = 15;
 
 vec2 dx = dFdx(st);
 vec2 dy = dFdy(st);
-
+dx.x = min(abs(dx.x),360-abs(dx.x));
+dy.x = min(abs(dy.x),360-abs(dy.x));
 float xdiff = 1.2*length(vec2(dx.x,dy.x));
 float ydiff = 1.2*length(vec2(dx.y,dy.y));
 
@@ -244,6 +245,9 @@ absdiff = mod(abs(st.y),grat);
 r = min(absdiff,grat-absdiff);
 w = r/(ydiff);
 if (r<ydiff) fc = fc*(w) + vec4(1,1,1,0)*(1-w);
+
+
+if (abs(dx.x)>360) fc = vec4(1,0,0,0);
 
 }
 )","draw_graticules(fc,st_p);");
