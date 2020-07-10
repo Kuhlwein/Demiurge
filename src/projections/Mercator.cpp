@@ -22,6 +22,8 @@ vec2 inverseshader(vec2 coord) {
 	float theta = coord.x;
     float phi = 2*atan(exp(coord.y))-M_PI/2;
 
+	//if (abs(phi)>89.0/180*M_PI) discard;
+
 	return vec2(theta,phi);
 }
 )");

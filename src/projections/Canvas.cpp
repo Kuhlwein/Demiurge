@@ -12,97 +12,6 @@
 #include "Project.h"
 #include "cmath"
 
-//void handle_data(std::vector<float> &data,std::vector<float> &central_data, bool central, std::string s) {
-//	std::cout << data[1] << " b\n";
-//	if (ImGui::Button(("Add##"+s).c_str())) {
-//		data.push_back(180);
-//	}
-//	ImGui::SameLine();
-//	if (ImGui::Button(("Remove##"+s).c_str()) && data.size()>3) data.pop_back();
-//	for (int i=0; i<data.size()-1; i++) {
-//		ImGui::DragFloatRange2(("Interval "+std::to_string(i)+"##"+s).c_str(),data.data()+i,data.data()+i+1,
-//							   1.0f,(i==0) ? -180 : data[i-1],(i+1==data.size()-1) ? 180 : data[i+2]);
-//		if(!central) {
-//			ImGui::DragFloat(("Central meridian "+std::to_string(i)+"##"+s).c_str(),central_data.data()+i,1.0,data[i],data[i+1]);
-//			central_data[i] = central_data[i]<data[i] ? data[i] : central_data[i];
-//			central_data[i] = central_data[i]>data[i+1] ? data[i+1] : central_data[i];
-//		} else {
-//			central_data[i] = (data[i]+data[i+1])/2;
-//		}
-//	}
-//	std::cout << data.size() << " c\n";
-//	data.front()=-180;
-//	data.back()=180;
-//	for (int i=data.size()-2; i>=0; i--) data[i] = (data[i]>data[i+1]) ? data[i+1] : data[i];
-//}
-//
-//bool canvas_menu::projection(Project* p, bool isInterruptible) {
-//	static Canvas* canvas1 = p->canvas;
-//	static Mollweide* mollweide = new Mollweide(p);
-//	p->canvas = mollweide;
-//	p->update_terrain_shader();
-//
-//	static bool interruptions, oblique, separate, central=true;
-//
-//	static glm::vec3 angles;
-//	ImGui::Checkbox("Rotate (Oblique projection)",&oblique);
-//	if (oblique) {
-//		ImGui::DragFloat("Longitudinal", &angles.x, 1.0f, 0, 0, "%.1f");
-//		ImGui::DragFloat("Latitudal", &angles.y, 1.0f, 0,0, "%.1f");
-//		ImGui::DragFloat("Transverse", &angles.z, 1.0f, 0,0, "%.1f");
-//		mollweide->set_rotation(angles.x / 180 * M_PI, angles.y / 180 * M_PI, angles.z / 180 * M_PI);
-//		angles += 180;
-//		angles = glm::mod(angles,glm::vec3(360,360,360));
-//		angles -= 180;
-//	} else {
-//		mollweide->set_rotation(0,0,0);
-//	}
-//
-//	if (interruptions && isInterruptible || oblique) ImGui::Separator();
-//
-//	static std::vector<float> data = {-180,0,180}, data_s = {-180,0,180};
-//	static std::vector<float> central_data = {-90,90}, central_data_s = {-90,90};
-//
-//	if (isInterruptible) ImGui::Checkbox("Interruptions",&interruptions);
-//
-//	if (interruptions && isInterruptible) {
-//		ImGui::Checkbox("Separate hemispheres",&separate);
-//		ImGui::Checkbox("Use central meridians",&central);
-//
-//		if (separate) ImGui::Text("Northern hemisphere");
-//		handle_data(data,central_data,central,"N");
-//
-//		if (separate) {
-//			ImGui::Text("Southern hemisphere");
-//			std::cout << data_s[1] << "\n";
-//			handle_data(data_s,central_data_s,central,"S");
-//			std::cout << data_s[1] << " a\n";
-//			mollweide->set_interruptions({data,central_data,data_s,central_data_s},true);
-//		} else {
-//			mollweide->set_interruptions({data,central_data,data,central_data},true);
-//		}
-//	} else {
-//		mollweide->set_interruptions({},false);
-//	}
-//	if (interruptions && isInterruptible) ImGui::Separator();
-//
-//
-//
-//	if (ImGui::Button("Apply")) {
-//		//project->canvas = canvas1;
-//		//project->update_terrain_shader();
-//		return true;
-//	}
-//	ImGui::SameLine();
-//	if (ImGui::Button("Cancel")) {
-//		//project->canvas = canvas1;
-//		//project->update_terrain_shader();
-//		return true;
-//	}
-//	return false;
-//}
-
-
 Canvas::Canvas(Project *project) {
 	this->project = project;
 }
@@ -179,12 +88,21 @@ void AbstractCanvas::render() {
 	glUniform1fv(id, 1, &isinterrupted);
 	if (isinterrupted) {
 		id = glGetUniformLocation(programId,"interruptions");
-		int n = interruptions.front().size()-1;
+		int n = interruptions[0].size()-1;
 		glUniform1iv(id, 1, &n);
 		id = glGetUniformLocation(programId,"north");
-		glUniform1fv(id, n+1, interruptions.front().data());
-	}
+		glUniform1fv(id, n+1, interruptions[0].data());
+		id = glGetUniformLocation(programId,"center_north");
+		glUniform1fv(id, n, interruptions[1].data());
 
+		id = glGetUniformLocation(programId,"interruptions_s");
+		n = interruptions[2].size()-1;
+		glUniform1iv(id, 1, &n);
+		id = glGetUniformLocation(programId,"south");
+		glUniform1fv(id, n+1, interruptions[2].data());
+		id = glGetUniformLocation(programId,"center_south");
+		glUniform1fv(id, n, interruptions[3].data());
+	}
 
 	id = glGetUniformLocation(programId,"xyoffset");
 	glUniform2fv(id, 1, std::vector<float>{x,y}.data());
@@ -238,7 +156,29 @@ glm::vec2 AbstractCanvas::mousePos(ImVec2 pos) {
 	x_ = x_ * getScale().x;
 	y_ = y_ * getScale().y;
 
+	int offset_ = 0;
+	float start, stop;
+	if (isinterrupted) {
+		int offset = y_>0 ? 2 : 0;
+		for (int i=0; i<interruptions[offset].size()-1; i++) {
+			float x = x_/getScale().x;
+			if (x > interruptions[offset][i]/180 && x < interruptions[offset][i+1]/180) {
+				start = x<interruptions[offset+1][i]/180 ? interruptions[offset][i]/180 : interruptions[offset+1][i]/180;
+				stop = x<interruptions[offset+1][i]/180 ? interruptions[offset+1][i]/180 : interruptions[offset][i+1]/180;
+				offset_ = x<interruptions[offset+1][i]/180 ? 1 : 0;
+				break;
+			}
+		}
+		x_=(x_-start*getScale().x)/(stop*getScale().x-start*getScale().x)*(getScale().x)+(-getScale().x*(offset_));
+	}
+
 	glm::vec2 coord = inverseTransform(glm::vec2(x_,y_));
+
+	if (isinterrupted) {
+		coord.x = coord.x>M_PI ? M_PI : coord.x;
+		coord.x = coord.x<-M_PI ? -M_PI : coord.x;
+		coord.x = (coord.x-(-M_PI*offset_))/(M_PI)*(stop*M_PI-start*M_PI)+start*M_PI;
+	}
 
 	glm::vec4 coord2 = rotation*glm::vec4(sin(M_PI/2-coord.y)*cos(coord.x),sin(M_PI/2-coord.y)*sin(coord.x),sin(coord.y),1);
 	coord.y = acos(-coord2.z)-0.5*M_PI; //0 to pi
@@ -266,7 +206,12 @@ uniform mat4 globeRotation;
 
 uniform bool isinterrupted = false;
 uniform float north[25];
+uniform float center_north[25];
+uniform float south[25];
+uniform float center_south[25];
+
 uniform int interruptions;
+uniform int interruptions_s;
 
 vec2 projection(in vec2 st) {
 
@@ -279,12 +224,33 @@ y = y*scale.y;
 
 float start_i;
 float stop_i;
+float offset = 0.0f;
+
 if (isinterrupted) {
 for (int i=0; i<interruptions; i++) {
-start_i = (x/scale.x > north[i]/180 && x/scale.x < north[i+1]/180) ? north[i]/180 : start_i;
-stop_i = (x/scale.x > north[i]/180 && x/scale.x < north[i+1]/180) ? north[i+1]/180 : stop_i;
+bool cond = (y<0 && x/scale.x > north[i]/180 && x/scale.x < north[i+1]/180);
+
+start_i = cond && x/scale.x<center_north[i]/180 ? north[i]/180 : start_i;
+stop_i = cond && x/scale.x<center_north[i]/180 ? center_north[i]/180 : stop_i;
+offset = cond && x/scale.x<center_north[i]/180 ? 0.0f : offset;
+
+start_i = cond && x/scale.x>center_north[i]/180 ? center_north[i]/180 : start_i;
+stop_i = cond && x/scale.x>center_north[i]/180 ? north[i+1]/180 : stop_i;
+offset = cond && x/scale.x<center_north[i]/180 ? 1.0f : offset;
 }
-x=(x-start_i*scale.x)/(stop_i*scale.x-start_i*scale.x)*(scale.x-(-scale.x))+(-scale.x);
+for (int i=0; i<interruptions_s; i++) {
+bool cond = (y>0 && x/scale.x > south[i]/180 && x/scale.x < south[i+1]/180);
+
+start_i = cond && x/scale.x<center_south[i]/180 ? south[i]/180 : start_i;
+stop_i = cond && x/scale.x<center_south[i]/180 ? center_south[i]/180 : stop_i;
+offset = cond && x/scale.x<center_south[i]/180 ? 0.0f : offset;
+
+start_i = cond && x/scale.x>center_south[i]/180 ? center_south[i]/180 : start_i;
+stop_i = cond && x/scale.x>center_south[i]/180 ? south[i+1]/180 : stop_i;
+offset = cond && x/scale.x<center_south[i]/180 ? 1.0f : offset;
+}
+
+x=(x-start_i*scale.x)/(stop_i*scale.x-start_i*scale.x)*(scale.x)+(-scale.x*offset);
 }
 
 vec2 coord = inverseshader(vec2(x,y));
@@ -292,7 +258,7 @@ float phi = coord.y;
 float theta = coord.x;
 
 if (isinterrupted) {
-theta = (theta-(-M_PI))/(M_PI-(-M_PI))*(stop_i*M_PI-start_i*M_PI)+start_i*M_PI;
+theta = (theta-(-M_PI*offset))/(M_PI)*(stop_i*M_PI-start_i*M_PI)+start_i*M_PI;
 }
 
 if (theta<-M_PI) discard;

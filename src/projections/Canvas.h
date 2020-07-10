@@ -13,10 +13,6 @@
 
 class Project;
 
-//namespace canvas_menu {
-//	bool projection(Project* p, bool isInterruptible);
-//}
-
 class Canvas {
 public:
     Canvas(Project* project);

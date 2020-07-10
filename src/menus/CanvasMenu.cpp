@@ -9,23 +9,30 @@
 void handle_data(std::vector<float> &data,std::vector<float> &central_data, bool central, std::string s) {
 	if (ImGui::Button(("Add##"+s).c_str())) {
 		data.push_back(180);
+		central_data.push_back(180);
 	}
 	ImGui::SameLine();
-	if (ImGui::Button(("Remove##"+s).c_str()) && data.size()>3) data.pop_back();
+	if (ImGui::Button(("Remove##"+s).c_str()) && data.size()>3) {
+		data.pop_back();
+		central_data.pop_back();
+	}
 	for (int i=0; i<data.size()-1; i++) {
 		ImGui::DragFloatRange2(("Interval "+std::to_string(i)+"##"+s).c_str(),data.data()+i,data.data()+i+1,
 							   1.0f,(i==0) ? -180 : data[i-1],(i+1==data.size()-1) ? 180 : data[i+2]);
+		if(!central) ImGui::DragFloat(("Central meridian "+std::to_string(i)+"##"+s).c_str(),central_data.data()+i,1.0,data[i],data[i+1]);
+	}
+	data.front()=-180;
+	data.back()=180;
+	for (int i=data.size()-2; i>=0; i--) data[i] = (data[i]>data[i+1]) ? data[i+1] : data[i];
+	for (int i=0; i<data.size()-1; i++) {
 		if(!central) {
-			ImGui::DragFloat(("Central meridian "+std::to_string(i)+"##"+s).c_str(),central_data.data()+i,1.0,data[i],data[i+1]);
 			central_data[i] = central_data[i]<data[i] ? data[i] : central_data[i];
 			central_data[i] = central_data[i]>data[i+1] ? data[i+1] : central_data[i];
 		} else {
 			central_data[i] = (data[i]+data[i+1])/2;
 		}
 	}
-	data.front()=-180;
-	data.back()=180;
-	for (int i=data.size()-2; i>=0; i--) data[i] = (data[i]>data[i+1]) ? data[i+1] : data[i];
+
 }
 
 CanvasMenu::CanvasMenu(std::string title, AbstractCanvas *canvas) : Modal(title, [canvas](Project* p){
