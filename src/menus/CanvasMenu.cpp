@@ -36,12 +36,15 @@ void handle_data(std::vector<float> &data,std::vector<float> &central_data, bool
 }
 
 CanvasMenu::CanvasMenu(std::string title, AbstractCanvas *canvas) : Modal(title, [canvas](Project* p){
-	static Canvas* canvas1 = p->canvas;
+	static bool first = true;
+	static Canvas* canvas_old;
+	if (first) canvas_old = p->canvas;
+	first = false;
 	p->canvas = canvas;
 	p->update_terrain_shader();
 
 	static bool interruptions, oblique, separate, central=true;
-	bool isInterruptible = true;
+	bool isInterruptible = canvas->isInterruptible();
 
 	static glm::vec3 angles;
 	ImGui::Checkbox("Rotate (Oblique projection)",&oblique);
@@ -86,14 +89,14 @@ CanvasMenu::CanvasMenu(std::string title, AbstractCanvas *canvas) : Modal(title,
 
 
 	if (ImGui::Button("Apply")) {
-		//project->canvas = canvas1;
-		//project->update_terrain_shader();
+		first = true;
 		return true;
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Cancel")) {
-		//project->canvas = canvas1;
-		//project->update_terrain_shader();
+		p->canvas = canvas_old;
+		p->update_terrain_shader();
+		first = true;
 		return true;
 	}
 	return false;

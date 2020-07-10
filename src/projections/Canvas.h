@@ -37,7 +37,7 @@ public:
 	glm::vec2 mousePos(ImVec2 pos) override;
 	Shader* projection_shader() override;
 	void set_rotation(float theta, float phi, float rho);
-	//virtual bool isInterruptible() = 0;
+	virtual bool isInterruptible();
 	void set_interruptions(std::vector<std::vector<float>> interruptions, bool active);
 
 protected:

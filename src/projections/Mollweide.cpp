@@ -44,3 +44,7 @@ glm::vec2 Mollweide::getScale() {
 glm::vec2 Mollweide::getLimits() {
 	return glm::vec2(1,0.5);
 }
+
+bool Mollweide::isInterruptible() {
+	return true;
+}

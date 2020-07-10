@@ -27,6 +27,7 @@
 #include <projections/Equiretangular.h>
 #include <projections/img.h>
 #include <menus/CanvasMenu.h>
+#include <projections/Sinusoidal.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -124,30 +125,18 @@ Project::Project(GLFWwindow* window) {
 		p->update_terrain_shader();
 		return true;
 	}));
-	projection->addMenu(new Menu("Equiretangular", [](Project* p) {
-		p->canvas = new Equiretangular(p);
-		p->update_terrain_shader();
-		return true;
-	}));
+	projection->addMenu(new CanvasMenu("Equiretangular...",new Equiretangular(this)));
 	projection->addMenu(new Menu("Orthographic", [](Project* p){
 		p->canvas = new Orthographic(p);
 		p->update_terrain_shader();
 		return true;
 	}));
-	projection->addMenu(new Menu("Mollweide", [](Project* p){
-		p->canvas = new Mollweide(p);
-		p->update_terrain_shader();
-		return true;
-	}));
 
-	projection->addMenu(new CanvasMenu("Mollweide",new Mollweide(this)));
-	//projection->addMenu(new Modal("test2",[](Project* p) {return canvas_menu::projection(p,false);}));
+	projection->addMenu(new CanvasMenu("Mollweide...",new Mollweide(this)));
+	projection->addMenu(new CanvasMenu("Sinusoidal...",new Sinusoidal(this)));
+	projection->addMenu(new CanvasMenu("Mercator...",new Mercator(this)));
 
-	projection->addMenu(new Menu("Mercator", [](Project* p){
-		p->canvas = new Mercator(p);
-		p->update_terrain_shader();
-		return true;
-	}));
+
 	view_menu.push_back(projection);
 	view_menu.push_back(new Modal("Gradient...", view::gradient));
 	view_menu.push_back(new Menu("Normal map...", view::normal_map));

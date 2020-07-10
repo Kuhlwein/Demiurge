@@ -294,6 +294,10 @@ void AbstractCanvas::set_interruptions(std::vector<std::vector<float>> interrupt
 	this->isinterrupted = active ? 1.0f : 0.0f;
 }
 
+bool AbstractCanvas::isInterruptible() {
+	return false;
+}
+
 
 
 
