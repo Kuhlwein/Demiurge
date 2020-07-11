@@ -24,13 +24,11 @@ Shader* Mollweide::inverseShader() {
 vec2 inverseshader(vec2 coord) {
 	float theta = asin(coord.y/sqrt(2));
 
-    float phi = asin((2*theta+sin(2*theta))/3.14159);
-    float lambda = 3.14159*coord.x/(2*sqrt(2)*cos(theta));
+    float phi = asin((2*theta+sin(2*theta))/M_PI);
+    float lambda = M_PI*coord.x/(2*sqrt(2)*cos(theta));
 
-	if (coord.y<-sqrt(2)) discard;
-    if (coord.y>sqrt(2)) discard;
-    if (lambda<-3.14159) discard;
-    if (lambda>3.14159) discard;
+    if (abs(coord.y)>sqrt(2)) discard;
+    if (abs(lambda)>M_PI) discard;
 
 	return vec2(lambda,phi);
 }

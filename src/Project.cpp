@@ -28,6 +28,8 @@
 #include <projections/img.h>
 #include <menus/CanvasMenu.h>
 #include <projections/Sinusoidal.h>
+#include <projections/GoodeHomolosine.h>
+#include <projections/EckertIV.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -134,6 +136,8 @@ Project::Project(GLFWwindow* window) {
 
 	projection->addMenu(new CanvasMenu("Mollweide...",new Mollweide(this)));
 	projection->addMenu(new CanvasMenu("Sinusoidal...",new Sinusoidal(this)));
+	projection->addMenu(new CanvasMenu("Goode Homolosine...",new GoodeHomolosine(this)));
+	projection->addMenu(new CanvasMenu("Eckert IV...",new EckertIV(this)));
 	projection->addMenu(new CanvasMenu("Mercator...",new Mercator(this)));
 
 
@@ -295,11 +299,6 @@ void Project::render() {
     bind_textures(program);
 	int id = glGetUniformLocation(program->getId(),"brush_size");
 	glUniform1f(id,brush_size);
-
-//	id = glGetUniformLocation(program->getId(),"cornerCoords");
-//	auto v = getCoords();
-//	for (auto &e : v) e=e/180.0f*M_PI;
-//	glUniform1fv(id, 4, v.data());
 
 	(geometryShader->get_setup())(glm::vec2(0,0), glm::vec2(0,0),program);
 
