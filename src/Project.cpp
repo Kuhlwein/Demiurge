@@ -30,6 +30,7 @@
 #include <projections/Sinusoidal.h>
 #include <projections/GoodeHomolosine.h>
 #include <projections/EckertIV.h>
+#include <menus/BrushWindow.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -148,7 +149,8 @@ Project::Project(GLFWwindow* window) {
 
 
 	std::vector<Menu*> windows_menu = {};
-	windows_menu.push_back(new Window("Brush", testnamespace::brush));
+	//windows_menu.push_back(new Window("Brush", testnamespace::brush));
+	windows_menu.push_back(new BrushWindow("Brush",this));
 	windows_menu.push_back(new Window("Layers", testnamespace::layers));
 
 
@@ -179,10 +181,6 @@ Project::Project(GLFWwindow* window) {
 
 	canvas = new img(this);
 	set_terrain_shader(draw_grayscale);
-
-	brush_tex = new Texture(brush_tex_size,brush_tex_size,GL_R32F,"brush_tex",GL_LINEAR);
-	add_texture(brush_tex);
-	set_brush(brush_hardness);
 
 
 	file_new(500,500);
@@ -227,78 +225,11 @@ void Project::update_self() {
 	} else if (io.KeysDown[47] && io.KeyCtrl && io.KeysDownDuration[z_key] == 0.0f) {
 		undo();
 	}
-
-
-	//Brushing
-	static bool first = true;
-	static std::vector<std::pair<glm::vec2,glm::vec2>> brush_strokes;
-
-	glm::vec2 texcoord = getMouse();
-	glm::vec2 texcoordPrev = getMousePrev();
-
-	int id = glGetUniformLocation(program->getId(),"mouse");
-	glUniform2f(id,texcoord.x,texcoord.y);
-	id = glGetUniformLocation(program->getId(),"mousePrev");
-	glUniform2f(id,texcoordPrev.x,texcoordPrev.y);
-
-	if(io.WantCaptureMouse) return;
-
-	if(io.MouseDown[0] & first) {
-		brush_strokes.erase(brush_strokes.begin(),brush_strokes.end());
-		initbrush();
-		first = false;
-	} else if (io.MouseDown[0]) {
-		brush(texcoord,texcoordPrev);
-		brush_strokes.push_back({texcoord,texcoordPrev});
-	} else if (!first) {
-		std::cout << "last\n";
-		//project->brush(texcoord,texcoordPrev);
-		brush_strokes.push_back({texcoord,texcoordPrev});
-		auto test = brush_strokes;
-
-		float hardness = brush_hardness;
-		float brush_size2 = brush_size;
-		auto r = [test,hardness,brush_size2](Project* p) {
-			p->initbrush();
-			auto data = p->get_brush_tex()->downloadData();
-			p->set_brush(hardness);
-			float oldsize = p->brush_size;
-			p->brush_size = brush_size2;
-			for (int i=0; i<test.size()-1; i++) p->brush(test[i].first,test[i].second);
-			p->brush_size = oldsize;
-			p->get_brush_tex()->uploadData(GL_RED,GL_FLOAT,data);
-		};
-		auto u = [test,hardness,brush_size2](Project* p) {
-			p->initbrush();
-
-			auto data = p->get_brush_tex()->downloadData();
-			p->set_brush(hardness);
-			float oldsize = p->brush_size;
-			p->brush_size = brush_size2;
-
-			for (int i=0; i<test.size()-1; i++) p->brush(test[i].first,test[i].second,true);
-			ShaderProgram *program = ShaderProgram::builder()
-					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-					.addShader(fix_0->getCode(), GL_FRAGMENT_SHADER)
-					.link();
-			p->apply(program,p->get_scratch1());
-			p->get_terrain()->swap(p->get_scratch1());
-
-			p->brush_size = oldsize;
-			p->get_brush_tex()->uploadData(GL_RED,GL_FLOAT,data);
-		};
-
-		auto hist = new ReversibleHistory(r,u);
-		add_history(hist);
-		first = true;
-	}
 }
 
 void Project::render() {
     program->bind();
     bind_textures(program);
-	int id = glGetUniformLocation(program->getId(),"brush_size");
-	glUniform1f(id,brush_size);
 
 	(geometryShader->get_setup())(glm::vec2(0,0), glm::vec2(0,0),program);
 
@@ -322,75 +253,6 @@ int Project::getWindowHeight() {
     return height;
 }
 
-void Project::brush(glm::vec2 pos, glm::vec2 prev, bool flag) {
-    //Paint to scratchpad2
-
-    Shader* brush_shader = Shader::builder()
-    		.include(fragmentBase)
-    		.include(geometryShader->get_shader())
-    		.create("",R"(
-vec2 vstop;
-vec2 vstart;
-brush_calc(vstart,vstop);
-fc = texture(scratch2,st).r + texture(sel,st).r*(texture(brush_tex,vstop).r - texture(brush_tex,vstart).r);
-)");
-
-    ShaderProgram *program2 = ShaderProgram::builder()
-            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-            .addShader(brush_shader->getCode(), GL_FRAGMENT_SHADER)
-            .link();
-
-    program2->bind();
-    int id = glGetUniformLocation(program2->getId(),"mouse");
-    glUniform2f(id,pos.x,pos.y);
-    id = glGetUniformLocation(program2->getId(),"mousePrev");
-    glUniform2f(id,prev.x,prev.y);
-	id = glGetUniformLocation(program2->getId(),"brush_size");
-	glUniform1f(id,brush_size);
-
-	(geometryShader->get_setup())(pos,prev,program2);
-
-    apply(program2,terrain);
-    terrain->swap(scratchPad2);
-
-    //Transfer to terrain
-	ShaderProgram *program3;
-    if (!flag) {
-		program3 = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(R"(
-#version 430
-in vec2 st;
-uniform sampler2D scratch1;
-uniform sampler2D scratch2;
-out float fc;
-
-void main () {
-    fc = texture(scratch1, st).r + min(texture(scratch2,st).r,0.3);
-}
-    )", GL_FRAGMENT_SHADER)
-				.link();
-    } else {
-		program3 = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(R"(
-#version 430
-in vec2 st;
-uniform sampler2D scratch1;
-uniform sampler2D scratch2;
-out float fc;
-
-void main () {
-    fc = texture(scratch1, st).r - min(texture(scratch2,st).r,0.3);
-}
-    )", GL_FRAGMENT_SHADER)
-				.link();
-    }
-
-
-    apply(program3,terrain);
-}
-
 void Project::apply(ShaderProgram *program, Texture *texture, std::vector<std::pair<Texture*,std::string>> l) {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glViewport(0, 0, texture->getWidth(), texture->getHeight());
@@ -400,20 +262,6 @@ void Project::apply(ShaderProgram *program, Texture *texture, std::vector<std::p
 
     vbo->render();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void Project::initbrush() {
-    ShaderProgram *program = ShaderProgram::builder()
-            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-            .addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-            .link();
-    apply(program,scratchPad,{{terrain,"to_be_copied"}});
-
-    ShaderProgram *program2 = ShaderProgram::builder()
-            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-            .addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
-            .link();
-    apply(program2,scratchPad2);
 }
 
 void Project::bind_textures(ShaderProgram *program,std::vector<std::pair<Texture*,std::string>> l) {
@@ -581,7 +429,6 @@ fc = texture(tmp,st).r - texture(target, st).r;
 		remove_texture(tmp);
 		delete (tmp);
 		void *data = get_scratch1()->downloadData();
-		//for (int i=0; i<width*height; i++) std::cout << ((float*)data)[i] << " ";
 
 		auto h = new SnapshotHistory(data,filter_target);
 		add_history(h);
@@ -630,45 +477,6 @@ void Project::add_reversible_filter(std::function<float(Project *p)> r, std::fun
 	add_history(hist);
 }
 
-void Project::set_brush(float hardness) {
-	float* data = new float[brush_tex_size*brush_tex_size];
-
-	auto brush_val = [hardness](float x) {
-		double R = 1.0f;
-		double phi = x/R;
-		double result;
-		if (phi<=hardness) result=1; else result=0;
-		double c = M_PI*phi/(2*(1-hardness))+M_PI/2*(1-1/(1-hardness));
-		if (phi>hardness) result = pow(cos(c),2);
-		return (float) result;
-	};
-
-	for (int i=0; i<brush_tex_size; i++) {
-		float d = i/((float)brush_tex_size-1);
-		float width = sqrt(1-pow(d,2));
-		float current = -width;
-		float step = (2*width)/(brush_tex_size-1);
-
-		float r = sqrt(pow(d,2)+pow(current+i*step,2));
-		float current_val = brush_val(r);
-		float sum = 0;
-
-		for (int j=0; j<brush_tex_size; j++) {
-			current+=step;
-			float r = sqrt(pow(d,2)+pow(current,2));
-			float new_val = brush_val(r);
-			sum+= (current_val+new_val)/2*step;
-			data[i*brush_tex_size+j] = sum;
-			current_val = new_val;
-		}
-	}
-	brush_tex->uploadData(GL_RED,GL_FLOAT,data);
-}
-
-Texture* Project::get_brush_tex() {
-	return brush_tex;
-}
-
 void Project::set_terrain_shader(Shader *s) {
 	terrain_shader = s;
 	update_terrain_shader();
@@ -688,8 +496,8 @@ std::vector<float> Project::getCoords() {
 	return coords;
 }
 
-Shader *Project::getGeometryShader() {
-	return geometryShader->get_shader();
+GeometryShader *Project::getGeometryShader() {
+	return geometryShader;
 }
 
 glm::vec2 Project::getMouse() {

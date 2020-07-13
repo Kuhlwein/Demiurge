@@ -35,8 +35,6 @@ public:
     int getWidth();
     int getHeight();
 
-    void initbrush();
-    void brush(glm::vec2 pos, glm::vec2 prev, bool flag=false);
     void apply(ShaderProgram* program, Texture* texture, std::vector<std::pair<Texture*,std::string>> l={});
 
     void file_load(const std::string& file_name);
@@ -51,8 +49,6 @@ public:
 	Texture* get_scratch1();
 
 	void set_terrain(Texture* texture);
-	float brush_size=50.0f;
-	float brush_hardness = 0.5f;
 
 	int get_n_layers();
 	void add_layer(std::pair<std::string,Texture*> l,int index=0);
@@ -72,11 +68,8 @@ public:
 	void redo();
 	void add_history(UndoHistory* h);
 
-	void set_brush(float hardness);
-	Texture* get_brush_tex();
-
 	void setGeometryShader(GeometryShader* g);
-	Shader* getGeometryShader();
+	GeometryShader* getGeometryShader();
 
 
 	void setCoords(std::vector<float> v);
@@ -92,9 +85,6 @@ private:
     Texture* scratchPad = nullptr;
     Texture* scratchPad2 = nullptr;
     Texture* selection = nullptr;
-
-    Texture* brush_tex;
-    int brush_tex_size=512;
 
     Shader* terrain_shader;
     GeometryShader* geometryShader;

@@ -112,39 +112,39 @@ bool testnamespace::file_new(Project *project) {
 
 // TODO: simple brush, advanced, select tools
 // TODO, also: make other windows disappear instead of modal, allows for picking
-bool testnamespace::brush(Project* project) {
-	if (ImGui::DragFloat("Size",&(project->brush_size),1.0f,1.0f,10000.0f,"%.2f",1.0f)) {
-	}
-
-	//static float value = 10;
-	//if (ImGui::DragFloat("Value",&size,1.0f,0.0f,10000.0f,"%.2f",1.0f)) {
-	//}
-
-
-	static float hardness = 0.5f, flow = 1.0f, limit=1.0f, value=1.0f;
-	static bool hardnessEnabled=false, flowEnabled=false, limitEnabled=false;
-
-	if (ImGui::DragFloat("Value",&value,0.01f,0.0f,1.0f,"%.2f",1.0f)) {
-	}
-
-	if (ImGui::DragFloat("Hardness",&(project->brush_hardness),0.01f,0.0f,1.0f,"%.2f",1.0f)) {
-		project->set_brush(project->brush_hardness);
-	}
-
-	if (flowEnabled) {
-		ImGui::DragFloat("##flow",&flow,0.01f,0.0f,1.0f,"%.2f",1.0f);
-		ImGui::SameLine();
-	}
-	ImGui::Checkbox("Flow",&flowEnabled);
-
-	if (flowEnabled && limitEnabled) {
-		ImGui::DragFloat("##limit",&limit,0.01f,0.0f,1.0f,"%.2f",1.0f);
-		ImGui::SameLine();
-	}
-	if(flowEnabled) ImGui::Checkbox("Limit",&limitEnabled);
-
-	return false;
-}
+//bool testnamespace::brush(Project* project) {
+//	if (ImGui::DragFloat("Size",&(project->brush_size),1.0f,1.0f,10000.0f,"%.2f",1.0f)) {
+//	}
+//
+//	//static float value = 10;
+//	//if (ImGui::DragFloat("Value",&size,1.0f,0.0f,10000.0f,"%.2f",1.0f)) {
+//	//}
+//
+//
+//	static float hardness = 0.5f, flow = 1.0f, limit=1.0f, value=1.0f;
+//	static bool hardnessEnabled=false, flowEnabled=false, limitEnabled=false;
+//
+//	if (ImGui::DragFloat("Value",&value,0.01f,0.0f,1.0f,"%.2f",1.0f)) {
+//	}
+//
+//	if (ImGui::DragFloat("Hardness",&(project->brush_hardness),0.01f,0.0f,1.0f,"%.2f",1.0f)) {
+//		project->set_brush(project->brush_hardness);
+//	}
+//
+//	if (flowEnabled) {
+//		ImGui::DragFloat("##flow",&flow,0.01f,0.0f,1.0f,"%.2f",1.0f);
+//		ImGui::SameLine();
+//	}
+//	ImGui::Checkbox("Flow",&flowEnabled);
+//
+//	if (flowEnabled && limitEnabled) {
+//		ImGui::DragFloat("##limit",&limit,0.01f,0.0f,1.0f,"%.2f",1.0f);
+//		ImGui::SameLine();
+//	}
+//	if(flowEnabled) ImGui::Checkbox("Limit",&limitEnabled);
+//
+//	return false;
+//}
 
 
 
