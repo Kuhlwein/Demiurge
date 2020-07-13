@@ -509,15 +509,3 @@ glm::vec2 Project::getMousePrev() {
 	ImGuiIO io = ImGui::GetIO();
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
 }
-
-
-
-
-
-
-
-
-
-
-
-

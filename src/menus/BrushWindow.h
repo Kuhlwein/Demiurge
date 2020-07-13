@@ -20,7 +20,7 @@ public:
 private:
 	bool brush_window(Project* p);
 	void brush_stroke(Project* p);
-	void set_brush(float hardness);
+	void set_hardness(float hardness);
 	void brush(Project* p, glm::vec2 pos, glm::vec2 prev, bool flag=false);
 	void initbrush(Project* p);
 

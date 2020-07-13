@@ -10,7 +10,7 @@
 BrushWindow::BrushWindow(std::string title, Project* p) : Window(title, [](Project* p){return true;}) {
 	brush_tex = new Texture(brush_tex_size,brush_tex_size,GL_R32F,"brush_tex",GL_LINEAR);
 	p->add_texture(brush_tex);
-	set_brush(0.5f);
+	set_hardness(0.5f);
 }
 
 bool BrushWindow::update(Project *p) {
@@ -24,20 +24,20 @@ bool BrushWindow::update(Project *p) {
 }
 
 bool BrushWindow::brush_window(Project *p) {
-	if (ImGui::DragFloat("Value",&value,0.01f,0.0f,1.0f,"%.2f",1.0f)) {
+	if (ImGui::DragFloat("Value",&value,0.01f,0.0f,FLT_MAX,"%.2f",1.0f)) {
 	}
 
-	if (ImGui::DragFloat("Size",&(brush_size),1.0f,1.0f,10000.0f,"%.2f",1.0f)) {
+	if (ImGui::DragFloat("Size",&brush_size,1.0f,0.0f,FLT_MAX,"%.2f",1.0f)) {
 	}
 
-	if (ImGui::DragFloat("Hardness",&(hardness),0.01f,0.0f,1.0f,"%.2f",1.0f)) {
-		set_brush(hardness);
+	if (ImGui::DragFloat("Hardness",&hardness,0.01f,0.0f,1.0f,"%.2f",1.0f)) {
+		set_hardness(hardness);
 	}
 
-	ImGui::DragFloat("flow",&flow,0.01f,0.0f,1.0f,"%.2f",1.0f);
+	ImGui::DragFloat("flow",&flow,0.01f,0.0f,FLT_MAX,"%.2f",1.0f);
 
 	if (limitEnabled) {
-		ImGui::DragFloat("##limit",&limit,0.01f,0.0f,1.0f,"%.2f",1.0f);
+		ImGui::DragFloat("##limit",&limit,0.01f,0.0f,FLT_MAX,"%.2f",1.0f);
 		ImGui::SameLine();
 	}
 	ImGui::Checkbox("Limit",&limitEnabled);
@@ -45,8 +45,8 @@ bool BrushWindow::brush_window(Project *p) {
 	return false;
 }
 
+//Handle drawing of brush stroke
 void BrushWindow::brush_stroke(Project *p) {
-	//Brushing
 	ImGuiIO io = ImGui::GetIO();
 
 	static bool first = true;
@@ -84,7 +84,7 @@ void BrushWindow::brush_stroke(Project *p) {
 		auto r = [this,test,hardness,brush_size2](Project* p) {
 			initbrush(p);
 			auto data = brush_tex->downloadData();
-			set_brush(hardness);
+			set_hardness(hardness);
 			float oldsize = brush_size;
 			brush_size = brush_size2;
 			for (int i=0; i<test.size()-1; i++) brush(p,test[i].first,test[i].second);
@@ -95,7 +95,7 @@ void BrushWindow::brush_stroke(Project *p) {
 			initbrush(p);
 
 			auto data = brush_tex->downloadData();
-			set_brush(hardness);
+			set_hardness(hardness);
 			float oldsize = brush_size;
 			brush_size = brush_size2;
 
@@ -117,8 +117,8 @@ void BrushWindow::brush_stroke(Project *p) {
 	}
 }
 
-void BrushWindow::set_brush(float hardness) {
-	float* data = new float[brush_tex_size*brush_tex_size];
+void BrushWindow::set_hardness(float hardness) {
+	float data[brush_tex_size*brush_tex_size];
 
 	auto brush_val = [hardness](float x) {
 		double R = 1.0f;
@@ -152,17 +152,20 @@ void BrushWindow::set_brush(float hardness) {
 	brush_tex->uploadData(GL_RED,GL_FLOAT,data);
 }
 
+//Do single segment brush stroke
 void BrushWindow::brush(Project* p, glm::vec2 pos, glm::vec2 prev, bool flag) {
 	//Paint to scratchpad2
 
 	Shader* brush_shader = Shader::builder()
 			.include(fragmentBase)
 			.include(p->getGeometryShader()->get_shader())
-			.create("",R"(
+			.create(R"(
+uniform float brush_flow;
+)",R"(
 vec2 vstop;
 vec2 vstart;
 brush_calc(vstart,vstop);
-fc = texture(scratch2,st).r + texture(sel,st).r*(texture(brush_tex,vstop).r - texture(brush_tex,vstart).r);
+fc = texture(scratch2,st).r + brush_flow*(texture(sel,st).r*(texture(brush_tex,vstop).r - texture(brush_tex,vstart).r));
 )");
 
 	ShaderProgram *program2 = ShaderProgram::builder()
@@ -177,6 +180,8 @@ fc = texture(scratch2,st).r + texture(sel,st).r*(texture(brush_tex,vstop).r - te
 	glUniform2f(id,prev.x,prev.y);
 	id = glGetUniformLocation(program2->getId(),"brush_size");
 	glUniform1f(id,brush_size);
+	id = glGetUniformLocation(program2->getId(),"brush_flow");
+	glUniform1f(id,flow);
 
 	(p->getGeometryShader()->get_setup())(pos,prev,program2);
 
@@ -195,8 +200,11 @@ uniform sampler2D scratch1;
 uniform sampler2D scratch2;
 out float fc;
 
+uniform float brush_value=1.0f;
+uniform float brush_limit;
+
 void main () {
-    fc = texture(scratch1, st).r + min(texture(scratch2,st).r,0.3);
+    fc = texture(scratch1, st).r + brush_value*min(texture(scratch2,st).r,brush_limit);
 }
     )", GL_FRAGMENT_SHADER)
 				.link();
@@ -210,17 +218,28 @@ uniform sampler2D scratch1;
 uniform sampler2D scratch2;
 out float fc;
 
+uniform float brush_value=1.0f;
+uniform float brush_limit;
+
 void main () {
-    fc = texture(scratch1, st).r - min(texture(scratch2,st).r,0.3);
+    fc = texture(scratch1, st).r - brush_value*min(texture(scratch2,st).r,brush_limit);
 }
     )", GL_FRAGMENT_SHADER)
 				.link();
 	}
 
+	program3->bind();
+	id = glGetUniformLocation(program3->getId(),"brush_value");
+	glUniform1f(id,value);
+	id = glGetUniformLocation(program3->getId(),"brush_limit");
+	glUniform1f(id,limit);
+
+
 
 	p->apply(program3,p->get_terrain());
 }
 
+//Initialize brush for sequential brush strokes
 void BrushWindow::initbrush(Project* p) {
 	ShaderProgram *program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
