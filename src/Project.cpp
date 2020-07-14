@@ -31,6 +31,8 @@
 #include <projections/GoodeHomolosine.h>
 #include <projections/EckertIV.h>
 #include <menus/BrushWindow.h>
+#include <menus/AppearanceWindow.h>
+#include <appearance/ElevationMap.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -120,37 +122,37 @@ Project::Project(GLFWwindow* window) {
 
 
 
-	std::vector<Menu*> view_menu = {};
 
-	auto projection = new SubMenu("Projection");
-	projection->addMenu(new Menu("None", [](Project* p) {
+
+	std::vector<Menu*> projections = {};
+	projections.push_back(new Menu("None", [](Project* p) {
 		p->canvas = new img(p);
 		p->update_terrain_shader();
 		return true;
 	}));
-	projection->addMenu(new CanvasMenu("Equiretangular...",new Equiretangular(this)));
-	projection->addMenu(new Menu("Orthographic", [](Project* p){
+	projections.push_back(new CanvasMenu("Equiretangular...",new Equiretangular(this)));
+	projections.push_back(new Menu("Orthographic", [](Project* p){
 		p->canvas = new Orthographic(p);
 		p->update_terrain_shader();
 		return true;
 	}));
 
-	projection->addMenu(new CanvasMenu("Mollweide...",new Mollweide(this)));
-	projection->addMenu(new CanvasMenu("Sinusoidal...",new Sinusoidal(this)));
-	projection->addMenu(new CanvasMenu("Goode Homolosine...",new GoodeHomolosine(this)));
-	projection->addMenu(new CanvasMenu("Eckert IV...",new EckertIV(this)));
-	projection->addMenu(new CanvasMenu("Mercator...",new Mercator(this)));
+	projections.push_back(new CanvasMenu("Mollweide...",new Mollweide(this)));
+	projections.push_back(new CanvasMenu("Sinusoidal...",new Sinusoidal(this)));
+	projections.push_back(new CanvasMenu("Goode Homolosine...",new GoodeHomolosine(this)));
+	projections.push_back(new CanvasMenu("Eckert IV...",new EckertIV(this)));
+	projections.push_back(new CanvasMenu("Mercator...",new Mercator(this)));
 
 
-	view_menu.push_back(projection);
-	view_menu.push_back(new Modal("Gradient...", view::gradient));
-	view_menu.push_back(new Menu("Normal map...", view::normal_map));
+//	std::vector<Menu*> view_menu = {};
+//	view_menu.push_back(new ElevationMap());
+//	view_menu.push_back(new Menu("Normal map...", view::normal_map));
 
 
 
 	std::vector<Menu*> windows_menu = {};
-	//windows_menu.push_back(new Window("Brush", testnamespace::brush));
 	windows_menu.push_back(new BrushWindow("Brush",this));
+	windows_menu.push_back(new AppearanceWindow("Appearance"));
 	windows_menu.push_back(new Window("Layers", testnamespace::layers));
 
 
@@ -170,7 +172,8 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
 	windows.emplace_back("Select",selection_menu);
-	windows.emplace_back("View",view_menu);
+	windows.emplace_back("Projections",projections);
+	//windows.emplace_back("View",view_menu);
 	windows.emplace_back("Windows",windows_menu);
 
 

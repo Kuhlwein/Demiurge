@@ -30,7 +30,7 @@ vec2 inverseshader(vec2 coord) {
 }
 
 glm::vec2 Mercator::getScale() {
-	return glm::vec2(M_PI,M_PI/2);
+	return glm::vec2(M_PI,M_PI);
 }
 
 glm::vec2 Mercator::getLimits() {

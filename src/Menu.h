@@ -25,16 +25,16 @@ protected:
 };
 
 class Window : public Menu {
-	bool update(Project* project) override;
 public:
+	bool update(Project* project) override;
 	Window(std::string title, std::function<bool(Project *p)> fun);
 };
 
 
 
 class Modal : public Menu {
-	bool update(Project* project) override;
 public:
+	bool update(Project* project) override;
 	Modal(std::string title, std::function<bool(Project *p)> fun);
 
 };

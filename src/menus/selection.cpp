@@ -107,7 +107,7 @@ bool selection::blur(Project *p) {
 
 		Shader* fragment_set = Shader::builder()
 				.include(fragmentBase)
-				.include(p->getGeometryShader())
+				.include(p->getGeometryShader()->get_shader())
 				.include(blur13)
 				.create("uniform vec2 direction;",R"(
 fc = blur13(img,st,direction);

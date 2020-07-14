@@ -124,19 +124,19 @@ static Shader* draw_grayscale = Shader::builder()
 fc = (texture(img, st_p).rrrr+1)*0.5;
 )");
 
-static Shader* draw_gradient = Shader::builder()
-		.include(fragmentColor)
-        .create(R"(
-uniform sampler2D gradient_land;
-uniform sampler2D gradient_ocean;
-)",R"(
-float h = texture(img, st_p).r;
-if (h>0) {
-    fc = texture(gradient_land,vec2(h,0));
-} else {
-    fc = texture(gradient_ocean,vec2(1+h,0));
-}
-)");
+//static Shader* draw_gradient = Shader::builder()
+//		.include(fragmentColor)
+//        .create(R"(
+//uniform sampler2D gradient_land;
+//uniform sampler2D gradient_ocean;
+//)",R"(
+//float h = texture(img, st_p).r;
+//if (h>0) {
+//    fc = texture(gradient_land,vec2(h,0));
+//} else {
+//    fc = texture(gradient_ocean,vec2(1+h,0));
+//}
+//)");
 
 static Shader* deltaxy = Shader::builder()
 		.create(R"(
@@ -271,9 +271,6 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
     if (abs(y1-mod(y1,0.2)-(y2-mod(y2,0.2)))>0) fc = vec4(test,test,test,0);
 }
 )","draw_selection_outline(fc,st_p);");
-
-
-
 
 
 

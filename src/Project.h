@@ -110,10 +110,6 @@ private:
 
 	void update_self();
 
-
-
-
-
     std::vector<std::pair<std::string,std::vector<Menu*>>> windows;
 
 

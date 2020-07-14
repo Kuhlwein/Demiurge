@@ -24,7 +24,7 @@ bool BrushWindow::update(Project *p) {
 }
 
 bool BrushWindow::brush_window(Project *p) {
-	if (ImGui::DragFloat("Value",&value,0.01f,0.0f,FLT_MAX,"%.2f",1.0f)) {
+	if (ImGui::DragFloat("Value",&value,0.1f,0.0f,0.0f,"%.2f",1.0f)) {
 	}
 
 	if (ImGui::DragFloat("Size",&brush_size,1.0f,0.0f,FLT_MAX,"%.2f",1.0f)) {
@@ -75,7 +75,6 @@ void BrushWindow::brush_stroke(Project *p) {
 		brush_strokes.push_back({texcoord,texcoordPrev});
 	} else if (!first) {
 		std::cout << "last\n";
-		//project->brush(texcoord,texcoordPrev);
 		brush_strokes.push_back({texcoord,texcoordPrev});
 		auto test = brush_strokes;
 
