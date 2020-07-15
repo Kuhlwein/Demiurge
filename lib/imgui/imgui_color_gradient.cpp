@@ -5,6 +5,7 @@
 //  Created by David Gallardo on 11/06/16.
 
 
+#include <iostream>
 #include "imgui_color_gradient.h"
 #include "imgui_internal.h"
 
@@ -39,14 +40,14 @@ void ImGradient::addMark(float position, ImColor const color)
 	newMark->color[3] = color.Value.w;
     
     m_marks.push_back(newMark);
-    
-    //refreshCache();
+
+	sortMarks();
 }
 
 void ImGradient::removeMark(ImGradientMark* mark)
 {
     m_marks.remove(mark);
-    //refreshCache();
+	sortMarks();
 }
 
 //void ImGradient::getColorAt(float position, float* color) const
@@ -120,15 +121,15 @@ void ImGradient::computeColorAt(float position, float* color) const
     }
 }
 
-//void ImGradient::refreshCache()
-//{
-//    m_marks.sort([](const ImGradientMark * a, const ImGradientMark * b) { return a->position < b->position; });
-//
-//    for(int i = 0; i < 256; ++i)
-//    {
-//        computeColorAt(i/255.0f, &m_cachedValues[i*4]);
-//    }
-//}
+void ImGradient::sortMarks()
+{
+    m_marks.sort([](const ImGradientMark * a, const ImGradientMark * b) { return a->position < b->position; });
+
+    //for(int i = 0; i < 256; ++i)
+    //{
+    //    computeColorAt(i/255.0f, &m_cachedValues[i*4]);
+    //}
+}
 
 
 
@@ -153,13 +154,16 @@ namespace ImGui
 
         float y_height = bar_pos.y-barBottom;
 
-
-        for (int i=0; i<50; i+=2) {
-			draw_list->AddRectFilled(ImVec2(bar_pos.x - y_height/4*i, bar_pos.y),
-									 ImVec2(bar_pos.x - y_height/4*(i+1), bar_pos.y-y_height/4),
+        int N = -(int)(maxWidth/(y_height/4));
+		float deltax = -1.0f/N * maxWidth;
+		std::cout << N << "\n";
+        for (int i=0; i<N; i+=1) {
+        	float offset = -y_height/4 * (i%2);
+			draw_list->AddRectFilled(ImVec2(bar_pos.x - deltax*i, bar_pos.y+offset),
+									 ImVec2(bar_pos.x - deltax*(i+1), bar_pos.y-y_height/4+offset),
 									 IM_COL32(204, 204, 204, 255));
-			draw_list->AddRectFilled(ImVec2(bar_pos.x - y_height/4*i, bar_pos.y-y_height/2),
-									 ImVec2(bar_pos.x - y_height/4*(i+1), bar_pos.y-y_height/4-y_height/2),
+			draw_list->AddRectFilled(ImVec2(bar_pos.x - deltax*i, bar_pos.y-y_height/2+offset),
+									 ImVec2(bar_pos.x - deltax*(i+1), bar_pos.y-y_height/4-y_height/2+offset),
 									 IM_COL32(204, 204, 204, 255));
         }
 
@@ -378,7 +382,7 @@ namespace ImGui
             {
                 draggingMark->position += increment;
                 draggingMark->position = ImClamp(draggingMark->position, 0.0f, 1.0f);
-                //gradient->refreshCache();
+				gradient->sortMarks();
                 modified = true;
             }
             
@@ -405,7 +409,7 @@ namespace ImGui
             if(selectedMark && colorModified)
             {
                 modified = true;
-                //gradient->refreshCache();
+				gradient->sortMarks();
             }
         }
         
