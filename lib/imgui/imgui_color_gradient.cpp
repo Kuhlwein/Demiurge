@@ -36,27 +36,29 @@ void ImGradient::addMark(float position, ImColor const color)
     newMark->color[0] = color.Value.x;
     newMark->color[1] = color.Value.y;
     newMark->color[2] = color.Value.z;
+	newMark->color[3] = color.Value.w;
     
     m_marks.push_back(newMark);
     
-    refreshCache();
+    //refreshCache();
 }
 
 void ImGradient::removeMark(ImGradientMark* mark)
 {
     m_marks.remove(mark);
-    refreshCache();
+    //refreshCache();
 }
 
-void ImGradient::getColorAt(float position, float* color) const
-{
-    position = ImClamp(position, 0.0f, 1.0f);    
-    int cachePos = (position * 255);
-    cachePos *= 3;
-    color[0] = m_cachedValues[cachePos+0];
-    color[1] = m_cachedValues[cachePos+1];
-    color[2] = m_cachedValues[cachePos+2];
-}
+//void ImGradient::getColorAt(float position, float* color) const
+//{
+//    position = ImClamp(position, 0.0f, 1.0f);
+//    int cachePos = (position * 255);
+//    cachePos *= 4;
+//    color[0] = m_cachedValues[cachePos+0];
+//    color[1] = m_cachedValues[cachePos+1];
+//    color[2] = m_cachedValues[cachePos+2];
+//	color[3] = m_cachedValues[cachePos+3];
+//}
 
 void ImGradient::computeColorAt(float position, float* color) const
 {
@@ -74,7 +76,7 @@ void ImGradient::computeColorAt(float position, float* color) const
                 lower = mark;
             }
         }
-        
+
         if(mark->position >= position)
         {
             if(!upper || upper->position > mark->position)
@@ -83,7 +85,7 @@ void ImGradient::computeColorAt(float position, float* color) const
             }
         }
     }
-    
+
     if(upper && !lower)
     {
         lower = upper;
@@ -94,7 +96,7 @@ void ImGradient::computeColorAt(float position, float* color) const
     }
     else if(!lower && !upper)
     {
-        color[0] = color[1] = color[2] = 0;
+        color[0] = color[1] = color[2] = color[3] = 0;
         return;
     }
     
@@ -103,6 +105,7 @@ void ImGradient::computeColorAt(float position, float* color) const
         color[0] = upper->color[0];
         color[1] = upper->color[1];
         color[2] = upper->color[2];
+		color[3] = upper->color[3];
     }
     else
     {
@@ -113,18 +116,19 @@ void ImGradient::computeColorAt(float position, float* color) const
         color[0] = ((1.0f - delta) * lower->color[0]) + ((delta) * upper->color[0]);
         color[1] = ((1.0f - delta) * lower->color[1]) + ((delta) * upper->color[1]);
         color[2] = ((1.0f - delta) * lower->color[2]) + ((delta) * upper->color[2]);
+		color[3] = ((1.0f - delta) * lower->color[3]) + ((delta) * upper->color[3]);
     }
 }
 
-void ImGradient::refreshCache()
-{
-    m_marks.sort([](const ImGradientMark * a, const ImGradientMark * b) { return a->position < b->position; });
-    
-    for(int i = 0; i < 256; ++i)
-    {
-        computeColorAt(i/255.0f, &m_cachedValues[i*3]);
-    }
-}
+//void ImGradient::refreshCache()
+//{
+//    m_marks.sort([](const ImGradientMark * a, const ImGradientMark * b) { return a->position < b->position; });
+//
+//    for(int i = 0; i < 256; ++i)
+//    {
+//        computeColorAt(i/255.0f, &m_cachedValues[i*4]);
+//    }
+//}
 
 
 
@@ -141,10 +145,24 @@ namespace ImGui
         float barBottom = bar_pos.y + height;
         ImGradientMark* prevMark = nullptr;
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        
+
+        //bar outline
         draw_list->AddRectFilled(ImVec2(bar_pos.x - 2, bar_pos.y - 2),
                                  ImVec2(bar_pos.x + maxWidth + 2, barBottom + 2),
-                                 IM_COL32(100, 100, 100, 255));
+								 IM_COL32(128, 128, 128, 255));
+
+        float y_height = bar_pos.y-barBottom;
+
+
+        for (int i=0; i<50; i+=2) {
+			draw_list->AddRectFilled(ImVec2(bar_pos.x - y_height/4*i, bar_pos.y),
+									 ImVec2(bar_pos.x - y_height/4*(i+1), bar_pos.y-y_height/4),
+									 IM_COL32(204, 204, 204, 255));
+			draw_list->AddRectFilled(ImVec2(bar_pos.x - y_height/4*i, bar_pos.y-y_height/2),
+									 ImVec2(bar_pos.x - y_height/4*(i+1), bar_pos.y-y_height/4-y_height/2),
+									 IM_COL32(204, 204, 204, 255));
+        }
+
         
         if(gradient->getMarks().size() == 0)
         {
@@ -169,17 +187,20 @@ namespace ImGui
                 colorA.x = mark->color[0];
                 colorA.y = mark->color[1];
                 colorA.z = mark->color[2];
+				colorA.w = mark->color[3];
             }
             else
             {
                 colorA.x = prevMark->color[0];
                 colorA.y = prevMark->color[1];
                 colorA.z = prevMark->color[2];
+				colorA.w = prevMark->color[3];
             }
             
             colorB.x = mark->color[0];
             colorB.y = mark->color[1];
             colorB.z = mark->color[2];
+			colorB.w = mark->color[3];
             
             colorAU32 = ImGui::ColorConvertFloat4ToU32(colorA);
             colorBU32 = ImGui::ColorConvertFloat4ToU32(colorB);
@@ -333,7 +354,7 @@ namespace ImGui
             float pos = (ImGui::GetIO().MousePos.x - bar_pos.x) / maxWidth;
             
             float newMarkCol[4];
-            gradient->getColorAt(pos, newMarkCol);
+            gradient->computeColorAt(pos, newMarkCol);
             
 
             gradient->addMark(pos, ImColor(newMarkCol[0], newMarkCol[1], newMarkCol[2]));
@@ -357,7 +378,7 @@ namespace ImGui
             {
                 draggingMark->position += increment;
                 draggingMark->position = ImClamp(draggingMark->position, 0.0f, 1.0f);
-                gradient->refreshCache();
+                //gradient->refreshCache();
                 modified = true;
             }
             
@@ -379,12 +400,12 @@ namespace ImGui
         
         if(selectedMark)
         {
-            bool colorModified = ImGui::ColorPicker3("TODO: write something clever here",selectedMark->color);
+            bool colorModified = ImGui::ColorEdit4("TODO: write something clever here",selectedMark->color,ImGuiColorEditFlags_AlphaBar);
             
             if(selectedMark && colorModified)
             {
                 modified = true;
-                gradient->refreshCache();
+                //gradient->refreshCache();
             }
         }
         

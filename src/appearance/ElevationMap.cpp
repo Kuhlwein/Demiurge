@@ -8,31 +8,32 @@
 #include "ElevationMap.h"
 
 
-template<typename Type>
-void set_gradient(ImGradient *gradient, std::vector<Type> colors) {
+//template<typename Type>
+void set_gradient(ImGradient *gradient, std::vector<int> colors) {
 	gradient->getMarks().clear();
 	for (long unsigned int i=0; i<colors.size()/3; i++) {
-		gradient->addMark(float(i)/(colors.size()/3-1),ImColor(colors[i*3],colors[i*3+1],colors[i*3+2]));
+		gradient->addMark(float(i)/(colors.size()/3-1),ImColor(colors[i*3],colors[i*3+1],colors[i*3+2],255));
 	}
 }
 
 void gradient_to_texture(ImGradient *gradient, Texture* texture) {
-	auto data = new unsigned char[100 * 3];
+	auto data = new unsigned char[100 * 4];
 	for (int i=0; i<100; i++) {
-		float c[3];
-		gradient->getColorAt(float(i)/100.0f,c);
-		data[3*i]=int(c[0]*255);
-		data[3*i+1]=char(c[1]*255);
-		data[3*i+2]=char(c[2]*255);
+		float c[4];
+		gradient->computeColorAt(float(i)/100.0f,c);
+		data[4*i]=int(c[0]*255);
+		data[4*i+1]=char(c[1]*255);
+		data[4*i+2]=char(c[2]*255);
+		data[4*i+3]=char(c[3]*255);
 	}
-	texture->uploadData(GL_RGB, GL_UNSIGNED_BYTE, data);
+	texture->uploadData(GL_RGBA, GL_UNSIGNED_BYTE, data);
 }
 
 ElevationMap::ElevationMap() : Appearance("Elevation map") {
-	texture_land = new Texture(100, 1, GL_RGB, "gradient_land_"+sid, GL_LINEAR);
-	texture_ocean = new Texture(100,1,GL_RGB,"gradient_ocean_"+sid,GL_LINEAR);
-	set_gradient(&gradient,std::vector<float>{0.5f,0.5f,0.5f, 1.0f,1.0f,1.0f});
-	set_gradient(&gradient_ocean,std::vector<float>{0.0f,0.0f,0.0f, 0.5f,0.5f,0.5f});
+	texture_land = new Texture(100, 1, GL_RGBA, "gradient_land_"+sid, GL_LINEAR);
+	texture_ocean = new Texture(100,1,GL_RGBA,"gradient_ocean_"+sid,GL_LINEAR);
+	set_gradient(&gradient,std::vector<int>{127,127,127, 255,255,255});
+	set_gradient(&gradient_ocean,std::vector<int>{0,0,0, 127,127,127});
 	gradient_to_texture(&gradient,texture_land);
 	gradient_to_texture(&gradient_ocean,texture_ocean);
 
@@ -44,7 +45,9 @@ uniform sampler2D gradient_ocean_)"+sid+R"(;
 )",R"(
 float h = texture(img, st_p).r;
 if (h>0) {
-    fc = texture(gradient_land_)"+sid+R"(,vec2(h,0));
+    vec4 k = texture(gradient_land_)"+sid+R"(,vec2(h,0));
+	//k.a = 0.5;
+    fc = fc*(1-k.a) + k*(k.a);
 } else {
     fc = texture(gradient_ocean_)"+sid+R"(,vec2(1+h,0));
 }
@@ -70,7 +73,7 @@ bool ElevationMap::update_self(Project *p) {
 	if(ImGui::Combo("Preset",&current,items,IM_ARRAYSIZE(items))) {
 		switch (current) {
 			case 0:
-				set_gradient(&gradient,std::vector<float>{0.5f,0.5f,0.5f, 1.0f,1.0f,1.0f});
+				set_gradient(&gradient,std::vector<int>{127,127,127, 255,255,255});
 				break;
 			case 1:
 				set_gradient(&gradient,std::vector<int>{172,208,165, 148,191,139, 168,198,143, 189,204,150, 209,215,171, 225,228,181, 239,235,192, 232,225,182, 222,214,163, 211,202,157, 202,185,130, 195,167,107, 185,152,90, 170,135,83, 172,154,124, 186,174,154, 202,195,184, 224,222,216, 245,244,242});
@@ -107,7 +110,7 @@ bool ElevationMap::update_self(Project *p) {
 	if(ImGui::Combo("Preset##2",&current,items2,IM_ARRAYSIZE(items2))) {
 		switch (current) {
 			case 0:
-				set_gradient(&gradient_ocean,std::vector<float>{0.0f,0.0f,0.0f, 0.5f,0.5f,0.5f});
+				set_gradient(&gradient_ocean,std::vector<int>{0,0,0, 127,127,127});
 				break;
 			case 1:
 				set_gradient(&gradient_ocean,std::vector<int>{113,171,215, 121,178,222, 132,185,227, 141,193,234, 150,201,240, 161,210,247, 172,219,251, 185,227,255, 198,236,255, 216,242,254});

@@ -64,16 +64,17 @@ public:
     ImGradient();
     ~ImGradient();
     
-    void getColorAt(float position, float* color) const;
+    //void getColorAt(float position, float* color) const;
     void addMark(float position, ImColor const color);
     void removeMark(ImGradientMark* mark);
-    void refreshCache();
+    //void refreshCache();
     std::list<ImGradientMark*> & getMarks(){ return m_marks; }
 	int id;
+	void computeColorAt(float position, float* color) const;
 private:
-    void computeColorAt(float position, float* color) const;
+
     std::list<ImGradientMark*> m_marks;
-    float m_cachedValues[256 * 3];
+    //float m_cachedValues[256 * 4];
 
 };
 
