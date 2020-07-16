@@ -14,25 +14,24 @@
 #include "Texture.h"
 #include "Shader.h"
 #include "selection.h"
-#include "view.h"
 #include "edit.h"
 
 //todo remove
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
-#include <projections/Orthographic.h>
-#include <projections/Mollweide.h>
-#include <projections/Mercator.h>
-#include <projections/Equiretangular.h>
-#include <projections/img.h>
-#include <menus/CanvasMenu.h>
-#include <projections/Sinusoidal.h>
-#include <projections/GoodeHomolosine.h>
-#include <projections/EckertIV.h>
-#include <menus/BrushWindow.h>
-#include <menus/AppearanceWindow.h>
-#include <appearance/ElevationMap.h>
+#include "projections/Orthographic.h"
+#include "projections/Mollweide.h"
+#include "projections/Mercator.h"
+#include "projections/Equiretangular.h"
+#include "projections/img.h"
+#include "menus/CanvasMenu.h"
+#include "projections/Sinusoidal.h"
+#include "projections/GoodeHomolosine.h"
+#include "projections/EckertIV.h"
+#include "menus/BrushWindow.h"
+#include "menus/AppearanceWindow.h"
+//#include <appearance/ElevationMap.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -144,16 +143,11 @@ Project::Project(GLFWwindow* window) {
 	projections.push_back(new CanvasMenu("Mercator...",new Mercator(this)));
 
 
-//	std::vector<Menu*> view_menu = {};
-//	view_menu.push_back(new ElevationMap());
-//	view_menu.push_back(new Menu("Normal map...", view::normal_map));
-
-
 
 	std::vector<Menu*> windows_menu = {};
 	windows_menu.push_back(new BrushWindow("Brush",this));
-	auto appearancewindow = new AppearanceWindow("Appearance");
-	windows_menu.push_back(appearancewindow);
+	appearanceWindow = new AppearanceWindow("Appearance");
+	windows_menu.push_back(appearanceWindow);
 	windows_menu.push_back(new Window("Layers", testnamespace::layers));
 
 
@@ -174,18 +168,13 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("Edit",edit_menu);
 	windows.emplace_back("Select",selection_menu);
 	windows.emplace_back("Projections",projections);
-	//windows.emplace_back("View",view_menu);
 	windows.emplace_back("Windows",windows_menu);
-
-
-
-
 
 	geometryShader = new NoneShader(this);
 
 	canvas = new img(this);
 	//set_terrain_shader(draw_grayscale);
-	appearancewindow->setShader(this);
+	appearanceWindow->setShader(this);
 
 	file_new(500,500);
 }
@@ -330,7 +319,7 @@ void Project::remove_layer(int i) {
 }
 
 void Project::update_terrain_shader() {
-	delete program;
+	//delete program;
 
 	Shader* shader = Shader::builder()
 			.include(fragmentColor)
@@ -344,6 +333,10 @@ void Project::update_terrain_shader() {
 			.addShader(vertex3D->getCode(),GL_VERTEX_SHADER)
 			.addShader(shader->getCode(),GL_FRAGMENT_SHADER)
 			.link();
+
+	appearanceWindow->prepare(this);
+
+
 }
 
 Texture *Project::get_selection() {

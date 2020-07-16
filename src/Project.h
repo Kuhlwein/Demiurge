@@ -6,10 +6,12 @@
 #define DEMIURGE_PROJECT_H
 #include <GL/gl3w.h>
 #include <glfw/include/GLFW/glfw3.h>
-#include <bits/unique_ptr.h>
 #include <map>
 #include <set>
 #include <stack>
+#include <menus/AppearanceWindow.h>
+
+
 #include "edit.h"
 #include "ShaderProgram.h"
 #include "Vbo.h"
@@ -20,11 +22,14 @@
 #include "UndoHistory.h"
 
 
+
+
 class Project {
 public:
     ShaderProgram *program;
     Canvas *canvas;
     Project(GLFWwindow* window);
+
     ~Project();
     void update();
     void render();
@@ -88,6 +93,8 @@ private:
 
     Shader* terrain_shader;
     GeometryShader* geometryShader;
+    AppearanceWindow* appearanceWindow;
+
 
     Texture* tmp = nullptr;
     bool is_filtering = false;
@@ -110,7 +117,9 @@ private:
 
 	void update_self();
 
+
     std::vector<std::pair<std::string,std::vector<Menu*>>> windows;
+
 
 
 };

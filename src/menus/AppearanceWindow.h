@@ -15,6 +15,7 @@ public:
 	AppearanceWindow(std::string title);
 	bool update(Project* p) override;
 	void setShader(Project* p);
+	void prepare(Project* p);
 private:
 	std::vector<Appearance*> appearances;
 

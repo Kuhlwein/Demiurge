@@ -9,6 +9,7 @@
 #include <appearance/ElevationMap.h>
 #include <appearance/Graticules.h>
 #include <iostream>
+#include <appearance/Hillshade.h>
 #include "AppearanceWindow.h"
 
 
@@ -29,6 +30,7 @@ AppearanceWindow::AppearanceWindow(std::string title) : Window(title, [this](Pro
 	{
 		if (ImGui::Selectable("Graticules")) add(new Graticules(),p);
 		if (ImGui::Selectable("Elevation map")) add(new ElevationMap(),p);
+		if (ImGui::Selectable("Hillshade")) add(new Hillshade(),p);
 		ImGui::EndPopup();
 	}
 
@@ -79,8 +81,8 @@ AppearanceWindow::AppearanceWindow(std::string title) : Window(title, [this](Pro
 
 	for (Appearance* a : appearances) {
 		if(a->update(p)) {
+			p->program->bind();
 			a->prepare(p);
-			std::cout << "test\n";
 		}
 	}
 
@@ -91,7 +93,6 @@ AppearanceWindow::AppearanceWindow(std::string title) : Window(title, [this](Pro
 
 bool AppearanceWindow::update(Project *p) {
 	bool r = Window::update(p);
-	//for(Appearance* a : appearances) a->prepare(p);
 	return r;
 }
 
@@ -102,14 +103,16 @@ void AppearanceWindow::setShader(Project* p) {
 	}
 	auto shader = shaderbuilder.create();
 	p->set_terrain_shader(shader);
-	for(Appearance* a : appearances) {
-		std::cout << "prep " << a->getTitle() << "\n";
-		a->prepare(p);
-	}
+	//prepare(p);
 }
 
 void AppearanceWindow::add(Appearance *a, Project* p) {
 	appearances.push_back(a);
 	setShader(p);
+}
+
+void AppearanceWindow::prepare(Project *p) {
+	p->program->bind();
+	for(Appearance* a : appearances) a->prepare(p);
 }
 

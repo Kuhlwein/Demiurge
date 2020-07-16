@@ -5,6 +5,7 @@
 #include "Project.h"
 #include <imgui/imgui.h>
 #include <cmath>
+#include <iostream>
 #include "Graticules.h"
 #include "Shader.h"
 
@@ -40,8 +41,8 @@ Graticules::Graticules() : Appearance("Graticules") {
 			.include(cornerCoords)
 			.include(graticules)
 			.create(replaceSID(R"(
-uniform float grat_SID;
-uniform vec4 grat_color_SID;
+uniform float grat_SID=90;
+uniform vec4 grat_color_SID=vec4(1,1,1,1);
 
 )"),replaceSID("draw_graticules(fc,st_p,grat_SID,grat_color_SID);"));
 }
