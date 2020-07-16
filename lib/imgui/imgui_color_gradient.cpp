@@ -5,7 +5,6 @@
 //  Created by David Gallardo on 11/06/16.
 
 
-#include <iostream>
 #include "imgui_color_gradient.h"
 #include "imgui_internal.h"
 
@@ -156,7 +155,6 @@ namespace ImGui
 
         int N = -(int)(maxWidth/(y_height/4));
 		float deltax = -1.0f/N * maxWidth;
-		std::cout << N << "\n";
         for (int i=0; i<N; i+=1) {
         	float offset = -y_height/4 * (i%2);
 			draw_list->AddRectFilled(ImVec2(bar_pos.x - deltax*i, bar_pos.y+offset),

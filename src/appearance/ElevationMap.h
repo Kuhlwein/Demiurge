@@ -15,6 +15,7 @@ public:
 	ElevationMap();
 	void prepare(Project* p) override;
 	void unprepare(Project* p) override;
+	Shader* getShader() override;
 private:
 	bool update_self(Project* p) override;
 

@@ -39,19 +39,18 @@ ElevationMap::ElevationMap() : Appearance("Elevation map") {
 
 	shader = Shader::builder()
 			.include(fragmentColor)
-			.create(R"(
-uniform sampler2D gradient_land_)"+sid+R"(;
-uniform sampler2D gradient_ocean_)"+sid+R"(;
-)",R"(
-float h = texture(img, st_p).r;
-if (h>0) {
-    vec4 k = texture(gradient_land_)"+sid+R"(,vec2(h,0));
-	//k.a = 0.5;
+			.create(replaceSID(R"(
+uniform sampler2D gradient_land_SID;
+uniform sampler2D gradient_ocean_SID;
+)"),replaceSID(R"(
+float h_SID = texture(img, st_p).r;
+if (h_SID>0) {
+    vec4 k = texture(gradient_land_SID,vec2(h_SID,0));
     fc = fc*(1-k.a) + k*(k.a);
 } else {
-    fc = texture(gradient_ocean_)"+sid+R"(,vec2(1+h,0));
+    fc = texture(gradient_ocean_SID,vec2(1+h_SID,0));
 }
-)");
+)"));
 }
 
 bool ElevationMap::update_self(Project *p) {
@@ -64,7 +63,9 @@ bool ElevationMap::update_self(Project *p) {
 		static ImGradientMark* selectedMark = nullptr;
 		ImGui::GradientEditor(&gradient, draggingMark, selectedMark);
 		ImGui::Separator();
-		if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+		if (ImGui::Button("OK", ImVec2(120, 0))) {
+			ImGui::CloseCurrentPopup();
+		}
 		ImGui::EndPopup();
 	}
 
@@ -130,7 +131,7 @@ bool ElevationMap::update_self(Project *p) {
 	if (ImGui::Button("Apply")) {
 		gradient_to_texture(&gradient,texture_land);
 		gradient_to_texture(&gradient_ocean,texture_ocean);
-		p->set_terrain_shader(shader);
+		//p->set_terrain_shader(shader);
 		first = true;
 		return true;
 	}
@@ -143,6 +144,8 @@ bool ElevationMap::update_self(Project *p) {
 }
 
 void ElevationMap::prepare(Project *p) {
+	gradient_to_texture(&gradient,texture_land);
+	gradient_to_texture(&gradient_ocean,texture_ocean);
 	p->add_texture(texture_land);
 	p->add_texture(texture_ocean);
 }
@@ -150,4 +153,9 @@ void ElevationMap::prepare(Project *p) {
 void ElevationMap::unprepare(Project *p) {
 	p->remove_texture(texture_land);
 	p->remove_texture(texture_ocean);
+}
+
+
+Shader *ElevationMap::getShader() {
+	return shader;
 }

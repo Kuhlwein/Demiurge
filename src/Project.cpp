@@ -152,7 +152,8 @@ Project::Project(GLFWwindow* window) {
 
 	std::vector<Menu*> windows_menu = {};
 	windows_menu.push_back(new BrushWindow("Brush",this));
-	windows_menu.push_back(new AppearanceWindow("Appearance"));
+	auto appearancewindow = new AppearanceWindow("Appearance");
+	windows_menu.push_back(appearancewindow);
 	windows_menu.push_back(new Window("Layers", testnamespace::layers));
 
 
@@ -183,8 +184,8 @@ Project::Project(GLFWwindow* window) {
 	geometryShader = new NoneShader(this);
 
 	canvas = new img(this);
-	set_terrain_shader(draw_grayscale);
-
+	//set_terrain_shader(draw_grayscale);
+	appearancewindow->setShader(this);
 
 	file_new(500,500);
 }
@@ -338,7 +339,6 @@ void Project::update_terrain_shader() {
 			.include(terrain_shader)
 			.include(brush_outline)
 			.include(selection_outline)
-			.include(graticules)
 			.create();
 	program = ShaderProgram::builder()
 			.addShader(vertex3D->getCode(),GL_VERTEX_SHADER)

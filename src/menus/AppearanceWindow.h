@@ -14,8 +14,11 @@ class AppearanceWindow : public Window {
 public:
 	AppearanceWindow(std::string title);
 	bool update(Project* p) override;
+	void setShader(Project* p);
 private:
 	std::vector<Appearance*> appearances;
+
+	void add(Appearance* a, Project* p);
 };
 
 

@@ -222,12 +222,10 @@ static Shader* graticules = Shader::builder()
 		.include(def_pi)
 		.include(cornerCoords)
 		.create(R"(
-void draw_graticules(inout vec4 fc, in vec2 st) {
+void draw_graticules(inout vec4 fc, in vec2 st, in float grat, in vec4 grat_color) {
 
 st.x = (st.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])/M_PI/2*360;
 st.y = (st.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0])/M_PI*180;
-
-float grat = 15;
 
 vec2 dx = dFdx(st);
 vec2 dy = dFdy(st);
@@ -238,19 +236,19 @@ float ydiff = 1.2*length(vec2(dx.y,dy.y));
 
 float absdiff = mod(abs(st.x),grat);
 float r = min(absdiff,grat-absdiff);
-float w = r/(xdiff);
-if (r<xdiff) fc = fc*(w) + vec4(1,1,1,0)*(1-w);
+float w = 1-r/(xdiff);
+if (r<xdiff) fc = fc*(1-w*grat_color.w) + grat_color*(w*grat_color.w);
 
 absdiff = mod(abs(st.y),grat);
 r = min(absdiff,grat-absdiff);
-w = r/(ydiff);
-if (r<ydiff) fc = fc*(w) + vec4(1,1,1,0)*(1-w);
+w = 1-r/(ydiff);
+if (r<ydiff) fc = fc*(1-w*grat_color.w) + grat_color*(w*grat_color.w);
 
 
-if (abs(dx.x)>360) fc = vec4(1,0,0,0);
+//if (abs(dx.x)>360) fc = vec4(1,0,0,0);
 
 }
-)","draw_graticules(fc,st_p);");
+)","");
 
 static Shader* selection_outline = Shader::builder()
         .include(deltaxy)
