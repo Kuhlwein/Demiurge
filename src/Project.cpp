@@ -171,7 +171,7 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("Projections",projections);
 	windows.emplace_back("Windows",windows_menu);
 
-	geometryShader = new NoneShader(this);
+	geometryShader = new SphericalShader(this);
 
 	canvas = new img(this);
 	//set_terrain_shader(draw_grayscale);

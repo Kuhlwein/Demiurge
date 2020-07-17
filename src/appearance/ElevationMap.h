@@ -7,6 +7,7 @@
 
 
 #include "Appearance.h"
+#include "GradientMenu.h"
 #include <imgui/imgui_color_gradient.h>
 class Texture;
 
@@ -20,12 +21,13 @@ private:
 	bool update_self(Project* p) override;
 
 	bool first = true;
+	float scale=1.0f;
 
 	Texture* texture_land;
 	Texture* texture_ocean;
 
-	ImGradient gradient;
-	ImGradient gradient_ocean;
+	GradientMenu* gradient_land;
+	GradientMenu* gradient_ocean;
 
 	Shader* shader;
 };
