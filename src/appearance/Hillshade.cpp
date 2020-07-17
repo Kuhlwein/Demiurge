@@ -24,18 +24,18 @@ float y2 = texture(img, projection(st)+deltay).r;
 vec3 normalv = vec3(x1-x2,y2-y1,0.1);
 normalv = (normalv/length(normalv)+1)/2;
 
-float z_factor = 10.0f;
+float z_factor = 5.0f;
 float slope =  atan(z_factor * sqrt(pow(x1-x2,2) + pow(y2-y1,2)));
 
 float aspect = atan(y2-y1, -(x1-x2));
-if (aspect<0) aspect=aspect+2*M_PI;
-aspect = aspect/2/M_PI;
+aspect=aspect+M_PI;
+//aspect = aspect/2/M_PI;
 
 float altitude = M_PI/4;
 float zenith = M_PI/2-altitude;
 
 float azimuth = 315;
-float azimuth_math = (360.0 - azimuth - 90)/180*M_PI;
+float azimuth_math = (azimuth - 90)/180*M_PI;
 
 float hillshade = ((cos(zenith) * cos(slope)) +
              (sin(zenith) * sin(slope) * cos(azimuth_math - aspect)));
@@ -43,6 +43,8 @@ float hillshade = ((cos(zenith) * cos(slope)) +
 
 //fc = vec4(normalv,0);
 //fc = vec4(hillshade,hillshade,hillshade,0);
+//fc = vec4(slope,slope,slope,0);
+//fc = vec4(aspect,aspect,aspect,0);
 vec4 k = texture(gradient_ocean_0,vec2(hillshade,0));
 fc = fc*(1-k.a) + k*(k.a);
 )");

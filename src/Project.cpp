@@ -20,6 +20,7 @@
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
+
 #include "projections/Orthographic.h"
 #include "projections/Mollweide.h"
 #include "projections/Mercator.h"
@@ -505,3 +506,5 @@ glm::vec2 Project::getMousePrev() {
 	ImGuiIO io = ImGui::GetIO();
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
 }
+
+
