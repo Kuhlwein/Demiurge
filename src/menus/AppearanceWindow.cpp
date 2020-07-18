@@ -11,6 +11,7 @@
 #include <iostream>
 #include <appearance/Hillshade.h>
 #include <appearance/AspectMap.h>
+#include <appearance/SlopeMap.h>
 #include "AppearanceWindow.h"
 
 
@@ -33,6 +34,7 @@ AppearanceWindow::AppearanceWindow(std::string title) : Window(title, [this](Pro
 		if (ImGui::Selectable("Elevation map")) add(new ElevationMap(),p);
 		if (ImGui::Selectable("Hillshade")) add(new Hillshade(),p);
 		if (ImGui::Selectable("Aspect map")) add(new AspectMap(),p);
+		if (ImGui::Selectable("Slope map")) add(new SlopeMap(),p);
 		ImGui::EndPopup();
 	}
 

@@ -296,6 +296,14 @@ return M_PI-atan(delta_y, -(delta_x));
 )","");
 
 
+static Shader* get_slope = Shader::builder()
+		.include(def_pi)
+		.include(texturespace_gradient)
+		.create(R"(
+float get_slope(float z_factor) {
+return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));
+}
+)","");
 
 
 #endif //DEMIURGE_SHADER_H
