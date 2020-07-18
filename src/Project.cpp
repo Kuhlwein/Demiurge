@@ -321,13 +321,18 @@ void Project::remove_layer(int i) {
 }
 
 void Project::update_terrain_shader() {
-	//delete program;
 
-	Shader* shader = Shader::builder()
+	Shader::builder builder = Shader::builder()
 			.include(fragmentColor)
 			.include(geometryShader->get_shader())
 			.include(canvas->projection_shader())
-			.include(terrain_shader)
+			.include(terrain_shader);
+
+			if (using_filter_shader) {
+				builder.include(tmp_filter_shader);
+			}
+
+			Shader* shader = builder
 			.include(brush_outline)
 			.include(selection_outline)
 			.create();
@@ -506,6 +511,12 @@ glm::vec2 Project::getMouse() {
 glm::vec2 Project::getMousePrev() {
 	ImGuiIO io = ImGui::GetIO();
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
+}
+
+void Project::setFilterView(bool b, Shader *s) {
+	using_filter_shader = b;
+	tmp_filter_shader = s;
+	update_terrain_shader();
 }
 
 

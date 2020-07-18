@@ -83,6 +83,8 @@ public:
 	glm::vec2 getMouse();
 	glm::vec2 getMousePrev();
 
+	void setFilterView(bool b, Shader* s);
+
 private:
 	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};
     GLFWwindow* window;
@@ -92,6 +94,8 @@ private:
     Texture* selection = nullptr;
 
     Shader* terrain_shader;
+    Shader* tmp_filter_shader;
+    bool using_filter_shader=false;
     GeometryShader* geometryShader;
     AppearanceWindow* appearanceWindow;
 

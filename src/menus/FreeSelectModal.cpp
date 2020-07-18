@@ -17,28 +17,23 @@ FreeSelectModal::FreeSelectModal() : Modal("Free select", [this](Project* p) {
 			.include(fragmentBase)
 			.include(mouseLocation)
 			.create("uniform vec2 mouseFirst;",R"(
-float x1 = mouse.x;
-float x2 = mousePrev.x;
-float x3 = mouseFirst.x;
 
-float y1 = mouse.y;
-float y2 = mousePrev.y;
-float y3 = mouseFirst.y;
+vec3 AB = vec3(mouse-mousePrev,0);
+vec3 BC = vec3(mousePrev-mouseFirst,0);
+vec3 CA = vec3(mouseFirst-mouse,0);
+vec3 AP = vec3(st-mouse,0);
+vec3 BP = vec3(st-mousePrev,0);
+vec3 CP = vec3(st-mouseFirst,0);
 
-float x = st.x;
-float y = st.y;
+bool a = AB.x*AP.y>=AB.y*AP.x;
+bool b = BC.x*BP.y>=BC.y*BP.x;
+bool c = CA.x*CP.y>CA.y*CP.x;
 
-float denominator = (x1*(y2 - y3) + y1*(x3 - x2) + x2*y3 - y2*x3);
-float t1 = (x*(y3 - y1) + y*(x1 - x3) - x1*y3 + y1*x3) / denominator;
-float t2 = (x*(y2 - y1) + y*(x1 - x2) - x1*y2 + y1*x2) / (-denominator);
-float s = t1 + t2;
-
-if(t1 >= 0 && t1<=1 && t2 >=0 && t2<=1 && s<=1) {
-	fc = 1.0 - texture(sel,vec2(st)).r;
+if (a == b && b == c) {
+	fc = 1.0 - texture(scratch2,vec2(st)).r;
 } else {
-	fc = texture(sel,vec2(st)).r;
+	fc = texture(scratch2,vec2(st)).r;
 }
-
 
 )");
 	program = ShaderProgram::builder()
@@ -56,6 +51,12 @@ bool FreeSelectModal::update_self(Project *p) {
 
 	if(io.MouseDown[0] && first_mouseclick) {
 		//First
+
+		Shader* s = Shader::builder()
+				.create("",R"(
+fc = fc*0.75 + 0.25 * texture(scratch1,st);
+)");
+		p->setFilterView(true,s);
 		first_mousepos = texcoord;
 		first_mouseclick = false;
 	} else if (io.MouseDown[0]){
@@ -71,10 +72,11 @@ bool FreeSelectModal::update_self(Project *p) {
 		id = glGetUniformLocation(program->getId(),"mouseFirst");
 		glUniform2f(id,first_mousepos.x,first_mousepos.y);
 		p->apply(program,p->get_scratch1());
-		p->get_selection()->swap(p->get_scratch1());
+		p->get_scratch2()->swap(p->get_scratch1());
 
 	} else if (!first_mouseclick) {
 		//Last
+		p->setFilterView(false, nullptr);
 		first_mouseclick = true;
 	}
 
