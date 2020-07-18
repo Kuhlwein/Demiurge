@@ -107,7 +107,7 @@ void AppearanceWindow::setShader(Project* p) {
 	}
 	auto shader = shaderbuilder.create();
 	p->set_terrain_shader(shader);
-	std::cout << shader->getCode() << "\n";
+	//std::cout << shader->getCode() << "\n";
 	//prepare(p);
 }
 

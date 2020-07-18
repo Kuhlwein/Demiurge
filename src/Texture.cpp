@@ -81,7 +81,7 @@ void Texture::bind(GLuint point) {
 
 void Texture::bind(ShaderProgram *program, GLuint point, std::string s) {
 	int loc = glGetUniformLocation(program->getId(),(s=="") ? name.c_str() : s.c_str());
-	std::cout << name << " " << s  << " " << loc << "\n";
+	//std::cout << name << " " << s  << " " << loc << "\n";
 	if (loc>=0) {
 		glActiveTexture(GL_TEXTURE0+point);
 		glBindTexture( GL_TEXTURE_2D, id );

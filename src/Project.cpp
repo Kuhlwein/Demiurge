@@ -20,6 +20,7 @@
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
+#include <menus/FreeSelectModal.h>
 
 #include "projections/Orthographic.h"
 #include "projections/Mollweide.h"
@@ -32,7 +33,6 @@
 #include "projections/EckertIV.h"
 #include "menus/BrushWindow.h"
 #include "menus/AppearanceWindow.h"
-//#include <appearance/ElevationMap.h>
 
 
 void Project::file_load(const std::string& filename) {
@@ -160,6 +160,7 @@ Project::Project(GLFWwindow* window) {
 	selection_menu.push_back(new Menu("None", [](Project* p){return selection::set(p,0.0f);}));
 	selection_menu.push_back(new Menu("Invert",selection::invert));
 	selection_menu.push_back(new Modal("By height", selection::by_height));
+	selection_menu.push_back(new FreeSelectModal());
 	selection_menu.push_back(new SeparatorMenu());
 	selection_menu.push_back(new Modal("Blur",selection::blur));
 
@@ -177,7 +178,7 @@ Project::Project(GLFWwindow* window) {
 	//set_terrain_shader(draw_grayscale);
 	appearanceWindow->setShader(this);
 
-	file_new(500,500);
+	file_new(1000,500);
 }
 
 void Project::update() {
@@ -260,7 +261,6 @@ void Project::apply(ShaderProgram *program, Texture *texture, std::vector<std::p
 
 void Project::bind_textures(ShaderProgram *program,std::vector<std::pair<Texture*,std::string>> l) {
 	int i=0;
-	std::cout << "BINDING TEXTUERS\n";
 	for (auto t : textures) t->bind(program,i++);
 	for (auto p : l) p.first->bind(program,i++,p.second);
 }

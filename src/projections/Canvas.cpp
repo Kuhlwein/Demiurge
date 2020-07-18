@@ -131,8 +131,6 @@ void AbstractCanvas::pan(float dx, float dy) {
 void AbstractCanvas::update() {
 	ImGuiIO io = ImGui::GetIO();
 
-	//if(io.WantCaptureMouse) return;
-
 	if(io.MouseDown[1]) {
 		float dx = io.MouseDelta.x, dy=io.MouseDelta.y;
 		pan(dx,dy);
