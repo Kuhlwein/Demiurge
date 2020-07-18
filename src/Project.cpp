@@ -260,6 +260,7 @@ void Project::apply(ShaderProgram *program, Texture *texture, std::vector<std::p
 
 void Project::bind_textures(ShaderProgram *program,std::vector<std::pair<Texture*,std::string>> l) {
 	int i=0;
+	std::cout << "BINDING TEXTUERS\n";
 	for (auto t : textures) t->bind(program,i++);
 	for (auto p : l) p.first->bind(program,i++,p.second);
 }

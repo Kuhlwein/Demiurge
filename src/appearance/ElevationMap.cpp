@@ -25,13 +25,17 @@ uniform sampler2D gradient_land_SID;
 uniform sampler2D gradient_ocean_SID;
 uniform float scale_SID;
 )"),replaceSID(R"(
+
 float h_SID = texture(img, st_p).r/scale_SID;
 if (h_SID>0) {
     vec4 k = texture(gradient_land_SID,vec2(h_SID,0));
     fc = fc*(1-k.a) + k*(k.a);
 } else {
-    fc = texture(gradient_ocean_SID,vec2(1+h_SID,0));
+    vec4 k = texture(gradient_ocean_SID,vec2(1+h_SID,0));
+	fc = fc*(1-k.a) + k*(k.a);
 }
+
+
 )"));
 
 }

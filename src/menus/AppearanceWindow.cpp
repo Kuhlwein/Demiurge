@@ -10,6 +10,7 @@
 #include <appearance/Graticules.h>
 #include <iostream>
 #include <appearance/Hillshade.h>
+#include <appearance/AspectMap.h>
 #include "AppearanceWindow.h"
 
 
@@ -31,6 +32,7 @@ AppearanceWindow::AppearanceWindow(std::string title) : Window(title, [this](Pro
 		if (ImGui::Selectable("Graticules")) add(new Graticules(),p);
 		if (ImGui::Selectable("Elevation map")) add(new ElevationMap(),p);
 		if (ImGui::Selectable("Hillshade")) add(new Hillshade(),p);
+		if (ImGui::Selectable("Aspect map")) add(new AspectMap(),p);
 		ImGui::EndPopup();
 	}
 
@@ -103,6 +105,7 @@ void AppearanceWindow::setShader(Project* p) {
 	}
 	auto shader = shaderbuilder.create();
 	p->set_terrain_shader(shader);
+	std::cout << shader->getCode() << "\n";
 	//prepare(p);
 }
 

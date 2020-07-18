@@ -147,7 +147,6 @@ float dy = dFdy(st.y);
 
 static Shader* draw_normal = Shader::builder()
 		.include(fragmentColor)
-		.include(deltaxy)
 		.create(R"(
 vec2 deltax = vec2(1,0)/textureSize(img,0);
 vec2 deltay = vec2(0,1)/textureSize(img,0);
@@ -204,7 +203,6 @@ off3.x = off3.x/cos(abs(phi)+0.01);
 
 
 static Shader* brush_outline = Shader::builder()
-        .include(deltaxy)
         .create(R"(
 void draw_brush_outline(inout vec4 fc, in vec2 st) {
 float r = geodistance(mouse,st,textureSize(img,0));
@@ -251,7 +249,6 @@ if (r<ydiff) fc = fc*(1-w*grat_color.w) + grat_color*(w*grat_color.w);
 )","");
 
 static Shader* selection_outline = Shader::builder()
-        .include(deltaxy)
         .create(R"(
 uniform float u_time;
 void draw_selection_outline(inout vec4 fc, in vec2 st) {
@@ -262,7 +259,7 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
     float y1 = texture(sel, st-vec2(0,dy2)).r;
     float y2 = texture(sel, st+vec2(0,dy2)).r;
 
-    float k = round(dx*20000);
+    float k = round(dx2*20000);
     float test = round(mod(gl_FragCoord.x/8-gl_FragCoord.y/8+u_time,1));
 
     if (abs(x1-mod(x1,0.2)-(x2-mod(x2,0.2)))>0) fc = vec4(test,test,test,0);
@@ -270,6 +267,33 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
 }
 )","draw_selection_outline(fc,st_p);");
 
+
+static Shader* texturespace_gradient = Shader::builder()
+		.create(R"(
+void get_texture_gradient(inout float delta_x, inout float delta_y) {
+vec2 texture_stepsize_x = vec2(1,0)/textureSize(img,0);
+vec2 texture_stepsize_y = vec2(0,1)/textureSize(img,0);
+
+float x1 = texture(img, projection(st)-texture_stepsize_x).r;
+float x2 = texture(img, projection(st)+texture_stepsize_x).r;
+float y1 = texture(img, projection(st)-texture_stepsize_y).r;
+float y2 = texture(img, projection(st)+texture_stepsize_y).r;
+
+delta_x = x1-x2;
+delta_y = y2-y1;
+}
+float delta_x;
+float delta_y;
+)","get_texture_gradient(delta_x,delta_y);");
+
+static Shader* get_aspect = Shader::builder()
+		.include(def_pi)
+		.include(texturespace_gradient)
+		.create(R"(
+float get_aspect() {
+return M_PI-atan(delta_y, -(delta_x));
+}
+)","");
 
 
 
