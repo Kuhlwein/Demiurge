@@ -14,11 +14,6 @@ public:
 	FreeSelectModal();
 	bool update_self(Project* p);
 
-private:
-	bool first_mouseclick = true;
-	glm::vec2 first_mousepos;
-	ShaderProgram* program;
-
 };
 
 

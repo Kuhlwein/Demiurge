@@ -10,6 +10,7 @@
 #include <set>
 #include <stack>
 #include <menus/AppearanceWindow.h>
+#include <filter/Filter.h>
 
 
 #include "edit.h"
@@ -83,9 +84,13 @@ public:
 	glm::vec2 getMouse();
 	glm::vec2 getMousePrev();
 
-	void setFilterView(bool b, Shader* s);
 
+	void NEW_dispatchFilter(Filter* filter);
+	void finalizeFilter();
 private:
+	bool NEW_is_filtering = false;
+	Filter* NEW_filter;
+
 	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};
     GLFWwindow* window;
 	Texture* terrain = nullptr;
@@ -94,8 +99,8 @@ private:
     Texture* selection = nullptr;
 
     Shader* terrain_shader;
-    Shader* tmp_filter_shader;
-    bool using_filter_shader=false;
+    //Shader* tmp_filter_shader;
+    //bool using_filter_shader=false;
     GeometryShader* geometryShader;
     AppearanceWindow* appearanceWindow;
 

@@ -205,6 +205,7 @@ void Project::update() {
 	}
 
 	if (is_filtering) run_filter();
+	if (NEW_is_filtering) NEW_filter->run(this);
 
     canvas->update();
 
@@ -328,8 +329,8 @@ void Project::update_terrain_shader() {
 			.include(canvas->projection_shader())
 			.include(terrain_shader);
 
-			if (using_filter_shader) {
-				builder.include(tmp_filter_shader);
+			if (NEW_is_filtering) {
+				builder.include(NEW_filter->getShader());
 			}
 
 			Shader* shader = builder
@@ -513,9 +514,16 @@ glm::vec2 Project::getMousePrev() {
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
 }
 
-void Project::setFilterView(bool b, Shader *s) {
-	using_filter_shader = b;
-	tmp_filter_shader = s;
+void Project::NEW_dispatchFilter(Filter *filter) {
+	NEW_is_filtering = true;
+	NEW_filter = filter;
+	update_terrain_shader();
+
+}
+
+void Project::finalizeFilter() {
+	NEW_is_filtering = false;
+	NEW_filter = new NoneFilter();
 	update_terrain_shader();
 }
 
