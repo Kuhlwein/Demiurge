@@ -23,7 +23,7 @@ uniform float zenith_SID;
 uniform float azimuth_SID;
 uniform sampler2D gradient_hillshade_SID;
 )"),replaceSID(R"(
-
+{
 float slope =  get_slope(z_factor_SID);
 float aspect = get_aspect();
 
@@ -32,6 +32,7 @@ float hillshade = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope
 
 vec4 k = texture(gradient_hillshade_SID,vec2(hillshade,0));
 fc = fc*(1-k.a) + k*(k.a);
+}
 )"));
 }
 
