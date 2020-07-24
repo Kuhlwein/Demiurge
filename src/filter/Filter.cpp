@@ -4,6 +4,7 @@
 
 #include "Project.h"
 #include <Shader.h>
+#include <iostream>
 #include "Filter.h"
 
 
@@ -116,6 +117,9 @@ void FreeSelectFilter::run(Project *p) {
 		glUniform2f(id, first_mousepos.x, first_mousepos.y);
 		p->apply(program, p->get_scratch1());
 		p->get_scratch2()->swap(p->get_scratch1());
+
+		//float* data = (float*)p->get_terrain()->downloadData();
+		//std::cout << data[0] << "\n";
 	}
 	} else {
 		ShaderProgram *program = ShaderProgram::builder()

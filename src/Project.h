@@ -11,6 +11,7 @@
 #include <stack>
 #include <menus/AppearanceWindow.h>
 #include <filter/Filter.h>
+#include <geometry/Geometry.h>
 
 
 #include "edit.h"
@@ -74,8 +75,10 @@ public:
 	void redo();
 	void add_history(UndoHistory* h);
 
-	void setGeometryShader(GeometryShader* g);
-	GeometryShader* getGeometryShader();
+	//void setGeometryShader(GeometryShader* g);
+	//GeometryShader* getGeometryShader();
+	void setGeometry(Geometry* g);
+	Geometry* getGeometry();
 
 
 	void setCoords(std::vector<float> v);
@@ -101,7 +104,8 @@ private:
     Shader* terrain_shader;
     //Shader* tmp_filter_shader;
     //bool using_filter_shader=false;
-    GeometryShader* geometryShader;
+    //GeometryShader* geometryShader;
+    Geometry* geometry;
     AppearanceWindow* appearanceWindow;
 
 

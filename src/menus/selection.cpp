@@ -104,9 +104,10 @@ bool selection::blur(Project *p) {
 				.link();
 		p->apply(program,t1,{{p->get_terrain(),"to_be_copied"}});
 
+		//TODO FIX
 		Shader* fragment_set = Shader::builder()
 				.include(fragmentBase)
-				.include(p->getGeometryShader()->get_shader())
+				//.include(p->getGeometryShader()->get_shader())
 				.include(blur13)
 				.create("uniform vec2 direction;",R"(
 fc = blur13(img,st,direction);

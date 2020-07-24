@@ -157,7 +157,7 @@ void BrushWindow::brush(Project* p, glm::vec2 pos, glm::vec2 prev, bool flag) {
 
 	Shader* brush_shader = Shader::builder()
 			.include(fragmentBase)
-			.include(p->getGeometryShader()->get_shader())
+			.include(p->getGeometry()->brush_calc())
 			.create(R"(
 uniform float brush_flow;
 )",R"(
@@ -182,7 +182,8 @@ fc = texture(scratch2,st).r + brush_flow*(texture(sel,st).r*(texture(brush_tex,v
 	id = glGetUniformLocation(program2->getId(),"brush_flow");
 	glUniform1f(id,flow);
 
-	(p->getGeometryShader()->get_setup())(pos,prev,program2);
+
+	p->getGeometry()->setup_brush_calc(program2,pos,prev);
 
 	p->apply(program2,p->get_terrain());
 	p->get_terrain()->swap(p->get_scratch2());

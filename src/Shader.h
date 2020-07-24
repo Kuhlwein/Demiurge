@@ -203,6 +203,7 @@ off3.x = off3.x/cos(abs(phi)+0.01);
 
 
 static Shader* brush_outline = Shader::builder()
+		.include(mouseLocation)
         .create(R"(
 void draw_brush_outline(inout vec4 fc, in vec2 st) {
 float r = geodistance(mouse,st,textureSize(img,0));

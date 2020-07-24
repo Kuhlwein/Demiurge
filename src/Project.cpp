@@ -172,10 +172,9 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("Projections",projections);
 	windows.emplace_back("Windows",windows_menu);
 
-	geometryShader = new SphericalShader(this);
+	geometry = new SphericalGeometry(this);
 
 	canvas = new img(this);
-	//set_terrain_shader(draw_grayscale);
 	appearanceWindow->setShader(this);
 
 	file_new(1000,500);
@@ -226,8 +225,6 @@ void Project::update_self() {
 void Project::render() {
     program->bind();
     bind_textures(program);
-
-	(geometryShader->get_setup())(glm::vec2(0,0), glm::vec2(0,0),program);
 
     canvas->render();
 }
@@ -325,7 +322,7 @@ void Project::update_terrain_shader() {
 
 	Shader::builder builder = Shader::builder()
 			.include(fragmentColor)
-			.include(geometryShader->get_shader())
+			.include(geometry->distance())
 			.include(canvas->projection_shader())
 			.include(terrain_shader);
 
@@ -343,8 +340,6 @@ void Project::update_terrain_shader() {
 			.link();
 
 	appearanceWindow->prepare(this);
-
-
 }
 
 Texture *Project::get_selection() {
@@ -486,22 +481,12 @@ void Project::set_terrain_shader(Shader *s) {
 	update_terrain_shader();
 }
 
-void Project::setGeometryShader(GeometryShader *g) {
-	delete geometryShader;
-	geometryShader = g;
-	update_terrain_shader();
-}
-
 void Project::setCoords(std::vector<float> v) {
 	coords = v;
 }
 
 std::vector<float> Project::getCoords() {
 	return coords;
-}
-
-GeometryShader *Project::getGeometryShader() {
-	return geometryShader;
 }
 
 glm::vec2 Project::getMouse() {
@@ -525,6 +510,15 @@ void Project::finalizeFilter() {
 	NEW_is_filtering = false;
 	NEW_filter = new NoneFilter();
 	update_terrain_shader();
+}
+
+void Project::setGeometry(Geometry *g) {
+	geometry = g;
+	update_terrain_shader();
+}
+
+Geometry *Project::getGeometry() {
+	return geometry;
 }
 
 

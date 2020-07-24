@@ -402,7 +402,7 @@ namespace ImGui
         
         if(selectedMark)
         {
-            bool colorModified = ImGui::ColorEdit4("TODO: write something clever here",selectedMark->color,ImGuiColorEditFlags_AlphaBar);
+            bool colorModified = ImGui::ColorEdit4("Color",selectedMark->color,ImGuiColorEditFlags_AlphaBar);
             
             if(selectedMark && colorModified)
             {

@@ -18,7 +18,11 @@ void GradientMenu::update() {
 		ImGui::OpenPopup(name.c_str());
 	if (ImGui::BeginPopupModal(name.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		ImGui::GradientEditor(&gradient, draggingMark, selectedMark);
-		ImGui::Separator();
+		ImGui::SameLine();
+		if(ImGui::DragFloat("",&(selectedMark->position),0.01f,0.0f,1.0f,"Position: %.3f")) gradient.sortMarks();
+		ImGui::SameLine();
+		ImGui::Spacing();
+		ImGui::SameLine();
 		if (ImGui::Button("OK", ImVec2(120, 0))) {
 			ImGui::CloseCurrentPopup();
 		}

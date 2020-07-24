@@ -56,6 +56,11 @@ void img::render() {
 	id = glGetUniformLocation(programId,"worldMatrix");
 	glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(world));
 
+	id = glGetUniformLocation(programId,"cornerCoords");
+	auto v = project->getCoords();
+	for (auto &e : v) e=e/180.0f*M_PI;
+	glUniform1fv(id, 4, v.data());
+
 	id = glGetUniformLocation(programId,"u_time");
 	glUniform1f(id,(float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count())/1000);
 
