@@ -21,6 +21,7 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 #include <menus/FreeSelectModal.h>
+#include <geometry/SphericalGeometry.h>
 
 #include "projections/Orthographic.h"
 #include "projections/Mollweide.h"
@@ -203,7 +204,7 @@ void Project::update() {
 		for (Menu* w : p.second) w->update(this);
 	}
 
-	if (is_filtering) run_filter();
+	//if (is_filtering) run_filter();
 	if (NEW_is_filtering) NEW_filter->run(this);
 
     canvas->update();

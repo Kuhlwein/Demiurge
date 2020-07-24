@@ -13,7 +13,6 @@
 #include <filter/Filter.h>
 #include <geometry/Geometry.h>
 
-
 #include "edit.h"
 #include "ShaderProgram.h"
 #include "Vbo.h"
@@ -22,9 +21,6 @@
 #include "Menu.h"
 #include "Shader.h"
 #include "UndoHistory.h"
-
-
-
 
 class Project {
 public:
@@ -75,11 +71,8 @@ public:
 	void redo();
 	void add_history(UndoHistory* h);
 
-	//void setGeometryShader(GeometryShader* g);
-	//GeometryShader* getGeometryShader();
 	void setGeometry(Geometry* g);
 	Geometry* getGeometry();
-
 
 	void setCoords(std::vector<float> v);
 	std::vector<float> getCoords();

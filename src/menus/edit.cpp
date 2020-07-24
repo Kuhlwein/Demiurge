@@ -1,8 +1,9 @@
 //
 // Created by kuhlwein on 4/16/20.
 //
-#include <glm/ext.hpp>
 #include <iostream>
+#include <geometry/FlatGeometry.h>
+#include <geometry/SphericalGeometry.h>
 #include "Project.h"
 #include "edit.h"
 

@@ -22,44 +22,16 @@ public:
 	virtual void setup_brush_calc(ShaderProgram *program, glm::vec2 pos, glm::vec2 prev) = 0;
 	Shader* distance() { return distance_shader;};
 	Shader* offset() {return offset_shader;};
+	Shader* triangle() {return triangle_shader;};
+	virtual void setup_triangle(ShaderProgram* program, glm::vec2 a, glm::vec2 b, glm::vec2 c) = 0;
 
 protected:
 	Project* p;
 	Shader* brush_shader;
 	Shader* distance_shader;
 	Shader* offset_shader;
+	Shader* triangle_shader;
 };
 
-class PseudoFlatGeometry : public Geometry {
-public:
-	PseudoFlatGeometry(Project* p, std::string brush_code, std::string distance_code, std::string offset_code);
-	void setup_brush_calc(ShaderProgram *program, glm::vec2 pos, glm::vec2 prev) override;
-};
-
-class FlatGeometry : public PseudoFlatGeometry {
-public:
-	FlatGeometry(Project* p);
-};
-
-class WrapXGeometry : public PseudoFlatGeometry {
-public:
-	WrapXGeometry(Project* p);
-};
-
-class WrapYGeometry : public PseudoFlatGeometry {
-public:
-	WrapYGeometry(Project* p);
-};
-
-class WrapXYGeometry : public PseudoFlatGeometry {
-public:
-	WrapXYGeometry(Project* p);
-};
-
-class SphericalGeometry : public Geometry {
-public:
-	SphericalGeometry(Project* p);
-	void setup_brush_calc(ShaderProgram *program, glm::vec2 pos, glm::vec2 prev) override;
-};
 
 #endif //DEMIURGE_GEOMETRY_H
