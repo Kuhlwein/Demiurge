@@ -13,16 +13,14 @@
 #include "stb_image.h"
 #include "Texture.h"
 #include "Shader.h"
-#include "selection.h"
-#include "edit.h"
+#include "menus/selection.h"
 
 //todo remove
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
-#include <menus/FreeSelectModal.h>
-#include <geometry/SphericalGeometry.h>
-
+#include "menus/FreeSelectModal.h"
+#include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
 #include "projections/Mollweide.h"
 #include "projections/Mercator.h"

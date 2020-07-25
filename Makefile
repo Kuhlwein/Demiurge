@@ -81,10 +81,10 @@ endif
 ##---------------------------------------------------------------------
 
 %.o:src/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/menus/ -I src/
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/
 
 %.o:src/*/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/menus/ -I src/
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/
 
 %.o:src/imgui/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<

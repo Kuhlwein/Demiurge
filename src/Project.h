@@ -14,7 +14,7 @@
 #include <geometry/Geometry.h>
 #include <bits/unique_ptr.h>
 
-#include "edit.h"
+#include "menus/edit.h"
 #include "ShaderProgram.h"
 #include "Vbo.h"
 #include "projections/Canvas.h"
