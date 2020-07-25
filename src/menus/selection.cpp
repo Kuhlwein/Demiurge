@@ -91,6 +91,20 @@ fc = 1-texture(sel,st).r;
 	return true;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 bool selection::blur(Project *p) {
 	static float radius = 1;
 	static float first = true;

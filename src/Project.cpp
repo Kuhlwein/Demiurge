@@ -205,7 +205,7 @@ void Project::update() {
 	}
 
 	//if (is_filtering) run_filter();
-	if (NEW_is_filtering) NEW_filter->run(this);
+	if (NEW_is_filtering) NEW_filter->run();
 
     canvas->update();
 
@@ -500,16 +500,17 @@ glm::vec2 Project::getMousePrev() {
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
 }
 
-void Project::NEW_dispatchFilter(Filter *filter) {
+void Project::NEW_dispatchFilter(std::unique_ptr<Filter> filter) {
 	NEW_is_filtering = true;
-	NEW_filter = filter;
+	NEW_filter = std::move(filter);
 	update_terrain_shader();
 
 }
 
 void Project::finalizeFilter() {
+	NEW_filter->finalize();
 	NEW_is_filtering = false;
-	NEW_filter = new NoneFilter();
+	NEW_filter = std::make_unique<NoneFilter>();
 	update_terrain_shader();
 }
 

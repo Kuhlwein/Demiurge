@@ -6,14 +6,27 @@
 #define DEMIURGE_FREESELECTMODAL_H
 
 
-#include <Menu.h>
+
 #include <glm/glm.hpp>
+#include <Menu.h>
+#include <filter/Filter.h>
 
 class FreeSelectModal : public Modal {
 public:
 	FreeSelectModal();
 	bool update_self(Project* p);
+};
 
+class FreeSelectFilter : public BackupFilter {
+public:
+	FreeSelectFilter(Project *p);
+	~FreeSelectFilter();
+	void run() override;
+	void finalize() override;
+	Shader* getShader() override;
+private:
+	glm::vec2 first_mousepos;
+	ShaderProgram* program;
 };
 
 

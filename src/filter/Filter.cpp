@@ -6,82 +6,44 @@
 #include <Shader.h>
 #include <iostream>
 #include "Filter.h"
+#include "Texture.h"
 
+BackupFilter::BackupFilter(Project *p, std::function<Texture *(Project *p)> target) : Filter(p) {
+	this->target = target;
+	std::cout << "creating backup\n";
+	tmp = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"tmp");
 
-FreeSelectFilter::FreeSelectFilter(Project* p) {
-	first_mousepos = p->getMouse();
-
-	Shader* shader = Shader::builder()
-			.include(p->getGeometry()->triangle())
-			.create("",R"(
-if (free_select(mouseFirst,mouse,mousePrev)) {
-	fc = 1.0 - texture(scratch2,vec2(st)).r;
-} else {
-	fc = texture(scratch2,vec2(st)).r;
-}
-)");
-
-	program = ShaderProgram::builder()
+	ShaderProgram *program_backup = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-
-	//INIT
-	ShaderProgram *program = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
-			.link();
-	program->bind();
-	int id = glGetUniformLocation(program->getId(),"value");
-	glUniform1f(id,0);
-	p->apply(program,p->get_scratch2());
+	p->apply(program_backup,tmp,{{target(p),"to_be_copied"}});
 }
 
-void FreeSelectFilter::run(Project *p) {
-	ImGuiIO io = ImGui::GetIO();
-
-	glm::vec2 texcoord = p->getMouse();
-	glm::vec2 texcoordPrev = p->getMousePrev();
-
-	bool a = texcoord != texcoordPrev;
-	a &= texcoord != first_mousepos;
-	a &= texcoordPrev != first_mousepos;
-
-	if (io.MouseDown[0]) {
-		if (a) {
-		program->bind();
-		p->getGeometry()->setup_triangle(program,first_mousepos,texcoord,texcoordPrev);
-
-		p->apply(program, p->get_scratch1());
-		p->get_scratch2()->swap(p->get_scratch1());
-
-		//float* data = (float*)p->get_terrain()->downloadData();
-		//std::cout << data[0] << "\n";
-	}
-	} else {
-		ShaderProgram *program = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-				.link();
-		p->apply(program,p->get_selection(),{{p->get_scratch2(),"to_be_copied"}});
-		p->finalizeFilter();
-	}
-}
-
-void FreeSelectFilter::finalize(Project *p) {
+BackupFilter::~BackupFilter() {
 
 }
 
-bool FreeSelectFilter::isfinished() {
-
-}
-
-Shader *FreeSelectFilter::getShader() {
-	static Shader* s = Shader::builder()
-			.create("",R"(
-float overlay = (1-texture(scratch1,st_p).r)*0.25;
-fc = fc*(1-overlay) + overlay*vec4(0);
+void BackupFilter::add_history() {
+	Shader *img_tmp_diff = Shader::builder()
+			.include(fragmentBase)
+			.create("uniform sampler2D  tmp; uniform sampler2D target;", R"(
+fc = texture(tmp,st).r - texture(target, st).r;
 )");
-	return s;
+	// find difference between backup and target
+	ShaderProgram *program2 = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(img_tmp_diff->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	p->add_texture(tmp);
+	p->apply(program2, p->get_scratch1(),{{target(p),"target"}});
+	p->remove_texture(tmp);
+	delete (tmp);
+	void *data = p->get_scratch1()->downloadData();
+
+	auto h = new SnapshotHistory(data,target);
+	p->add_history(h);
 }
+
+
 
