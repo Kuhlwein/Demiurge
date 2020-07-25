@@ -6,9 +6,10 @@
 #define DEMIURGE_SELECTION_H
 
 class Project;
+class Shader;
 
 namespace selection {
-	bool set(Project* project, float value);
+	Shader* selection_mode();
 	bool by_height(Project* p);
 	bool invert(Project* p);
 	bool blur(Project* p);

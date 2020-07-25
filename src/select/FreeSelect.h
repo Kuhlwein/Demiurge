@@ -2,8 +2,8 @@
 // Created by kuhlwein on 7/18/20.
 //
 
-#ifndef DEMIURGE_FREESELECTMODAL_H
-#define DEMIURGE_FREESELECTMODAL_H
+#ifndef DEMIURGE_FREESELECT_H
+#define DEMIURGE_FREESELECT_H
 
 
 
@@ -11,15 +11,15 @@
 #include <Menu.h>
 #include <filter/Filter.h>
 
-class FreeSelectModal : public Modal {
+class FreeSelect : public Modal {
 public:
-	FreeSelectModal();
+	FreeSelect();
 	bool update_self(Project* p);
 };
 
 class FreeSelectFilter : public BackupFilter {
 public:
-	FreeSelectFilter(Project *p);
+	FreeSelectFilter(Project *p, Shader* mode);
 	~FreeSelectFilter();
 	void run() override;
 	void finalize() override;
@@ -27,7 +27,8 @@ public:
 private:
 	glm::vec2 first_mousepos;
 	ShaderProgram* program;
+	Shader* mode;
 };
 
 
-#endif //DEMIURGE_FREESELECTMODAL_H
+#endif //DEMIURGE_FREESELECT_H

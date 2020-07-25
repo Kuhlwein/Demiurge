@@ -16,13 +16,15 @@ class Filter {
 public:
 	Filter(Project* p) {
 		this->p = p;
+		noneshader = Shader::builder().create("","");
 	}
 	virtual ~Filter() = default;
 	virtual void run() = 0;
 	virtual void finalize() = 0;
-	virtual Shader* getShader() = 0;
+	virtual Shader* getShader() {return noneshader;};
 protected:
 	Project* p;
+	Shader* noneshader;
 };
 
 class NoneFilter : public Filter {

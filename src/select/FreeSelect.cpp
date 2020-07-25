@@ -6,17 +6,20 @@
 #include <Shader.h>
 #include <bits/unique_ptr.h>
 #include <iostream>
-#include "FreeSelectModal.h"
+#include "FreeSelect.h"
+#include "selection.h"
 
 
-FreeSelectModal::FreeSelectModal() : Modal("Free select", [this](Project* p) {
+FreeSelect::FreeSelect() : Modal("Free select", [this](Project* p) {
 	return this->update_self(p);
 }) {
 
 }
 
-bool FreeSelectModal::update_self(Project *p) {
+bool FreeSelect::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
+
+	Shader* mode = selection::selection_mode();
 
 	if(ImGui::Button("Ok")) {
 		return true;
@@ -24,15 +27,15 @@ bool FreeSelectModal::update_self(Project *p) {
 
 	bool a = ImGui::IsAnyWindowHovered() || ImGui::IsAnyItemHovered();
 	if(!a && io.MouseDown[0] && io.MouseDownDuration[0]==0) {
-		p->NEW_dispatchFilter(std::move(std::make_unique<FreeSelectFilter>(p)));
+		p->NEW_dispatchFilter(std::move(std::make_unique<FreeSelectFilter>(p,mode)));
 	}
 
 	return false;
 }
 
-FreeSelectFilter::FreeSelectFilter(Project *p) : BackupFilter(p,[](Project* p) {return p->get_selection();}) {
+FreeSelectFilter::FreeSelectFilter(Project *p, Shader* mode) : BackupFilter(p,[](Project* p) {return p->get_selection();}) {
 	first_mousepos = p->getMouse();
-
+	this->mode = mode;
 
 	Shader* shader = Shader::builder()
 			.include(p->getGeometry()->triangle())
@@ -91,6 +94,7 @@ void FreeSelectFilter::finalize() {
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.include(p->getGeometry()->offset())
+			.include(mode)
 			.create("",R"(
 float a = 0;
 a += texture(scratch2,offset(st, vec2(1,0), textureSize(img,0))).r;
@@ -98,8 +102,10 @@ a += texture(scratch2,offset(st, vec2(-1,0), textureSize(img,0))).r;
 a += texture(scratch2,offset(st, vec2(0,1), textureSize(img,0))).r;
 a += texture(scratch2,offset(st, vec2(0,-1), textureSize(img,0))).r;
 
-fc = a==0 ? 0 : texture(scratch2, st).r;
-fc = a==4 ? 1 : fc;
+float val = a==0 ? 0 : texture(scratch2, st).r;
+val = a==4 ? 1 : val;
+
+fc = selection_mode(texture(sel,st).r,val);
 )");
 
 
@@ -108,7 +114,8 @@ fc = a==4 ? 1 : fc;
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-	p->apply(program,p->get_selection());
+	p->apply(program,p->get_scratch1());
+	p->get_scratch1()->swap(p->get_selection());
 
 	add_history();
 }

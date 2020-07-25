@@ -9,7 +9,7 @@
 ///
 /// Include <glm/gtc/color_space.hpp> to use the features of this extension.
 ///
-/// Allow to perform bit operations on integer values
+/// Inverseow to perform bit operations on integer values
 
 #pragma once
 

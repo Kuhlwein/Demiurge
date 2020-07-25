@@ -13,13 +13,15 @@
 #include "stb_image.h"
 #include "Texture.h"
 #include "Shader.h"
-#include "menus/selection.h"
+#include "select/selection.h"
 
 //todo remove
 
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
-#include "menus/FreeSelectModal.h"
+#include <select/AllSelect.h>
+#include <select/InverseSelect.h>
+#include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
 #include "projections/Mollweide.h"
@@ -155,11 +157,10 @@ Project::Project(GLFWwindow* window) {
 
 	//SubMenu* sub = new SubMenu("test submenu");
 
-	selection_menu.push_back(new Menu("All", [](Project* p){return selection::set(p,1.0f);}));
-	selection_menu.push_back(new Menu("None", [](Project* p){return selection::set(p,0.0f);}));
-	selection_menu.push_back(new Menu("Invert",selection::invert));
+	selection_menu.push_back(new AllSelect());
+	selection_menu.push_back(new InverseSelect());
 	selection_menu.push_back(new Modal("By height", selection::by_height));
-	selection_menu.push_back(new FreeSelectModal());
+	selection_menu.push_back(new FreeSelect());
 	selection_menu.push_back(new SeparatorMenu());
 	selection_menu.push_back(new Modal("Blur",selection::blur));
 
