@@ -58,12 +58,7 @@ return length(vec2(x,y));
 }
 )","");
 
-	offset_shader = Shader::builder().create(R"(
-vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
-)"+offset_code+R"(
-	return p+dp/resolution;
-}
-)","");
+	offset_shader = Shader::builder().create(offset_code,"");
 
 	triangle_shader = Shader::builder()
 			.include(fragmentBase)
@@ -111,7 +106,10 @@ void PseudoFlatGeometry::setup_triangle(ShaderProgram *program, glm::vec2 a, glm
 FlatGeometry::FlatGeometry(Project *p) : PseudoFlatGeometry(p,"",R"(
 float x = diff.x;
 float y = diff.y;
-)","","") {
+)",R"(vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
+p = p+dp/resolution;
+return p;
+})","") {
 
 }
 

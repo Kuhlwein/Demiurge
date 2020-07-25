@@ -183,12 +183,12 @@ float blur13(sampler2D image, vec2 uv, vec2 direction) {
   float color = 0.0f;
   vec2 resolution = textureSize(image,0);
   vec2 off1 = vec2(1.411764705882353) * direction;
-float phi = (uv.y-0.5)*3.14159;
-off1.x = off1.x/cos(abs(phi)+0.01);
+//float phi = (uv.y-0.5)*3.14159;
+//off1.x = off1.x/cos(abs(phi)+0.01);
   vec2 off2 = vec2(3.2941176470588234) * direction;
-off2.x = off2.x/cos(abs(phi)+0.01);
+//off2.x = off2.x/cos(abs(phi)+0.01);
   vec2 off3 = vec2(5.176470588235294) * direction;
-off3.x = off3.x/cos(abs(phi)+0.01);
+//off3.x = off3.x/cos(abs(phi)+0.01);
   color += texture2D(image, uv).r * 0.1964825501511404;
   color += texture2D(image, offset(uv, off1,resolution)).r * 0.2969069646728344;
   color += texture2D(image, offset(uv,-off1,resolution)).r * 0.2969069646728344;

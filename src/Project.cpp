@@ -21,6 +21,7 @@
 #include <imgui/imgui.h>
 #include <select/AllSelect.h>
 #include <select/InverseSelect.h>
+#include <filter/Blur.h>
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
@@ -159,17 +160,21 @@ Project::Project(GLFWwindow* window) {
 
 	selection_menu.push_back(new AllSelect());
 	selection_menu.push_back(new InverseSelect());
-	selection_menu.push_back(new Modal("By height", selection::by_height));
+	//selection_menu.push_back(new Modal("By height", selection::by_height));
 	selection_menu.push_back(new FreeSelect());
-	selection_menu.push_back(new SeparatorMenu());
-	selection_menu.push_back(new Modal("Blur",selection::blur));
+	//selection_menu.push_back(new SeparatorMenu());
+	//selection_menu.push_back(new Modal("Blur",selection::blur));
 
 	//selection_menu.push_back(sub);
+
+	std::vector<Menu*> filter_menu = {};
+	filter_menu.push_back(new Blur());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
 	windows.emplace_back("Select",selection_menu);
 	windows.emplace_back("Projections",projections);
+	windows.emplace_back("Filter",filter_menu);
 	windows.emplace_back("Windows",windows_menu);
 
 	geometry = new SphericalGeometry(this);

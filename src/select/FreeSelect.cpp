@@ -21,7 +21,7 @@ bool FreeSelect::update_self(Project *p) {
 
 	Shader* mode = selection::selection_mode();
 
-	if(ImGui::Button("Ok")) {
+	if(ImGui::Button("Close")) {
 		return true;
 	}
 

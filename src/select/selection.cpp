@@ -118,25 +118,7 @@ fc = 0.0f;
 	return false;
 };
 
-bool selection::invert(Project *p) {
-	auto f = [](Project* p) mutable {
-		Shader* fragment_set = Shader::builder()
-				.include(fragmentBase)
-				.create(R"(
-)",R"(
-fc = 1-texture(sel,st).r;
-)");
-		ShaderProgram *program = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
-				.link();
-		program->bind();
-		p->apply(program,p->get_selection());
-		return 2.0;
-	};
-	p->add_reversible_filter(f, f);
-	return true;
-}
+
 
 
 

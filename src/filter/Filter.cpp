@@ -27,7 +27,7 @@ BackupFilter::~BackupFilter() {
 void BackupFilter::add_history() {
 	Shader *img_tmp_diff = Shader::builder()
 			.include(fragmentBase)
-			.create("uniform sampler2D  tmp; uniform sampler2D target;", R"(
+			.create("uniform sampler2D tmp; uniform sampler2D target;", R"(
 fc = texture(tmp,st).r - texture(target, st).r;
 )");
 	// find difference between backup and target
@@ -43,6 +43,25 @@ fc = texture(tmp,st).r - texture(target, st).r;
 
 	auto h = new SnapshotHistory(data,target);
 	p->add_history(h);
+}
+
+void BackupFilter::restoreUnselected() {
+	Shader* shader = Shader::builder()
+			.include(fragmentBase)
+			.create("uniform sampler2D to_be_copied; uniform sampler2D tmp;",R"(
+{
+float s = texture(sel,st).r;
+fc = s*texture(to_be_copied, st).r + (1-s)*texture(tmp, st).r;
+}
+)");
+	ShaderProgram *program = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	p->add_texture(tmp);
+	p->apply(program,p->get_scratch1(),{{p->get_terrain(),"to_be_copied"}});
+	p->remove_texture(tmp);
+	p->get_terrain()->swap(p->get_scratch1());
 }
 
 

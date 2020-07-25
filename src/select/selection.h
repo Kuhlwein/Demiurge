@@ -11,7 +11,6 @@ class Shader;
 namespace selection {
 	Shader* selection_mode();
 	bool by_height(Project* p);
-	bool invert(Project* p);
 	bool blur(Project* p);
 }
 

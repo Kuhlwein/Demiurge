@@ -41,6 +41,7 @@ public:
 	BackupFilter(Project* p, std::function<Texture *(Project *p)> target);
 	virtual ~BackupFilter();
 	void add_history();
+	void restoreUnselected();
 private:
 	Texture* tmp;
 	std::function<Texture *(Project *p)> target;
