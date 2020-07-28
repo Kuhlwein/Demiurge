@@ -51,3 +51,38 @@ bool FilterModal::update_FilterModal(Project *p) {
 
 	return false;
 }
+
+FilterMenu::FilterMenu(std::string title) : Menu(title,[this](Project* p) {
+	auto t = targetGetter();
+	auto tmp = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"tmp");
+
+	ShaderProgram *program_backup = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	p->apply(program_backup,tmp,{{t(p),"to_be_copied"}});
+
+	this->filter(p);
+
+	Shader *img_tmp_diff = Shader::builder()
+			.include(fragmentBase)
+			.create("uniform sampler2D tmp; uniform sampler2D target;", R"(
+fc = texture(tmp,st).r - texture(target, st).r;
+)");
+	// find difference between backup and target
+	ShaderProgram *program2 = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(img_tmp_diff->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	p->add_texture(tmp);
+	p->apply(program2, p->get_scratch1(),{{t(p),"target"}});
+	p->remove_texture(tmp);
+	void *data = p->get_scratch1()->downloadData();
+
+	auto h = new SnapshotHistory(data,targetGetter());
+	p->add_history(h);
+	return true;
+}) {
+
+}
+

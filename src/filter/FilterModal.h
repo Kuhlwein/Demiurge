@@ -22,5 +22,13 @@ private:
 	bool previewing = false;
 };
 
+class FilterMenu : public Menu {
+public:
+	FilterMenu(std::string title);
+protected:
+	virtual void filter(Project* p) = 0;
+	virtual std::function<Texture *(Project *p)> targetGetter() = 0;
+};
+
 
 #endif //DEMIURGE_FILTERMODAL_H

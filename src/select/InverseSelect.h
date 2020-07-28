@@ -7,22 +7,15 @@
 
 #include <Menu.h>
 #include <filter/Filter.h>
+#include <filter/FilterModal.h>
 
-class InverseSelect : public Modal {
+class InverseSelect : public FilterMenu {
 public:
 	InverseSelect();
-	bool update_self(Project* p);
+	void filter(Project* p) override;
+	std::function<Texture *(Project *p)> targetGetter() override;
 };
 
-class SelectInverseFilter : public BackupFilter {
-public:
-	SelectInverseFilter(Project *p);
-	~SelectInverseFilter();
-	void run() override;
-	bool isFinished() override;
-private:
-	ShaderProgram* program;
-};
 
 
 #endif //DEMIURGE_INVERSESELECT_H

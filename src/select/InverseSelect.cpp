@@ -6,20 +6,11 @@
 #include "InverseSelect.h"
 #include "Shader.h"
 
-
-InverseSelect::InverseSelect() : Modal("Inverse", [this](Project* p) {
-	return this->update_self(p);
-}) {
-
+std::function<Texture *(Project *p)> InverseSelect::targetGetter() {
+	return [](Project* p){return p->get_selection();};
 }
 
-bool InverseSelect::update_self(Project *p) {
-	auto filter = std::make_unique<SelectInverseFilter>(p);
-	filter->run();
-	return true;
-}
-
-SelectInverseFilter::SelectInverseFilter(Project *p) : BackupFilter(p,[](Project* p){return p->get_selection();}) {
+void InverseSelect::filter(Project *p) {
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.create(R"(
@@ -27,30 +18,18 @@ SelectInverseFilter::SelectInverseFilter(Project *p) : BackupFilter(p,[](Project
 fc = 1-texture(sel,st).r;
 )");
 
-	program = ShaderProgram::builder()
+	auto program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 	program->bind();
 	int id = glGetUniformLocation(program->getId(),"value");
 	glUniform1f(id,1.0);
-}
 
-SelectInverseFilter::~SelectInverseFilter() {
-
-}
-
-void SelectInverseFilter::run() {
 	p->apply(program,p->get_scratch1());
 	p->get_scratch1()->swap(p->get_selection());
-	add_history();
-	p->finalizeFilter();
 }
 
-bool SelectInverseFilter::isFinished() {
-	return false;
-}
+InverseSelect::InverseSelect() : FilterMenu("Inverse") {
 
-//void SelectInverseFilter::finalize() {
-//	add_history();
-//}
+}

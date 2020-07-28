@@ -7,22 +7,14 @@
 
 #include <Menu.h>
 #include <filter/Filter.h>
+#include <filter/FilterModal.h>
 
-class AllSelect : public Modal {
+class AllSelect : public FilterMenu {
 public:
+	void filter(Project* p) override;
+	std::function<Texture *(Project *p)> targetGetter() override;
 	AllSelect();
-	bool update_self(Project* p);
-};
-
-class SelectAllFilter : public BackupFilter {
-public:
-	SelectAllFilter(Project *p);
-	~SelectAllFilter();
-	void run() override;
-	//void finalize() override;
-	bool isFinished() override;
-private:
-	ShaderProgram* program;
+	//bool update_self(Project* p);
 };
 
 
