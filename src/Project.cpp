@@ -21,7 +21,7 @@
 #include <imgui/imgui.h>
 #include <select/AllSelect.h>
 #include <select/InverseSelect.h>
-#include <filter/Blur.h>
+#include <filter/BlurMenu.h>
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
@@ -168,7 +168,7 @@ Project::Project(GLFWwindow* window) {
 	//selection_menu.push_back(sub);
 
 	std::vector<Menu*> filter_menu = {};
-	filter_menu.push_back(new Blur());
+	filter_menu.push_back(new BlurMenu());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
@@ -177,10 +177,14 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("Filter",filter_menu);
 	windows.emplace_back("Windows",windows_menu);
 
+	NEW_filter = std::make_unique<NoneFilter>();
+
 	geometry = new SphericalGeometry(this);
 
 	canvas = new img(this);
 	appearanceWindow->setShader(this);
+
+
 
 	file_new(1000,500);
 }
@@ -209,7 +213,7 @@ void Project::update() {
 	}
 
 	//if (is_filtering) run_filter();
-	if (NEW_is_filtering) NEW_filter->run();
+	NEW_filter->run();
 
     canvas->update();
 
@@ -331,9 +335,7 @@ void Project::update_terrain_shader() {
 			.include(canvas->projection_shader())
 			.include(terrain_shader);
 
-			if (NEW_is_filtering) {
-				builder.include(NEW_filter->getShader());
-			}
+			builder.include(NEW_filter->getShader());
 
 			Shader* shader = builder
 			.include(brush_outline)
@@ -400,44 +402,44 @@ void Project::add_filter(std::function<float(Project *p)> s, std::function<Textu
 }
 
 void Project::run_filter() {
-	float o = filter(this);
-	if (o<1.0f) {
-		auto load = [o](Project* p) {
-			ImGui::ProgressBar(o,ImVec2(360,0));
-			return ImGui::Button("Cancel");
-		};
-		Menu* w = new Modal("Applying filter", load); //MEMORY LEAK HERE PROBABLY
-		w->open();
-		bool open = w->update(this);
-		delete w;
-
-		if (!open) {
-			is_filtering = false;
-			filter_target(this)->swap(tmp);
-			delete tmp;
-		}
-
-	} else {
-		Shader *img_tmp_diff = Shader::builder()
-				.include(fragmentBase)
-				.create("uniform sampler2D  tmp; uniform sampler2D target;", R"(
-fc = texture(tmp,st).r - texture(target, st).r;
-)");
-		// find difference between backup and target
-		ShaderProgram *program2 = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(img_tmp_diff->getCode(), GL_FRAGMENT_SHADER)
-				.link();
-		add_texture(tmp);
-		apply(program2, get_scratch1(),{{filter_target(this),"target"}});
-		remove_texture(tmp);
-		delete (tmp);
-		void *data = get_scratch1()->downloadData();
-
-		auto h = new SnapshotHistory(data,filter_target);
-		add_history(h);
-		is_filtering = false;
-	}
+//	float o = filter(this);
+//	if (o<1.0f) {
+//		auto load = [o](Project* p) {
+//			ImGui::ProgressBar(o,ImVec2(360,0));
+//			return ImGui::Button("Cancel");
+//		};
+//		Menu* w = new Modal("Applying filter", load); //MEMORY LEAK HERE PROBABLY
+//		w->open();
+//		bool open = w->update(this);
+//		delete w;
+//
+//		if (!open) {
+//			is_filtering = false;
+//			filter_target(this)->swap(tmp);
+//			delete tmp;
+//		}
+//
+//	} else {
+//		Shader *img_tmp_diff = Shader::builder()
+//				.include(fragmentBase)
+//				.create("uniform sampler2D  tmp; uniform sampler2D target;", R"(
+//fc = texture(tmp,st).r - texture(target, st).r;
+//)");
+//		// find difference between backup and target
+//		ShaderProgram *program2 = ShaderProgram::builder()
+//				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+//				.addShader(img_tmp_diff->getCode(), GL_FRAGMENT_SHADER)
+//				.link();
+//		add_texture(tmp);
+//		apply(program2, get_scratch1(),{{filter_target(this),"target"}});
+//		remove_texture(tmp);
+//		delete (tmp);
+//		void *data = get_scratch1()->downloadData();
+//
+//		auto h = new SnapshotHistory(data,filter_target);
+//		add_history(h);
+//		is_filtering = false;
+//	}
 }
 
 void Project::preview(std::function<float(Project* p)> s, std::function<Texture*(Project* p)> t) {
@@ -505,15 +507,15 @@ glm::vec2 Project::getMousePrev() {
 }
 
 void Project::NEW_dispatchFilter(std::unique_ptr<Filter> filter) {
-	NEW_is_filtering = true;
+	//NEW_is_filtering = true;
 	NEW_filter = std::move(filter);
 	update_terrain_shader();
 
 }
 
 void Project::finalizeFilter() {
-	NEW_filter->finalize();
-	NEW_is_filtering = false;
+	//NEW_filter->finalize();
+	//NEW_is_filtering = false;
 	NEW_filter = std::make_unique<NoneFilter>();
 	update_terrain_shader();
 }

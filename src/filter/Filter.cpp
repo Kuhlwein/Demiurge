@@ -21,7 +21,7 @@ BackupFilter::BackupFilter(Project *p, std::function<Texture *(Project *p)> targ
 }
 
 BackupFilter::~BackupFilter() {
-
+	delete (tmp);
 }
 
 void BackupFilter::add_history() {
@@ -38,7 +38,6 @@ fc = texture(tmp,st).r - texture(target, st).r;
 	p->add_texture(tmp);
 	p->apply(program2, p->get_scratch1(),{{target(p),"target"}});
 	p->remove_texture(tmp);
-	delete (tmp);
 	void *data = p->get_scratch1()->downloadData();
 
 	auto h = new SnapshotHistory(data,target);
@@ -64,5 +63,46 @@ fc = s*texture(to_be_copied, st).r + (1-s)*texture(tmp, st).r;
 	p->get_terrain()->swap(p->get_scratch1());
 }
 
+void BackupFilter::restoreBackup() {
+	target(p)->swap(tmp);
+}
 
 
+ProgressFilter::ProgressFilter(Project *p, std::function<Texture *(Project *)> target) : BackupFilter(p, target) {
+	progressModal = new Modal("Applying filter",[this](Project* p) {
+		ImGui::ProgressBar(this->progress,ImVec2(360,0));
+		bool a = ImGui::Button("Cancel");
+		if (a) {
+			aborting = true;
+		}
+		return a;
+	});
+	progressModal->open();
+}
+
+void ProgressFilter::progressBar(float a) {
+	progress = a;
+	progressModal->update(p);
+}
+
+void ProgressFilter::run() {
+	auto [finished, progress] = step();
+
+	progressBar(progress);
+
+	if (aborting) {
+		restoreBackup();
+		p->NEW_dispatchFilter(std::move(std::make_unique<NoneFilter>()));
+		return;
+	}
+
+	if(finished) {
+		restoreUnselected();
+		add_history();
+		p->finalizeFilter();
+	}
+}
+
+ProgressFilter::~ProgressFilter() {
+
+}

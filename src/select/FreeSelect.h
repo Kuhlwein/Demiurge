@@ -22,7 +22,7 @@ public:
 	FreeSelectFilter(Project *p, Shader* mode);
 	~FreeSelectFilter();
 	void run() override;
-	void finalize() override;
+	//void finalize() override;
 	Shader* getShader() override;
 private:
 	glm::vec2 first_mousepos;

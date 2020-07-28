@@ -20,13 +20,13 @@ uniform sampler2D gradient_slope_SID;
 uniform float z_factor_SID;
 )"),replaceSID(R"(
 
-
+{
 float slope =  get_slope(z_factor_SID)/M_PI*2;
 
 
 vec4 kk =  texture( gradient_slope_SID ,vec2(slope,0));
 fc = fc*(1-kk.a) + kk*(kk.a);
-
+}
 
 )"));
 }

@@ -20,7 +20,6 @@ public:
 	}
 	virtual ~Filter() = default;
 	virtual void run() = 0;
-	virtual void finalize() = 0;
 	virtual Shader* getShader() {return noneshader;};
 protected:
 	Project* p;
@@ -29,7 +28,6 @@ protected:
 
 class NoneFilter : public Filter {
 	void run() override {}
-	void finalize() override {}
 	virtual Shader* getShader() override {return Shader::builder().create("","");}
 public:
 	NoneFilter() : Filter(nullptr) {}
@@ -42,33 +40,37 @@ public:
 	virtual ~BackupFilter();
 	void add_history();
 	void restoreUnselected();
-private:
+	void restoreBackup();
+
+protected:
 	Texture* tmp;
 	std::function<Texture *(Project *p)> target;
 };
 
-//class FreeSelectFilter : public BackupFilter {
-//public:
-//	FreeSelectFilter(Project *p);
-//	~FreeSelectFilter();
-//	void run() override;
-//	void finalize() override;
-//	Shader* getShader() override;
-//private:
-//	glm::vec2 first_mousepos;
-//	ShaderProgram* program;
-//};
+class ProgressFilter : public BackupFilter {
+public:
+	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target);
+	virtual ~ProgressFilter();
+	void progressBar(float a);
+	virtual std::pair<bool,float> step() = 0;
+	void run() override;
+private:
+	float progress;
+	Modal* progressModal;
+	bool aborting = false;
+};
 
-//class SetSelectFilter : public Filter {
-//public:
-//	SetSelectFilter(Project* p);
-//	void run(Project* p) override;
-//	void finalize(Project* p) override;
-//	bool isfinished() override;
-//	Shader* getShader() override;
-//private:
-//	ShaderProgram* program;
-//};
+class SubFilter {
+public:
+	SubFilter(Project* p) {
+		this->p = p;
+	}
+	virtual std::pair<bool,float> step() = 0;
+protected:
+	Project* p;
+};
+
+
 
 
 #endif //DEMIURGE_FILTER_H

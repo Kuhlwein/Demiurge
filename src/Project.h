@@ -85,7 +85,7 @@ public:
 	void NEW_dispatchFilter(std::unique_ptr<Filter> filter);
 	void finalizeFilter();
 private:
-	bool NEW_is_filtering = false;
+	//bool NEW_is_filtering = false;
 	std::unique_ptr<Filter> NEW_filter;
 
 	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};

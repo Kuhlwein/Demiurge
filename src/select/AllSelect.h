@@ -19,7 +19,7 @@ public:
 	SelectAllFilter(Project *p);
 	~SelectAllFilter();
 	void run() override;
-	void finalize() override;
+	//void finalize() override;
 private:
 	ShaderProgram* program;
 };

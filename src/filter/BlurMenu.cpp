@@ -5,15 +5,16 @@
 #include "Project.h"
 #include <imgui/imgui.h>
 #include <algorithm>
-#include "Blur.h"
+#include <iostream>
+#include "BlurMenu.h"
 
-Blur::Blur() : Modal("Blur", [this](Project* p) {
+BlurMenu::BlurMenu() : Modal("Blur", [this](Project* p) {
 	return this->update_self(p);
 }) {
 
 }
 
-bool Blur::update_self(Project *p) {
+bool BlurMenu::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
@@ -25,12 +26,12 @@ bool Blur::update_self(Project *p) {
 			p->undo();
 		}
 		previewing = true;
-		p->NEW_dispatchFilter(std::move(std::make_unique<BlurFilter>(p,radius)));
+		p->NEW_dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
 		return false;
 	}
 	ImGui::SameLine();
 	if(ImGui::Button("Apply")) {
-		if (!previewing) p->NEW_dispatchFilter(std::move(std::make_unique<BlurFilter>(p,radius)));
+		if (!previewing) p->NEW_dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
 		previewing = false;
 		return true;
 	}
@@ -44,39 +45,31 @@ bool Blur::update_self(Project *p) {
 	return false;
 }
 
-
-
-
-BlurFilter::BlurFilter(Project *p, float radius) : BackupFilter(p,[](Project* p){return p->get_terrain();}) {
-	this->radius = radius;
+BlurTerrain::BlurTerrain(Project *p, float radius) : ProgressFilter(p, [](Project* p){return p->get_terrain();}) {
+	newblur = new Blur(p, radius, p->get_terrain());
 }
 
-BlurFilter::~BlurFilter() {
+BlurTerrain::~BlurTerrain() {
 
 }
 
-void BlurFilter::run() {
-	BlurFilter::blur(p,radius,p->get_terrain());
-	p->finalizeFilter();
+std::pair<bool, float> BlurTerrain::step() {
+	return newblur->step();
 }
 
-void BlurFilter::finalize() {
-	restoreUnselected();
-	add_history();
-}
+Blur::Blur(Project *p, float radius, Texture *target) : SubFilter(p) {
+	this->target = target;
 
-//Todo geometry for blur, also progress bar
-void BlurFilter::blur(Project *p, float radius, Texture *target) {
 	radius = radius/2; //radius vs diameter??
 	//Uses linear sampling
-	auto t1 = new Texture(target->getWidth(),target->getHeight(),GL_R32F,"img",GL_LINEAR);
-	auto t2 = new Texture(target->getWidth(),target->getHeight(),GL_R32F,"img",GL_LINEAR);
+	tex1 = new Texture(target->getWidth(),target->getHeight(),GL_R32F,"img",GL_LINEAR);
+	tex2 = new Texture(target->getWidth(),target->getHeight(),GL_R32F,"img",GL_LINEAR);
 
-	ShaderProgram *copyProgram = ShaderProgram::builder()
+	copyProgram = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-	p->apply(copyProgram, t1, {{target, "to_be_copied"}});
+	p->apply(copyProgram, tex1, {{target, "to_be_copied"}});
 
 	Shader* blurshader = Shader::builder()
 			.create(R"(
@@ -108,17 +101,15 @@ off3.x = off3.x/cos(abs(phi));
 			.create("uniform vec2 direction;",R"(
 fc = blur13(img,st,direction);
 )");
-	ShaderProgram *blurProgram = ShaderProgram::builder()
+	blurProgram = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 
-	int id = glGetUniformLocation(blurProgram->getId(), "direction");
 
 	//todo: needs work on consistensy at  low R
 	float R = radius*radius/2;
-	//std::cout << "R " << R << "\n";
-	std::vector<float> rlist = {};
+	rlist = {};
 	float i = 1.0f;
 	float incrementer = 0.5f;
 	if (R<3) {
@@ -133,23 +124,26 @@ fc = blur13(img,st,direction);
 	}
 	if (R>0.0f) rlist.push_back(sqrt(R));
 	std::sort(rlist.begin(),rlist.end());
+}
 
-	//std::cout << "begin: ";
-	//for (auto a : rlist) std::cout << a << " hej ";
+std::pair<bool,float> Blur::step() {
+	blurProgram->bind();
+	int id = glGetUniformLocation(blurProgram->getId(), "direction");
+	glUniform2f(id,0,rlist[i]);
+	p->apply(blurProgram, tex2, {{tex1, "img"}});
+	glUniform2f(id,rlist[i],0);
+	p->apply(blurProgram, tex1, {{tex2, "img"}});
 
-	for (float a : rlist) {
-		glUniform2f(id,0,a);
-		p->apply(blurProgram, t2, {{t1, "img"}});
-		glUniform2f(id,a,0);
-		p->apply(blurProgram, t1, {{t2, "img"}});
+	i++;
+
+	bool finished = false;
+
+	//Preview
+	//p->apply(copyProgram, target, {{tex1, "to_be_copied"}});
+	if(i>rlist.size()-1) {
+		p->apply(copyProgram, target, {{tex1, "to_be_copied"}});
+		finished = true;
 	}
 
-	p->apply(copyProgram, target, {{t1, "to_be_copied"}});
-
-	delete t1;
-	delete t2;
-	delete copyProgram;
-	delete blurProgram;
-	delete fragment_set;
-	delete blurshader;
+	return {finished,(float)(i)/(rlist.size())};
 }

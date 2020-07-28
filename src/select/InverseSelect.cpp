@@ -42,9 +42,10 @@ SelectInverseFilter::~SelectInverseFilter() {
 void SelectInverseFilter::run() {
 	p->apply(program,p->get_scratch1());
 	p->get_scratch1()->swap(p->get_selection());
+	add_history();
 	p->finalizeFilter();
 }
 
-void SelectInverseFilter::finalize() {
-	add_history();
-}
+//void SelectInverseFilter::finalize() {
+//	add_history();
+//}

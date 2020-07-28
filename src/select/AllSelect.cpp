@@ -33,9 +33,10 @@ SelectAllFilter::~SelectAllFilter() {
 
 void SelectAllFilter::run() {
 	p->apply(program,p->get_selection());
+	add_history();
 	p->finalizeFilter();
 }
 
-void SelectAllFilter::finalize() {
-	add_history();
-}
+//void SelectAllFilter::finalize() {
+//	add_history();
+//}

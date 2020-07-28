@@ -19,7 +19,7 @@ public:
 	SelectInverseFilter(Project *p);
 	~SelectInverseFilter();
 	void run() override;
-	void finalize() override;
+	//void finalize() override;
 private:
 	ShaderProgram* program;
 };
