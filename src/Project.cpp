@@ -13,7 +13,6 @@
 #include "stb_image.h"
 #include "Texture.h"
 #include "Shader.h"
-#include "select/selection.h"
 
 //todo remove
 
@@ -195,6 +194,8 @@ void Project::update() {
 		}
         ImGui::EndMainMenuBar();
     }
+
+
 	for(auto p : windows) {
 		for (Menu* w : p.second) w->update(this);
 	}
@@ -203,10 +204,6 @@ void Project::update() {
 
     canvas->update();
 
-	update_self();
-}
-
-void Project::update_self() {
 	ImGuiIO io = ImGui::GetIO();
 
 	int z_key = 47;
@@ -327,6 +324,7 @@ void Project::update_terrain_shader() {
 			.include(brush_outline)
 			.include(selection_outline)
 			.create();
+
 	program = ShaderProgram::builder()
 			.addShader(vertex3D->getCode(),GL_VERTEX_SHADER)
 			.addShader(shader->getCode(),GL_FRAGMENT_SHADER)
@@ -403,7 +401,6 @@ glm::vec2 Project::getMousePrev() {
 void Project::dispatchFilter(std::unique_ptr<Filter> filter) {
 	this->filter = std::move(filter);
 	update_terrain_shader();
-
 }
 
 void Project::finalizeFilter() {

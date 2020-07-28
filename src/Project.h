@@ -76,7 +76,6 @@ public:
 	glm::vec2 getMouse();
 	glm::vec2 getMousePrev();
 
-
 	void dispatchFilter(std::unique_ptr<Filter> filter);
 	void finalizeFilter();
 private:
@@ -93,7 +92,6 @@ private:
     Geometry* geometry;
     AppearanceWindow* appearanceWindow;
 
-
     Texture* tmp = nullptr;
 
     Vbo* vbo;
@@ -107,10 +105,7 @@ private:
 	std::stack<UndoHistory*> redo_list;
 	int current_layer;
 
-	void update_self();
-
     std::vector<std::pair<std::string,std::vector<Menu*>>> windows;
-
 };
 
 

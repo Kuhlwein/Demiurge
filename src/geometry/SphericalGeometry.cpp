@@ -87,25 +87,28 @@ vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 
 	triangle_shader = Shader::builder()
 			.include(fragmentBase)
+			.include(cornerCoords)
 			.include(mouseLocation)
 			.include(def_pi)
 			.create(R"(
 uniform vec2 mouseFirst;
 bool free_select(vec2 start, vec2 mouse, vec2 prev) {
-float phi = (mouse.y*2-1)*M_PI/2;
-float theta = (mouse.x*2-1)*M_PI;
+//float phi = (mouse.y*2-1)*M_PI/2;
+//float theta = (mouse.x*2-1)*M_PI;
+float phi = (mouse.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
+float theta = mouse.x*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
 vec3 A = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
 
-phi = (mousePrev.y*2-1)*M_PI/2;
-theta = (mousePrev.x*2-1)*M_PI;
+phi = (mousePrev.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
+theta = (mousePrev.x)*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
 vec3 B = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
 
-phi = (mouseFirst.y*2-1)*M_PI/2;
-theta = (mouseFirst.x*2-1)*M_PI;
+phi = (mouseFirst.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
+theta = (mouseFirst.x)*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
 vec3 C = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
 
-phi = (st.y*2-1)*M_PI/2;
-theta = (st.x*2-1)*M_PI;
+phi = (st.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
+theta = (st.x)*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
 vec3 P = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
 
 vec3 average = (A+B+C);
@@ -146,7 +149,6 @@ void SphericalGeometry::setup_brush_calc(ShaderProgram *program, glm::vec2 pos, 
 	glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(rotation));
 
 	id = glGetUniformLocation(program->getId(),"cornerCoords");
-
 	glUniform1fv(id, 4, v.data());
 }
 
@@ -157,4 +159,10 @@ void SphericalGeometry::setup_triangle(ShaderProgram *program, glm::vec2 a, glm:
 	glUniform2f(id, c.x, c.y);
 	id = glGetUniformLocation(program->getId(), "mouseFirst");
 	glUniform2f(id, a.x, a.y);
+
+	auto v = p->getCoords();
+	for (auto &e : v) e=e/180.0f*M_PI;
+
+	id = glGetUniformLocation(program->getId(),"cornerCoords");
+	glUniform1fv(id, 4, v.data());
 }

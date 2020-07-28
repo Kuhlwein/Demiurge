@@ -82,8 +82,6 @@ void FreeSelectFilter::run() {
 			p->apply(program, p->get_scratch1());
 			p->get_scratch2()->swap(p->get_scratch1());
 
-			//float* data = (float*)p->get_terrain()->downloadData();
-			//std::cout << data[0] << "\n";
 		}
 	} else {
 		Shader* shader = Shader::builder()
@@ -103,8 +101,6 @@ val = a==4 ? 1 : val;
 fc = selection_mode(texture(sel,st).r,val);
 )");
 
-
-
 		ShaderProgram *program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 				.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
@@ -116,36 +112,6 @@ fc = selection_mode(texture(sel,st).r,val);
 		p->finalizeFilter();
 	}
 }
-
-//void FreeSelectFilter::finalize() {
-//	Shader* shader = Shader::builder()
-//			.include(fragmentBase)
-//			.include(p->getGeometry()->offset())
-//			.include(mode)
-//			.create("",R"(
-//float a = 0;
-//a += texture(scratch2,offset(st, vec2(1,0), textureSize(img,0))).r;
-//a += texture(scratch2,offset(st, vec2(-1,0), textureSize(img,0))).r;
-//a += texture(scratch2,offset(st, vec2(0,1), textureSize(img,0))).r;
-//a += texture(scratch2,offset(st, vec2(0,-1), textureSize(img,0))).r;
-//
-//float val = a==0 ? 0 : texture(scratch2, st).r;
-//val = a==4 ? 1 : val;
-//
-//fc = selection_mode(texture(sel,st).r,val);
-//)");
-//
-//
-//
-//	ShaderProgram *program = ShaderProgram::builder()
-//			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-//			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
-//			.link();
-//	p->apply(program,p->get_scratch1());
-//	p->get_scratch1()->swap(p->get_selection());
-//
-//	add_history();
-//}
 
 Shader *FreeSelectFilter::getShader() {
 	static Shader* s = Shader::builder()
