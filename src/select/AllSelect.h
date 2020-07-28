@@ -20,6 +20,7 @@ public:
 	~SelectAllFilter();
 	void run() override;
 	//void finalize() override;
+	bool isFinished() override;
 private:
 	ShaderProgram* program;
 };

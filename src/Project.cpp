@@ -200,7 +200,8 @@ void Project::update() {
 		for (Menu* w : p.second) w->update(this);
 	}
 
-	filter->run();
+	//TODO something
+	//filter->run();
 
     canvas->update();
 
@@ -398,7 +399,7 @@ glm::vec2 Project::getMousePrev() {
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
 }
 
-void Project::dispatchFilter(std::unique_ptr<Filter> filter) {
+void Project::dispatchFilter(std::shared_ptr<Filter> filter) {
 	this->filter = std::move(filter);
 	update_terrain_shader();
 }

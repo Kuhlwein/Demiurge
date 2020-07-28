@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <ShaderProgram.h>
 #include <Shader.h>
+#include <Menu.h>
 
 class Project;
 class Texture;
@@ -21,6 +22,7 @@ public:
 	virtual ~Filter() = default;
 	virtual void run() = 0;
 	virtual Shader* getShader() {return noneshader;};
+	virtual bool isFinished() = 0;
 protected:
 	Project* p;
 	Shader* noneshader;
@@ -29,6 +31,7 @@ protected:
 class NoneFilter : public Filter {
 	void run() override {}
 	virtual Shader* getShader() override {return Shader::builder().create("","");}
+	bool isFinished() override {return false;}
 public:
 	NoneFilter() : Filter(nullptr) {}
 	~NoneFilter() = default;
@@ -41,7 +44,6 @@ public:
 	void add_history();
 	void restoreUnselected();
 	void restoreBackup();
-
 protected:
 	Texture* tmp;
 	std::function<Texture *(Project *p)> target;
@@ -54,10 +56,12 @@ public:
 	void progressBar(float a);
 	virtual std::pair<bool,float> step() = 0;
 	void run() override;
+	bool isFinished() override;
 private:
 	float progress;
 	Modal* progressModal;
 	bool aborting = false;
+	bool finished = false;
 };
 
 class SubFilter {

@@ -13,7 +13,7 @@
 FreeSelect::FreeSelect() : Modal("Free select", [this](Project* p) {
 	return this->update_self(p);
 }) {
-
+	filter = std::make_shared<NoneFilter>();
 }
 
 bool FreeSelect::update_self(Project *p) {
@@ -25,10 +25,14 @@ bool FreeSelect::update_self(Project *p) {
 		return true;
 	}
 
+	filter->run();
+
 	bool a = ImGui::IsAnyWindowHovered() || ImGui::IsAnyItemHovered();
 	if(!a && io.MouseDown[0] && io.MouseDownDuration[0]==0) {
-		p->dispatchFilter(std::move(std::make_unique<FreeSelectFilter>(p, mode)));
+		filter = std::make_shared<FreeSelectFilter>(p, mode);
+		p->dispatchFilter(filter);
 	}
+	if (filter->isFinished()) filter = std::make_shared<NoneFilter>();
 
 	return false;
 }
@@ -65,6 +69,8 @@ if (free_select(mouseFirst,mouse,mousePrev)) {
 }
 
 void FreeSelectFilter::run() {
+	if (finished) return;
+
 	ImGuiIO io = ImGui::GetIO();
 
 	glm::vec2 texcoord = p->getMouse();
@@ -110,6 +116,7 @@ fc = selection_mode(texture(sel,st).r,val);
 
 		add_history();
 		p->finalizeFilter();
+		finished = true;
 	}
 }
 
@@ -124,4 +131,8 @@ fc = fc*(1-overlay) + overlay*vec4(0);
 
 FreeSelectFilter::~FreeSelectFilter() {
 	std::cout << "Deleted from memmory!\n";
+}
+
+bool FreeSelectFilter::isFinished() {
+	return finished;
 }

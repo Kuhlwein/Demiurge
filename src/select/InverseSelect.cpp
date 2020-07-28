@@ -14,7 +14,8 @@ InverseSelect::InverseSelect() : Modal("Inverse", [this](Project* p) {
 }
 
 bool InverseSelect::update_self(Project *p) {
-	p->dispatchFilter(std::move(std::make_unique<SelectInverseFilter>(p)));
+	auto filter = std::make_unique<SelectInverseFilter>(p);
+	filter->run();
 	return true;
 }
 
@@ -44,6 +45,10 @@ void SelectInverseFilter::run() {
 	p->get_scratch1()->swap(p->get_selection());
 	add_history();
 	p->finalizeFilter();
+}
+
+bool SelectInverseFilter::isFinished() {
+	return false;
 }
 
 //void SelectInverseFilter::finalize() {

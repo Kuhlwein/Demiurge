@@ -60,6 +60,7 @@ namespace testnamespace {
     bool file_new(Project* project);
 	bool file_load(Project *project);
 	bool layers(Project *project);
+
 }
 
 

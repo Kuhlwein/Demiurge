@@ -12,7 +12,7 @@
 #include <menus/AppearanceWindow.h>
 #include <filter/Filter.h>
 #include <geometry/Geometry.h>
-#include <bits/unique_ptr.h>
+#include <memory>
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"
@@ -76,10 +76,10 @@ public:
 	glm::vec2 getMouse();
 	glm::vec2 getMousePrev();
 
-	void dispatchFilter(std::unique_ptr<Filter> filter);
+	void dispatchFilter(std::shared_ptr<Filter> filter);
 	void finalizeFilter();
 private:
-	std::unique_ptr<Filter> filter;
+	std::shared_ptr<Filter> filter;
 
 	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};
     GLFWwindow* window;

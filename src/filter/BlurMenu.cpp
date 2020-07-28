@@ -8,42 +8,20 @@
 #include <iostream>
 #include "BlurMenu.h"
 
-BlurMenu::BlurMenu() : Modal("Blur", [this](Project* p) {
-	return this->update_self(p);
-}) {
+BlurMenu::BlurMenu() : FilterModal("Blur") {
 
 }
 
-bool BlurMenu::update_self(Project *p) {
+void BlurMenu::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
-
-	static bool previewing = false;
-
-	if(ImGui::Button("Preview")) {
-		if (previewing) {
-			p->undo();
-		}
-		previewing = true;
-		p->dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
-		return false;
-	}
-	ImGui::SameLine();
-	if(ImGui::Button("Apply")) {
-		if (!previewing) p->dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
-		previewing = false;
-		return true;
-	}
-	ImGui::SameLine();
-	if(ImGui::Button("Close")) {
-		if (previewing) p->undo();
-		previewing=false;
-		return true;
-	}
-
-	return false;
 }
+
+std::shared_ptr<Filter> BlurMenu::makeFilter(Project* p) {
+	return std::make_shared<BlurTerrain>(p, radius);
+}
+
 
 BlurTerrain::BlurTerrain(Project *p, float radius) : ProgressFilter(p, [](Project* p){return p->get_terrain();}) {
 	newblur = new Blur(p, radius, p->get_terrain());

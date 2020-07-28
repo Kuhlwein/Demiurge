@@ -15,6 +15,8 @@ class FreeSelect : public Modal {
 public:
 	FreeSelect();
 	bool update_self(Project* p);
+private:
+	std::shared_ptr<Filter> filter;
 };
 
 class FreeSelectFilter : public BackupFilter {
@@ -24,10 +26,12 @@ public:
 	void run() override;
 	//void finalize() override;
 	Shader* getShader() override;
+	bool isFinished() override;
 private:
 	glm::vec2 first_mousepos;
 	ShaderProgram* program;
 	Shader* mode;
+	bool finished = false;
 };
 
 

@@ -86,13 +86,15 @@ void ProgressFilter::progressBar(float a) {
 }
 
 void ProgressFilter::run() {
-	auto [finished, progress] = step();
+	if (finished) return;
+	auto [f, progress] = step();
+	finished = f;
 
 	progressBar(progress);
 
 	if (aborting) {
 		restoreBackup();
-		p->dispatchFilter(std::move(std::make_unique<NoneFilter>()));
+		p->finalizeFilter();
 		return;
 	}
 
@@ -105,4 +107,8 @@ void ProgressFilter::run() {
 
 ProgressFilter::~ProgressFilter() {
 
+}
+
+bool ProgressFilter::isFinished() {
+	return finished;
 }

@@ -37,6 +37,10 @@ void SelectAllFilter::run() {
 	p->finalizeFilter();
 }
 
+bool SelectAllFilter::isFinished() {
+	return false;
+}
+
 //void SelectAllFilter::finalize() {
 //	add_history();
 //}

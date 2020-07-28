@@ -7,15 +7,7 @@
 
 
 #include <Menu.h>
-
-
-class BlurMenu : public Modal {
-public:
-	BlurMenu();
-	bool update_self(Project* p);
-private:
-	float radius = 1.0f;
-};
+#include "FilterModal.h"
 
 class Blur : public SubFilter {
 public:
@@ -31,6 +23,18 @@ private:
 	std::vector<float> rlist;
 	int i=0;
 };
+
+class BlurMenu : public FilterModal {
+public:
+	BlurMenu();
+	void update_self(Project* p) override;
+	std::shared_ptr<Filter> makeFilter(Project* p) override;
+private:
+	float radius = 1.0f;
+	//std::shared_ptr<Filter> filter;
+};
+
+
 
 class BlurTerrain : public ProgressFilter {
 public:
