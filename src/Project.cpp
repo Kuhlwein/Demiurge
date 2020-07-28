@@ -401,7 +401,7 @@ glm::vec2 Project::getMousePrev() {
 }
 
 void Project::dispatchFilter(std::unique_ptr<Filter> filter) {
-	filter = std::move(filter);
+	this->filter = std::move(filter);
 	update_terrain_shader();
 
 }
