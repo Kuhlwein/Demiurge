@@ -122,10 +122,6 @@ Project::Project(GLFWwindow* window) {
 	edit_menu.push_back(new SeparatorMenu());
 	edit_menu.push_back(new Modal("Preferences",edit::preferences));
 
-
-
-
-
 	std::vector<Menu*> projections = {};
 	projections.push_back(new Menu("None", [](Project* p) {
 		p->canvas = new img(p);
@@ -145,8 +141,6 @@ Project::Project(GLFWwindow* window) {
 	projections.push_back(new CanvasMenu("Eckert IV...",new EckertIV(this)));
 	projections.push_back(new CanvasMenu("Mercator...",new Mercator(this)));
 
-
-
 	std::vector<Menu*> windows_menu = {};
 	windows_menu.push_back(new BrushWindow("Brush",this));
 	appearanceWindow = new AppearanceWindow("Appearance");
@@ -156,16 +150,9 @@ Project::Project(GLFWwindow* window) {
 
 	std::vector<Menu*> selection_menu = {};
 
-	//SubMenu* sub = new SubMenu("test submenu");
-
 	selection_menu.push_back(new AllSelect());
 	selection_menu.push_back(new InverseSelect());
-	//selection_menu.push_back(new Modal("By height", selection::by_height));
 	selection_menu.push_back(new FreeSelect());
-	//selection_menu.push_back(new SeparatorMenu());
-	//selection_menu.push_back(new Modal("Blur",selection::blur));
-
-	//selection_menu.push_back(sub);
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
@@ -177,7 +164,7 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("Filter",filter_menu);
 	windows.emplace_back("Windows",windows_menu);
 
-	NEW_filter = std::make_unique<NoneFilter>();
+	filter = std::make_unique<NoneFilter>();
 
 	geometry = new SphericalGeometry(this);
 
@@ -212,8 +199,7 @@ void Project::update() {
 		for (Menu* w : p.second) w->update(this);
 	}
 
-	//if (is_filtering) run_filter();
-	NEW_filter->run();
+	filter->run();
 
     canvas->update();
 
@@ -335,7 +321,7 @@ void Project::update_terrain_shader() {
 			.include(canvas->projection_shader())
 			.include(terrain_shader);
 
-			builder.include(NEW_filter->getShader());
+			builder.include(filter->getShader());
 
 			Shader* shader = builder
 			.include(brush_outline)
@@ -391,98 +377,6 @@ Texture *Project::get_scratch1() {
 	return scratchPad;
 }
 
-void Project::add_filter(std::function<float(Project *p)> s, std::function<Texture *(Project *p)> t) {
-	filter = s;
-	filter_target = t;
-	is_filtering = true;
-
-	take_backup(filter_target);
-
-	//apply filter
-}
-
-void Project::run_filter() {
-//	float o = filter(this);
-//	if (o<1.0f) {
-//		auto load = [o](Project* p) {
-//			ImGui::ProgressBar(o,ImVec2(360,0));
-//			return ImGui::Button("Cancel");
-//		};
-//		Menu* w = new Modal("Applying filter", load); //MEMORY LEAK HERE PROBABLY
-//		w->open();
-//		bool open = w->update(this);
-//		delete w;
-//
-//		if (!open) {
-//			is_filtering = false;
-//			filter_target(this)->swap(tmp);
-//			delete tmp;
-//		}
-//
-//	} else {
-//		Shader *img_tmp_diff = Shader::builder()
-//				.include(fragmentBase)
-//				.create("uniform sampler2D  tmp; uniform sampler2D target;", R"(
-//fc = texture(tmp,st).r - texture(target, st).r;
-//)");
-//		// find difference between backup and target
-//		ShaderProgram *program2 = ShaderProgram::builder()
-//				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-//				.addShader(img_tmp_diff->getCode(), GL_FRAGMENT_SHADER)
-//				.link();
-//		add_texture(tmp);
-//		apply(program2, get_scratch1(),{{filter_target(this),"target"}});
-//		remove_texture(tmp);
-//		delete (tmp);
-//		void *data = get_scratch1()->downloadData();
-//
-//		auto h = new SnapshotHistory(data,filter_target);
-//		add_history(h);
-//		is_filtering = false;
-//	}
-}
-
-void Project::preview(std::function<float(Project* p)> s, std::function<Texture*(Project* p)> t) {
-	filter_target = t;
-	if (!is_previewing) {
-		is_previewing = true;
-		take_backup(filter_target);
-	}
-	ShaderProgram *program = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-			.link();
-	std::cout << "Apply original\n";
-	apply(program,t(this),{{tmp,"to_be_copied"}});
-	s(this);
-}
-
-void Project::stop_preview() {
-	if (is_previewing) {
-		filter_target(this)->swap(tmp);
-		delete tmp;
-	}
-	is_previewing = false;
-}
-
-void Project::take_backup(std::function<Texture*(Project* p)> t) {
-	std::cout << "creating backup\n";
-	tmp = new Texture(getWidth(),getHeight(),GL_R32F,"tmp");
-
-	ShaderProgram *program = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-			.link();
-	std::cout << "Apply original\n";
-	apply(program,tmp,{{t(this),"to_be_copied"}});
-}
-
-void Project::add_reversible_filter(std::function<float(Project *p)> r, std::function<float(Project *p)> u) {
-	auto hist = new ReversibleHistory(r,u);
-	hist->redo(this);
-	add_history(hist);
-}
-
 void Project::set_terrain_shader(Shader *s) {
 	terrain_shader = s;
 	update_terrain_shader();
@@ -506,17 +400,14 @@ glm::vec2 Project::getMousePrev() {
 	return canvas->mousePos(ImVec2(io.MousePos.x - io.MouseDelta.x,io.MousePos.y - io.MouseDelta.y));
 }
 
-void Project::NEW_dispatchFilter(std::unique_ptr<Filter> filter) {
-	//NEW_is_filtering = true;
-	NEW_filter = std::move(filter);
+void Project::dispatchFilter(std::unique_ptr<Filter> filter) {
+	filter = std::move(filter);
 	update_terrain_shader();
 
 }
 
 void Project::finalizeFilter() {
-	//NEW_filter->finalize();
-	//NEW_is_filtering = false;
-	NEW_filter = std::make_unique<NoneFilter>();
+	filter = std::make_unique<NoneFilter>();
 	update_terrain_shader();
 }
 

@@ -14,7 +14,7 @@ InverseSelect::InverseSelect() : Modal("Inverse", [this](Project* p) {
 }
 
 bool InverseSelect::update_self(Project *p) {
-	p->NEW_dispatchFilter(std::move(std::make_unique<SelectInverseFilter>(p)));
+	p->dispatchFilter(std::move(std::make_unique<SelectInverseFilter>(p)));
 	return true;
 }
 

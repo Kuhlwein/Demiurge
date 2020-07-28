@@ -13,7 +13,7 @@ AllSelect::AllSelect() : Modal("All", [this](Project* p) {
 }
 
 bool AllSelect::update_self(Project *p) {
-	p->NEW_dispatchFilter(std::move(std::make_unique<SelectAllFilter>(p)));
+	p->dispatchFilter(std::move(std::make_unique<SelectAllFilter>(p)));
 	return true;
 }
 

@@ -63,11 +63,6 @@ public:
 	void update_terrain_shader();
 	void set_terrain_shader(Shader* s);
 
-	void add_filter(std::function<float(Project* p)> s, std::function<Texture*(Project* p)> t);
-	void add_reversible_filter(std::function<float(Project* p)> r, std::function<float(Project* p)> u);
-	void preview(std::function<float(Project* p)> s, std::function<Texture*(Project* p)> t);
-	void stop_preview();
-
 	void undo();
 	void redo();
 	void add_history(UndoHistory* h);
@@ -82,11 +77,10 @@ public:
 	glm::vec2 getMousePrev();
 
 
-	void NEW_dispatchFilter(std::unique_ptr<Filter> filter);
+	void dispatchFilter(std::unique_ptr<Filter> filter);
 	void finalizeFilter();
 private:
-	//bool NEW_is_filtering = false;
-	std::unique_ptr<Filter> NEW_filter;
+	std::unique_ptr<Filter> filter;
 
 	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};
     GLFWwindow* window;
@@ -96,26 +90,17 @@ private:
     Texture* selection = nullptr;
 
     Shader* terrain_shader;
-    //Shader* tmp_filter_shader;
-    //bool using_filter_shader=false;
-    //GeometryShader* geometryShader;
     Geometry* geometry;
     AppearanceWindow* appearanceWindow;
 
 
     Texture* tmp = nullptr;
-    bool is_filtering = false;
-	std::function<float(Project *p)> filter;
-	std::function<Texture *(Project *p)> filter_target;
-
-	bool is_previewing = false;
 
     Vbo* vbo;
     GLuint fbo;
     std::set<Texture*> textures;
     void bind_textures(ShaderProgram *program, std::vector<std::pair<Texture*,std::string>> l={});
-    void run_filter();
-    void take_backup(std::function<Texture*(Project* p)> t);
+
     int width, height;
 	std::vector<std::pair<std::string,Texture*>> layers;
 	std::stack<UndoHistory*> undo_list;
@@ -124,10 +109,7 @@ private:
 
 	void update_self();
 
-
     std::vector<std::pair<std::string,std::vector<Menu*>>> windows;
-
-
 
 };
 

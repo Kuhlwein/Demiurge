@@ -73,49 +73,49 @@ float selection_mode(float old, float new) {
 			return intersect;
 	}
 }
-
-bool selection::by_height(Project* p) {
-	static float low = -1;
-	static float high = 1;
-	bool updated = ImGui::DragFloat("Low", &low, 0.01f, -1.0f, high, "%.2f", 1.0f);
-	updated = updated | ImGui::DragFloat("High", &high, 0.01f, low, 1.0f, "%.2f", 1.0f);
-
-	auto f = [](Project* p) {
-		Shader* fragment_set = Shader::builder()
-				.include(fragmentBase)
-				.create(R"(
-uniform float low=0;
-uniform float high=0;
-)",R"(
-float val = texture(img,st).r;
-if (val<high && val>low) {
-fc = 1.0f;
-} else {
-fc = 0.0f;
-}
-)");
-
-		ShaderProgram *program = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
-				.link();
-		program->bind();
-		int id = glGetUniformLocation(program->getId(),"low");
-		glUniform1f(id,low);
-		id = glGetUniformLocation(program->getId(),"high");
-		glUniform1f(id,high);
-		p->apply(program,p->get_selection());
-		delete fragment_set; delete program;
-		return 2.0;
-	};
-
-	if (updated) p->preview(f, [](Project *p) { return p->get_selection(); });
-
-	if (ImGui::Button("Apply")) {
-		p->stop_preview();
-		p->add_filter(f, [](Project *p) { return p->get_selection(); });
-		return true;
-	}
-	return false;
-};
-
+//
+//bool selection::by_height(Project* p) {
+//	static float low = -1;
+//	static float high = 1;
+//	bool updated = ImGui::DragFloat("Low", &low, 0.01f, -1.0f, high, "%.2f", 1.0f);
+//	updated = updated | ImGui::DragFloat("High", &high, 0.01f, low, 1.0f, "%.2f", 1.0f);
+//
+//	auto f = [](Project* p) {
+//		Shader* fragment_set = Shader::builder()
+//				.include(fragmentBase)
+//				.create(R"(
+//uniform float low=0;
+//uniform float high=0;
+//)",R"(
+//float val = texture(img,st).r;
+//if (val<high && val>low) {
+//fc = 1.0f;
+//} else {
+//fc = 0.0f;
+//}
+//)");
+//
+//		ShaderProgram *program = ShaderProgram::builder()
+//				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+//				.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
+//				.link();
+//		program->bind();
+//		int id = glGetUniformLocation(program->getId(),"low");
+//		glUniform1f(id,low);
+//		id = glGetUniformLocation(program->getId(),"high");
+//		glUniform1f(id,high);
+//		p->apply(program,p->get_selection());
+//		delete fragment_set; delete program;
+//		return 2.0;
+//	};
+//
+//	if (updated) p->preview(f, [](Project *p) { return p->get_selection(); });
+//
+//	if (ImGui::Button("Apply")) {
+//		p->stop_preview();
+//		p->add_filter(f, [](Project *p) { return p->get_selection(); });
+//		return true;
+//	}
+//	return false;
+//};
+//

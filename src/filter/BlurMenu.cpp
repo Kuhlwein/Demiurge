@@ -26,12 +26,12 @@ bool BlurMenu::update_self(Project *p) {
 			p->undo();
 		}
 		previewing = true;
-		p->NEW_dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
+		p->dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
 		return false;
 	}
 	ImGui::SameLine();
 	if(ImGui::Button("Apply")) {
-		if (!previewing) p->NEW_dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
+		if (!previewing) p->dispatchFilter(std::move(std::make_unique<BlurTerrain>(p, radius)));
 		previewing = false;
 		return true;
 	}

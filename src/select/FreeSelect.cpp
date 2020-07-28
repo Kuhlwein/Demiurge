@@ -27,7 +27,7 @@ bool FreeSelect::update_self(Project *p) {
 
 	bool a = ImGui::IsAnyWindowHovered() || ImGui::IsAnyItemHovered();
 	if(!a && io.MouseDown[0] && io.MouseDownDuration[0]==0) {
-		p->NEW_dispatchFilter(std::move(std::make_unique<FreeSelectFilter>(p,mode)));
+		p->dispatchFilter(std::move(std::make_unique<FreeSelectFilter>(p, mode)));
 	}
 
 	return false;

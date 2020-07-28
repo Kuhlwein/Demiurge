@@ -92,7 +92,7 @@ void ProgressFilter::run() {
 
 	if (aborting) {
 		restoreBackup();
-		p->NEW_dispatchFilter(std::move(std::make_unique<NoneFilter>()));
+		p->dispatchFilter(std::move(std::make_unique<NoneFilter>()));
 		return;
 	}
 
