@@ -8,7 +8,6 @@
 
 #include "Appearance.h"
 #include "GradientMenu.h"
-#include <imgui/imgui_color_gradient.h>
 class Texture;
 
 class ElevationMap : public Appearance {

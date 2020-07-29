@@ -22,6 +22,7 @@ glm = $(LIB)/glm
 
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
+SOURCES = $(IMGUI)/examples/imgui_impl_glfw.cpp $(IMGUI)/examples/examples/imgui_impl_opengl3.cpp
 SOURCES += $(wildcard src/*.cpp) $(wildcard src/*/*.cpp)  $(wildcard $(IMGUI)/*.cpp)
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
@@ -32,7 +33,7 @@ UNAME_S := $(shell uname -s)
 
 ## Using OpenGL loader: gl3w [default]
 SOURCES += ../libs/gl3w/GL/gl3w.c
-CXXFLAGS = -I../libs/gl3w
+CXXFLAGS = -I../libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W
 
 ## Using OpenGL loader: glew
 ## (This assumes a system-wide installation)
@@ -90,6 +91,9 @@ endif
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o:$(IMGUI)/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+%.o:$(IMGUI)/examples/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o:$(GL3W)/GL/%.c

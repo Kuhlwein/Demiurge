@@ -4,7 +4,6 @@
 
 #include <iostream>
 #include <imgui/imgui.h>
-#include <imgui/imgui_color_gradient.h>
 #include "Menu.h"
 #include "Project.h"
 

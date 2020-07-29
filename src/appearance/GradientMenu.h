@@ -6,7 +6,7 @@
 #define DEMIURGE_GRADIENTMENU_H
 
 #include <string>
-#include <imgui/imgui_color_gradient.h>
+#include <imgui_color_gradient.h>
 
 class Texture;
 
