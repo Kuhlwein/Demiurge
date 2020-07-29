@@ -52,37 +52,38 @@ TextureData* Texture::downloadData(GLenum format,GLenum type) {
 	this->bind(0);
 	if (type == GL_FLOAT) {
 		auto data = std::make_unique<float[]>(width*height);
-		//glGetTexImage( GL_TEXTURE_2D,0,format,type,data);
+		glGetTexImage( GL_TEXTURE_2D,0,format,type,data.get());
 
 
 
 
-		static GLuint pbo;
-
-		glGenBuffers(1, &pbo);
-		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-		glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
-
-
-		glActiveTexture(GL_TEXTURE0);
-		bind(0);
-		//glBindTexture(GL_TEXTURE_2D, texture);
-
-		glGetTexImage(GL_TEXTURE_2D,
-					  0,
-					  format,
-					  type,
-					  nullptr);
-
-
-		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-		float* mappedBuffer = (float*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-
-		memcpy(data.get(),mappedBuffer,getWidth() * getHeight()*4);
-
-		//now mapped buffer contains the pixel data
-
-		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+//		static GLuint pbo;
+//
+//		glGenBuffers(1, &pbo);
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+//		glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
+//
+//
+//		glActiveTexture(GL_TEXTURE0);
+//		bind(0);
+//		//glBindTexture(GL_TEXTURE_2D, texture);
+//
+//		glGetTexImage(GL_TEXTURE_2D,
+//					  0,
+//					  format,
+//					  type,
+//					  nullptr);
+//
+//
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+//		float* mappedBuffer = (float*) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+//
+//		memcpy(data.get(),mappedBuffer,getWidth() * getHeight()*4);
+//
+//		//now mapped buffer contains the pixel data
+//
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+//		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 
 
 		return new TextureData(std::move(data),getWidth(),getHeight());
@@ -129,7 +130,7 @@ TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 	this->height = height;
 	this->width = width;
 
-	std::cout << "data with size: " << width*height*sizeof(float) << " side\n";
+	std::cout << "data with size: " << (float)(width*height*sizeof(float))/1000000 << "M\n";
 
 	zfp_type type = zfp_type_float;
 	zfp_field* field = zfp_field_2d(data.get(), type, width, height);
@@ -142,7 +143,7 @@ TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 	// allocate buffer for compressed data
 	bufsize = zfp_stream_maximum_size(zfp, field);
 
-	std::cout << "buffer size:    " << bufsize << "\n";
+	std::cout << "buffer size:    " << (float)(bufsize)/1000000 << "M\n";
 	auto tmpbuffer = std::make_unique<uchar[]>(bufsize);
 
 	// associate bit stream with allocated buffer
@@ -151,7 +152,7 @@ TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 
 	// compress entire array
 	size_t size = zfp_compress(zfp, field);
-	std::cout << "compressed size: " << size << "\n";
+	std::cout << "compressed size: " << (float)(size)/1000000 << "M\n";
 
 	buffer = new uchar[size];
 	memcpy(buffer,tmpbuffer.get(),size);
@@ -175,7 +176,7 @@ std::unique_ptr<float[]> TextureData::get() {
 
 	zfp_stream_rewind(zfp);
 	int success = zfp_decompress(zfp, field);
-	std::cout << "success: " << success << "\n";
+	std::cout << "success: " << (float)(success)/1000000 << "M\n";
 
 	return std::move(data);
 }
