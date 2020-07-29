@@ -14,7 +14,6 @@ public:
 	void filter(Project* p) override;
 	std::function<Texture *(Project *p)> targetGetter() override;
 	AllSelect();
-	//bool update_self(Project* p);
 };
 
 

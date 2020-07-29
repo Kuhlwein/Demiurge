@@ -95,6 +95,7 @@ void ProgressFilter::run() {
 	if (aborting) {
 		restoreBackup();
 		p->finalizeFilter();
+		finished = true;
 		return;
 	}
 

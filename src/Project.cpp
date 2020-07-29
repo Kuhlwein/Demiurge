@@ -213,6 +213,56 @@ void Project::update() {
 	} else if (io.KeysDown[47] && io.KeyCtrl && io.KeysDownDuration[z_key] == 0.0f) {
 		undo();
 	}
+
+
+//	static bool test = true;
+//
+//	static GLsync sync;
+//	static GLuint pbo;
+//
+//	if (test = true) {
+//		glGenBuffers(1, &pbo);
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+//		test = false;
+//	}
+//	if (io.KeysDown[47] && io.KeysDownDuration[47]==0.0f) {
+//
+//		glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
+//		std::cout << "pressed\n";
+//
+//		glActiveTexture(GL_TEXTURE0);
+//		terrain->bind(0);
+//		//glBindTexture(GL_TEXTURE_2D, texture);
+//
+//		glGetTexImage(GL_TEXTURE_2D,
+//					  0,
+//					  GL_RGBA,
+//					  GL_UNSIGNED_BYTE,
+//					  nullptr);
+////ensure we don't try and read data before the transfer is complete
+//		sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+//
+//	}
+//
+//
+//// then regularly check for completion
+//	GLint result;
+//	glGetSynciv(sync, GL_SYNC_STATUS, sizeof(result), NULL, &result);
+//
+//	if(result == GL_SIGNALED){
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+//		void* mappedBuffer = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+//
+//		//now mapped buffer contains the pixel data
+//
+//		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+//
+//	} else {
+//		std::cout << "not finished\n";
+//	}
+
+
+
 }
 
 void Project::render() {
@@ -347,7 +397,6 @@ void Project::add_history(UndoHistory* h) {
 
 void Project::undo() {
 	if (undo_list.empty()) return;
-	std::cout << "undoing in project\n";
 	UndoHistory* h = undo_list.top();
 	undo_list.pop();
 	h->undo(this);
@@ -357,7 +406,6 @@ void Project::undo() {
 
 void Project::redo() {
 	if (redo_list.empty()) return;
-	std::cout << "redoing in project\n";
 	UndoHistory* h = redo_list.top();
 	redo_list.pop();
 	h->redo(this);

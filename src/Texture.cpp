@@ -4,6 +4,7 @@
 
 #include <GL/gl3w.h>
 #include <iostream>
+#include <cstring>
 #include "Texture.h"
 
 Texture::~Texture() {
@@ -49,7 +50,39 @@ GLvoid *Texture::downloadData(GLenum format,GLenum type) {
 	this->bind(0);
 	if (type == GL_FLOAT) {
 		float* data = new float[width*height];
-		glGetTexImage( GL_TEXTURE_2D,0,format,type,data);
+		//glGetTexImage( GL_TEXTURE_2D,0,format,type,data);
+
+
+
+
+		static GLuint pbo;
+
+		glGenBuffers(1, &pbo);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+		glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
+
+
+		glActiveTexture(GL_TEXTURE0);
+		bind(0);
+		//glBindTexture(GL_TEXTURE_2D, texture);
+
+		glGetTexImage(GL_TEXTURE_2D,
+					  0,
+					  format,
+					  type,
+					  nullptr);
+
+
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+		float* mappedBuffer = (float*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+
+		memcpy(data,mappedBuffer,getWidth() * getHeight()*4);
+
+		//now mapped buffer contains the pixel data
+
+		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+
+
 		return data;
 	}
 	std::cout << "not implemented yet, returning nullpointer...\n";
