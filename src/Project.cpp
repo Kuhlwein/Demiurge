@@ -47,32 +47,39 @@ void Project::file_load(const std::string& filename) {
 	file_new(w,h);
 
 	get_terrain()->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
+	delete image;
 
-	float* image2 = (float*) get_terrain()->downloadData();
+	//float* image2 = (float*) get_terrain()->downloadData();
 
-	std::cout << w*h*sizeof(float) << " side\n";
+	//auto a = new TextureData(image2,w,h);
+	//image2 = a->get();
 
-	zfp_type type = zfp_type_float;
-	zfp_field* field = zfp_field_2d(image2, type, w, h);
-
-
-	// allocate metadata for a compressed stream
-	zfp_stream* zfp = zfp_stream_open(NULL);
-
-	zfp_stream_set_accuracy(zfp, 1e-4);
-
-	// allocate buffer for compressed data
-	size_t bufsize = zfp_stream_maximum_size(zfp, field);
-	std::cout << bufsize << " bufsize\n";
-	uchar* buffer = new uchar[bufsize];
-
-	// associate bit stream with allocated buffer
-	bitstream* stream = stream_open(buffer, bufsize);
-	zfp_stream_set_bit_stream(zfp, stream);
-
-	// compress entire array
-	size_t size = zfp_compress(zfp, field);
-	std::cout << size << " side\n";
+//	std::cout << w*h*sizeof(float) << " side\n";
+//
+//	zfp_type type = zfp_type_float;
+//	zfp_field* field = zfp_field_2d(image2, type, w, h);
+//
+//
+//	// allocate metadata for a compressed stream
+//	zfp_stream* zfp = zfp_stream_open(NULL);
+//
+//	zfp_stream_set_accuracy(zfp, 1e-4);
+//
+//	// allocate buffer for compressed data
+//	size_t bufsize = zfp_stream_maximum_size(zfp, field);
+//	std::cout << bufsize << " bufsize\n";
+//	uchar* buffer = new uchar[bufsize];
+//	std::vector<uchar> vbuffer(bufsize);
+//
+//	// associate bit stream with allocated buffer
+//	bitstream* stream = stream_open(vbuffer.data(), bufsize);
+//	zfp_stream_set_bit_stream(zfp, stream);
+//
+//	// compress entire array
+//	size_t size = zfp_compress(zfp, field);
+//	std::cout << size << " side\n";
+//
+//	vbuffer.resize(size);
 
 
 }

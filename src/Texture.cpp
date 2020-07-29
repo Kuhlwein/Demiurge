@@ -5,6 +5,8 @@
 #include <GL/gl3w.h>
 #include <iostream>
 #include <cstring>
+#include <memory>
+#include <zfp/include/zfp.h>
 #include "Texture.h"
 
 Texture::~Texture() {
@@ -123,6 +125,66 @@ void Texture::bind(ShaderProgram *program, GLuint point, std::string s) {
 }
 
 
+TextureData::TextureData(float* data, int width, int height) {
+	this->height = height;
+	this->width = width;
 
+	std::cout << "data with size: " << width*height*sizeof(float) << " side\n";
 
+	zfp_type type = zfp_type_float;
+	zfp_field* field = zfp_field_2d(data, type, width, height);
 
+	// allocate metadata for a compressed stream
+	zfp_stream* zfp = zfp_stream_open(NULL);
+
+	zfp_stream_set_accuracy(zfp, 1e-4);
+
+	// allocate buffer for compressed data
+	bufsize = zfp_stream_maximum_size(zfp, field);
+
+	std::cout << "buffer size:    " << bufsize << "\n";
+	buffer = new std::vector<uchar>(bufsize);
+
+	// associate bit stream with allocated buffer
+	bitstream* stream = stream_open(buffer->data(), bufsize);
+	zfp_stream_set_bit_stream(zfp, stream);
+
+	// compress entire array
+	size_t size = zfp_compress(zfp, field);
+	std::cout << "compressed size: " << size << "\n";
+
+	buffer->resize(size);
+}
+
+float *TextureData::get() {
+
+	float* data = new float[width*height];
+
+	zfp_type type = zfp_type_float;
+	zfp_field* field = zfp_field_2d(data, type, width, height);
+
+	// allocate metadata for a compressed stream
+	zfp_stream* zfp = zfp_stream_open(NULL);
+
+	zfp_stream_set_accuracy(zfp, 1e-4);
+
+	// allocate buffer for compressed data
+	//size_t bufsize = zfp_stream_maximum_size(zfp, field);
+
+	//std::cout << "buffer size:    " << bufsize << "\n";
+	//buffer = new std::vector<uchar>(bufsize);
+
+	// associate bit stream with allocated buffer
+	bitstream* stream = stream_open(buffer->data(), bufsize);
+	zfp_stream_set_bit_stream(zfp, stream);
+
+	// compress entire array
+	//size_t size = zfp_compress(zfp, field);
+	//std::cout << "compressed size: " << size << "\n";
+
+	zfp_stream_rewind(zfp);
+	int success = zfp_decompress(zfp, field);
+	std::cout << "success: " << success << "\n";
+
+	return data;
+}
