@@ -10,6 +10,9 @@
 #include <string>
 #include <zfp/include/zfp/types.h>
 #include "ShaderProgram.h"
+#include <memory>
+
+class TextureData;
 
 class Texture {
 public:
@@ -17,7 +20,7 @@ public:
 	~Texture();
 
 	void uploadData(GLenum format, GLenum type, const GLvoid * data);
-	GLvoid* downloadData(GLenum format=GL_RED, GLenum type=GL_FLOAT);
+	TextureData* downloadData(GLenum format=GL_RED, GLenum type=GL_FLOAT);
     GLuint getId();
     int getWidth();
     int getHeight();
@@ -34,10 +37,10 @@ private:
 
 class TextureData {
 public:
-	TextureData(float* data, int width, int height);
-	float* get();
+	TextureData(std::unique_ptr<float[]> data, int width, int height);
+	std::unique_ptr<float[]> get();
 private:
-	std::vector<uchar>* buffer;
+	uchar* buffer;
 	int width, height;
 	size_t bufsize;
 };

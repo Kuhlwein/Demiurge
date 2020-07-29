@@ -100,13 +100,13 @@ fc = texture(tmp,st).r - texture(target, st).r;
 		p->add_texture(tmp);
 		p->apply(program2, p->get_scratch1(),{{p->get_terrain(),"target"}});
 		p->remove_texture(tmp);
-		float *data = (float*)p->get_scratch1()->downloadData();
+		TextureData* data = p->get_scratch1()->downloadData();
 		delete tmp;
 
 
-		auto a = new TextureData(data,p->getWidth(),p->getHeight());
-		delete data;
-		data = a->get();
+		//auto a = new TextureData(data,p->getWidth(),p->getHeight());
+		//delete data;
+		//data = a->get();
 
 		auto h = new SnapshotHistory(data,[](Project* p){return p->get_terrain();});
 		p->add_history(h);

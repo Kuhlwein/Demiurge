@@ -48,6 +48,7 @@ void GradientMenu::toTexture(Texture *texture) {
 		data[4*i+3]=char(c[3]*255);
 	}
 	texture->uploadData(GL_RGBA, GL_UNSIGNED_BYTE, data);
+	delete data;
 }
 
 

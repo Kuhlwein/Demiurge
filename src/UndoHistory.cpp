@@ -16,12 +16,13 @@ void ReversibleHistory::undo(Project *p) {u(p);}
 void ReversibleHistory::redo(Project *p) {r(p);}
 
 
-SnapshotHistory::SnapshotHistory(void* data, std::function<Texture *(Project *p)> filter_target) {
+SnapshotHistory::SnapshotHistory(TextureData* data, std::function<Texture *(Project *p)> filter_target) {
 	this->data = data;
 	this->filter_target = filter_target;
 }
 void SnapshotHistory::undo(Project *p) {
-	p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,data);
+	auto d = data->get();
+	p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,d.get());
 
 	ShaderProgram *program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -41,7 +42,8 @@ fc = texture(scratch2,st).r + texture(scratch1, st).r;
 	p->apply(program2,filter_target(p));
 }
 void SnapshotHistory::redo(Project *p) {
-	p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,data);
+	auto d = data->get();
+	p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,d.get());
 
 	ShaderProgram *program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)

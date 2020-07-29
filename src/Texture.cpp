@@ -48,10 +48,10 @@ void Texture::uploadData(GLenum format, GLenum type, const GLvoid *data) {
 	//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
 }
 
-GLvoid *Texture::downloadData(GLenum format,GLenum type) {
+TextureData* Texture::downloadData(GLenum format,GLenum type) {
 	this->bind(0);
 	if (type == GL_FLOAT) {
-		float* data = new float[width*height];
+		auto data = std::make_unique<float[]>(width*height);
 		//glGetTexImage( GL_TEXTURE_2D,0,format,type,data);
 
 
@@ -78,14 +78,14 @@ GLvoid *Texture::downloadData(GLenum format,GLenum type) {
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
 		float* mappedBuffer = (float*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
 
-		memcpy(data,mappedBuffer,getWidth() * getHeight()*4);
+		memcpy(data.get(),mappedBuffer,getWidth() * getHeight()*4);
 
 		//now mapped buffer contains the pixel data
 
 		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 
 
-		return data;
+		return new TextureData(std::move(data),getWidth(),getHeight());
 	}
 	std::cout << "not implemented yet, returning nullpointer...\n";
 	return nullptr;
@@ -125,14 +125,14 @@ void Texture::bind(ShaderProgram *program, GLuint point, std::string s) {
 }
 
 
-TextureData::TextureData(float* data, int width, int height) {
+TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 	this->height = height;
 	this->width = width;
 
 	std::cout << "data with size: " << width*height*sizeof(float) << " side\n";
 
 	zfp_type type = zfp_type_float;
-	zfp_field* field = zfp_field_2d(data, type, width, height);
+	zfp_field* field = zfp_field_2d(data.get(), type, width, height);
 
 	// allocate metadata for a compressed stream
 	zfp_stream* zfp = zfp_stream_open(NULL);
@@ -143,48 +143,39 @@ TextureData::TextureData(float* data, int width, int height) {
 	bufsize = zfp_stream_maximum_size(zfp, field);
 
 	std::cout << "buffer size:    " << bufsize << "\n";
-	buffer = new std::vector<uchar>(bufsize);
+	auto tmpbuffer = std::make_unique<uchar[]>(bufsize);
 
 	// associate bit stream with allocated buffer
-	bitstream* stream = stream_open(buffer->data(), bufsize);
+	bitstream* stream = stream_open(tmpbuffer.get(), bufsize);
 	zfp_stream_set_bit_stream(zfp, stream);
 
 	// compress entire array
 	size_t size = zfp_compress(zfp, field);
 	std::cout << "compressed size: " << size << "\n";
 
-	buffer->resize(size);
+	buffer = new uchar[size];
+	memcpy(buffer,tmpbuffer.get(),size);
 }
 
-float *TextureData::get() {
+std::unique_ptr<float[]> TextureData::get() {
 
-	float* data = new float[width*height];
+	auto data = std::make_unique<float[]>(width*height);
 
 	zfp_type type = zfp_type_float;
-	zfp_field* field = zfp_field_2d(data, type, width, height);
+	zfp_field* field = zfp_field_2d(data.get(), type, width, height);
 
 	// allocate metadata for a compressed stream
 	zfp_stream* zfp = zfp_stream_open(NULL);
 
 	zfp_stream_set_accuracy(zfp, 1e-4);
 
-	// allocate buffer for compressed data
-	//size_t bufsize = zfp_stream_maximum_size(zfp, field);
-
-	//std::cout << "buffer size:    " << bufsize << "\n";
-	//buffer = new std::vector<uchar>(bufsize);
-
 	// associate bit stream with allocated buffer
-	bitstream* stream = stream_open(buffer->data(), bufsize);
+	bitstream* stream = stream_open(buffer, bufsize);
 	zfp_stream_set_bit_stream(zfp, stream);
-
-	// compress entire array
-	//size_t size = zfp_compress(zfp, field);
-	//std::cout << "compressed size: " << size << "\n";
 
 	zfp_stream_rewind(zfp);
 	int success = zfp_decompress(zfp, field);
 	std::cout << "success: " << success << "\n";
 
-	return data;
+	return std::move(data);
 }

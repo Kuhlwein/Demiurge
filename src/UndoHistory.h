@@ -30,12 +30,12 @@ private:
 
 class SnapshotHistory : public UndoHistory {
 public:
-	SnapshotHistory(void* data, std::function<Texture *(Project *p)> filter_target);
+	SnapshotHistory(TextureData* data, std::function<Texture *(Project *p)> filter_target);
 	~SnapshotHistory();
 	void undo(Project* p) override;
 	void redo(Project* p) override;
 private:
-	void* data; //Before - After
+	TextureData* data; //Before - After
 	std::function<Texture *(Project *p)> filter_target;
 };
 

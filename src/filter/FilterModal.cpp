@@ -77,7 +77,7 @@ fc = texture(tmp,st).r - texture(target, st).r;
 	p->add_texture(tmp);
 	p->apply(program2, p->get_scratch1(),{{t(p),"target"}});
 	p->remove_texture(tmp);
-	void *data = p->get_scratch1()->downloadData();
+	TextureData* data = p->get_scratch1()->downloadData();
 
 	auto h = new SnapshotHistory(data,targetGetter());
 	p->add_history(h);
