@@ -19,6 +19,7 @@ IMGUI = $(LIB)/imgui
 GL3W = $(LIB)/imgui/examples/libs/gl3w
 glfw = $(LIB)/imgui/examples/libs
 glm = $(LIB)/glm
+zfp = $(LIB)/zfp
 
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
@@ -50,9 +51,9 @@ CXXFLAGS = -I$(GL3W) -DIMGUI_IMPL_OPENGL_LOADER_GL3W
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
-	LIBS = -lGL `pkg-config --static --libs glfw3`
+	LIBS = -lGL `pkg-config --static --libs glfw3` -L$(zfp)/lib -lzfp
 
-	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib
+	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib -I$(zfp)/array -I$(zfp)/include
 	CXXFLAGS += -Wall -Wformat
 	CFLAGS = $(CXXFLAGS)
 endif
@@ -106,3 +107,6 @@ $(EXE): $(OBJS)
 
 clean:
 	rm -f $(EXE) $(OBJS)
+
+lib/zfp/lib/libzfp.a :
+	$(MAKE) -C lib/zfp
