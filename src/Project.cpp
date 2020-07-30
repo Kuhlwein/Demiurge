@@ -48,40 +48,6 @@ void Project::file_load(const std::string& filename) {
 
 	get_terrain()->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
 	delete image;
-
-	//float* image2 = (float*) get_terrain()->downloadData();
-
-	//auto a = new TextureData(image2,w,h);
-	//image2 = a->get();
-
-//	std::cout << w*h*sizeof(float) << " side\n";
-//
-//	zfp_type type = zfp_type_float;
-//	zfp_field* field = zfp_field_2d(image2, type, w, h);
-//
-//
-//	// allocate metadata for a compressed stream
-//	zfp_stream* zfp = zfp_stream_open(NULL);
-//
-//	zfp_stream_set_accuracy(zfp, 1e-4);
-//
-//	// allocate buffer for compressed data
-//	size_t bufsize = zfp_stream_maximum_size(zfp, field);
-//	std::cout << bufsize << " bufsize\n";
-//	uchar* buffer = new uchar[bufsize];
-//	std::vector<uchar> vbuffer(bufsize);
-//
-//	// associate bit stream with allocated buffer
-//	bitstream* stream = stream_open(vbuffer.data(), bufsize);
-//	zfp_stream_set_bit_stream(zfp, stream);
-//
-//	// compress entire array
-//	size_t size = zfp_compress(zfp, field);
-//	std::cout << size << " side\n";
-//
-//	vbuffer.resize(size);
-
-
 }
 
 void Project::file_new(int w, int h) {
@@ -120,6 +86,11 @@ void Project::file_new(int w, int h) {
 
 	canvas = new img(this);
 	update_terrain_shader();
+
+	//TODO breaks UNDO/REDO??
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+	glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
 
 }
 
@@ -208,6 +179,7 @@ Project::Project(GLFWwindow* window) {
 	canvas = new img(this);
 	appearanceWindow->setShader(this);
 
+	glGenBuffers(1, &pbo);
 
 
 	file_new(1000,500);
@@ -253,53 +225,29 @@ void Project::update() {
 	}
 
 
-//	static bool test = true;
-//
-//	static GLsync sync;
-//	static GLuint pbo;
-//
-//	if (test = true) {
-//		glGenBuffers(1, &pbo);
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-//		test = false;
-//	}
-//	if (io.KeysDown[47] && io.KeysDownDuration[47]==0.0f) {
-//
-//		glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
-//		std::cout << "pressed\n";
-//
-//		glActiveTexture(GL_TEXTURE0);
-//		terrain->bind(0);
-//		//glBindTexture(GL_TEXTURE_2D, texture);
-//
-//		glGetTexImage(GL_TEXTURE_2D,
-//					  0,
-//					  GL_RGBA,
-//					  GL_UNSIGNED_BYTE,
-//					  nullptr);
-////ensure we don't try and read data before the transfer is complete
-//		sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-//
-//	}
-//
-//
-//// then regularly check for completion
-//	GLint result;
-//	glGetSynciv(sync, GL_SYNC_STATUS, sizeof(result), NULL, &result);
-//
-//	if(result == GL_SIGNALED){
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-//		void* mappedBuffer = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-//
-//		//now mapped buffer contains the pixel data
-//
-//		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-//
-//	} else {
-//		std::cout << "not finished\n";
-//	}
+	if (downloadingTex) {
+		GLint result;
+		glGetSynciv(sync, GL_SYNC_STATUS, sizeof(result), NULL, &result);
 
+		if(result == GL_SIGNALED){
+			glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
 
+			void* mappedBuffer = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+
+			std::cout << ((float*)mappedBuffer)[0] << " <- mapped buffer\n";
+
+			auto data = std::make_unique<float[]>(width*height);
+			memcpy(data.get(),mappedBuffer,width*height*sizeof(float));
+			auto tdata = new TextureData(std::move(data),width,height);
+			add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
+
+			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+			downloadingTex = false;
+			glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
+		} else {
+			std::cout << "waiting for sync\n";
+		}
+	}
 
 }
 
@@ -503,5 +451,18 @@ void Project::setGeometry(Geometry *g) {
 Geometry *Project::getGeometry() {
 	return geometry;
 }
+
+void Project::addAsyncTex(Texture *tex) {
+	downloadingTex = true;
+	asyncTex = tex;
+
+	asyncTex->bind(0);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+	glGetTexImage(GL_TEXTURE_2D,0,GL_RED,GL_FLOAT,nullptr);
+
+	sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
+}
+
 
 

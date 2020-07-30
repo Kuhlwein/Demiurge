@@ -13,6 +13,7 @@
 #include <filter/Filter.h>
 #include <geometry/Geometry.h>
 #include <memory>
+#include <imgui/examples/libs/glfw/include/GLFW/glfw3.h>
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"
@@ -78,7 +79,15 @@ public:
 
 	void dispatchFilter(std::shared_ptr<Filter> filter);
 	void finalizeFilter();
+
+	void addAsyncTex(Texture* tex);
+
 private:
+	Texture* asyncTex;
+	bool downloadingTex = false;
+	GLsync sync;
+
+
 	std::shared_ptr<Filter> filter;
 
 	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};
@@ -96,6 +105,7 @@ private:
 
     Vbo* vbo;
     GLuint fbo;
+	GLuint pbo;
     std::set<Texture*> textures;
     void bind_textures(ShaderProgram *program, std::vector<std::pair<Texture*,std::string>> l={});
 

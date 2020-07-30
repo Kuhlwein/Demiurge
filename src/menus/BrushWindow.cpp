@@ -65,89 +65,31 @@ void BrushWindow::brush_stroke(Project *p) {
 	glUniform1f(id,brush_size);
 
 	if(io.WantCaptureMouse) return;
-	static Texture* tmp;
-
 
 	if(io.MouseDown[0] & first) {
-		//brush_strokes.erase(brush_strokes.begin(),brush_strokes.end());
-
-		tmp = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"tmp");
-
-		ShaderProgram *program_backup = ShaderProgram::builder()
-				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-				.link();
-		p->apply(program_backup,tmp,{{p->get_terrain(),"to_be_copied"}});
-
 		initbrush(p);
 		first = false;
 	} else if (io.MouseDown[0]) {
 		brush(p,texcoord,texcoordPrev);
-		//brush_strokes.push_back({texcoord,texcoordPrev});
 	} else if (!first) {
 		std::cout << "last\n";
 
 		Shader *img_tmp_diff = Shader::builder()
 				.include(fragmentBase)
-				.create("uniform sampler2D tmp; uniform sampler2D target;", R"(
-fc = texture(tmp,st).r - texture(target, st).r;
+				.create("uniform sampler2D target;", R"(
+fc = texture(scratch1,st).r - texture(target, st).r;
 )");
 		// find difference between backup and target
 		ShaderProgram *program2 = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 				.addShader(img_tmp_diff->getCode(), GL_FRAGMENT_SHADER)
 				.link();
-		p->add_texture(tmp);
-		p->apply(program2, p->get_scratch1(),{{p->get_terrain(),"target"}});
-		p->remove_texture(tmp);
-		TextureData* data = p->get_scratch1()->downloadData();
-		delete tmp;
 
+		Texture* tmp = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"tmp");
+		p->apply(program2, tmp,{{p->get_terrain(),"target"}});
 
-		//auto a = new TextureData(data,p->getWidth(),p->getHeight());
-		//delete data;
-		//data = a->get();
+		p->addAsyncTex(tmp);
 
-		auto h = new SnapshotHistory(data,[](Project* p){return p->get_terrain();});
-		p->add_history(h);
-
-		//brush_strokes.push_back({texcoord,texcoordPrev});
-		//auto test = brush_strokes;
-
-//		float hardness = hardness;
-//		float brush_size2 = brush_size;
-//		auto r = [this,test,hardness,brush_size2](Project* p) {
-//			initbrush(p);
-//			auto data = brush_tex->downloadData();
-//			set_hardness(hardness);
-//			float oldsize = brush_size;
-//			brush_size = brush_size2;
-//			for (int i=0; i<test.size()-1; i++) brush(p,test[i].first,test[i].second);
-//			brush_size = oldsize;
-//			brush_tex->uploadData(GL_RED,GL_FLOAT,data);
-//		};
-//		auto u = [this,test,hardness,brush_size2](Project* p) {
-//			initbrush(p);
-//
-//			auto data = brush_tex->downloadData();
-//			set_hardness(hardness);
-//			float oldsize = brush_size;
-//			brush_size = brush_size2;
-//
-//			for (int i=0; i<test.size()-1; i++) brush(p,test[i].first,test[i].second,true);
-//			ShaderProgram *program = ShaderProgram::builder()
-//					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-//					.addShader(fix_0->getCode(), GL_FRAGMENT_SHADER)
-//					.link();
-//			p->apply(program,p->get_scratch1());
-//			p->get_terrain()->swap(p->get_scratch1());
-//
-//			brush_size = oldsize;
-//			brush_tex->uploadData(GL_RED,GL_FLOAT,data);
-//		};
-//
-//		auto hist = new ReversibleHistory(r,u);
-//		p->add_history(hist);
 		first = true;
 	}
 }

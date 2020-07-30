@@ -44,7 +44,8 @@ Texture::Texture(int width, int height, GLenum format, std::string name, GLint i
 void Texture::uploadData(GLenum format, GLenum type, const GLvoid *data) {
 	glActiveTexture( GL_TEXTURE0+0 );
 	glBindTexture( GL_TEXTURE_2D, id );
-    glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, type, data);
+    //glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, type, data);
+    glTexSubImage2D(GL_TEXTURE_2D,0,0,0,width,height,format,type,data);
 	//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
 }
 
@@ -53,38 +54,6 @@ TextureData* Texture::downloadData(GLenum format,GLenum type) {
 	if (type == GL_FLOAT) {
 		auto data = std::make_unique<float[]>(width*height);
 		glGetTexImage( GL_TEXTURE_2D,0,format,type,data.get());
-
-
-
-
-//		static GLuint pbo;
-//
-//		glGenBuffers(1, &pbo);
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-//		glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
-//
-//
-//		glActiveTexture(GL_TEXTURE0);
-//		bind(0);
-//		//glBindTexture(GL_TEXTURE_2D, texture);
-//
-//		glGetTexImage(GL_TEXTURE_2D,
-//					  0,
-//					  format,
-//					  type,
-//					  nullptr);
-//
-//
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-//		float* mappedBuffer = (float*) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-//
-//		memcpy(data.get(),mappedBuffer,getWidth() * getHeight()*4);
-//
-//		//now mapped buffer contains the pixel data
-//
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
-//		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-
 
 		return new TextureData(std::move(data),getWidth(),getHeight());
 	}
@@ -138,12 +107,11 @@ TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 	// allocate metadata for a compressed stream
 	zfp_stream* zfp = zfp_stream_open(NULL);
 
-	zfp_stream_set_accuracy(zfp, 1e-4);
+	zfp_stream_set_accuracy(zfp, 1e-6);
 
 	// allocate buffer for compressed data
 	bufsize = zfp_stream_maximum_size(zfp, field);
 
-	std::cout << "buffer size:    " << (float)(bufsize)/1000000 << "M\n";
 	auto tmpbuffer = std::make_unique<uchar[]>(bufsize);
 
 	// associate bit stream with allocated buffer
@@ -168,7 +136,7 @@ std::unique_ptr<float[]> TextureData::get() {
 	// allocate metadata for a compressed stream
 	zfp_stream* zfp = zfp_stream_open(NULL);
 
-	zfp_stream_set_accuracy(zfp, 1e-4);
+	zfp_stream_set_accuracy(zfp, 1e-6);
 
 	// associate bit stream with allocated buffer
 	bitstream* stream = stream_open(buffer, bufsize);
