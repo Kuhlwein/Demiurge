@@ -2,13 +2,14 @@
 // Created by kuhlwein on 5/25/19.
 //
 
-#include <GL/gl3w.h>
+#include <imgui/examples/libs/gl3w/GL/gl3w.h>
 #include <iostream>
 #include <cstring>
 #include <memory>
 #include <zfp/include/zfp.h>
 #include <chrono>
 #include <thread>
+
 #include "Texture.h"
 
 Texture::~Texture() {

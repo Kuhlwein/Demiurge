@@ -4,8 +4,8 @@
 
 #ifndef DEMIURGE_PROJECT_H
 #define DEMIURGE_PROJECT_H
-#include <GL/gl3w.h>
-#include <glfw/include/GLFW/glfw3.h>
+#include <imgui/examples/libs/gl3w/GL/gl3w.h>
+#include <imgui/examples/libs/glfw/include/GLFW/glfw3.h>
 #include <map>
 #include <set>
 #include <stack>
@@ -13,7 +13,7 @@
 #include <filter/Filter.h>
 #include <geometry/Geometry.h>
 #include <memory>
-#include <imgui/examples/libs/glfw/include/GLFW/glfw3.h>
+
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"

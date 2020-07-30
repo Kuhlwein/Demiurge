@@ -3,7 +3,6 @@
 //
 
 #include <iostream>
-#include <GL/gl3w.h>
 #include <vector>
 #include "Project.h"
 #include "Vbo.h"
@@ -247,8 +246,8 @@ void Project::update() {
 
 			auto data = std::make_unique<float[]>(width*height);
 			memcpy(data.get(),mappedBuffer,width*height*sizeof(float));
-			//auto tdata = new TextureData(std::move(data),width,height);
-			//add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
+			auto tdata = new TextureData(std::move(data),width,height);
+			add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
 
 			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 			downloadingTex = false;
