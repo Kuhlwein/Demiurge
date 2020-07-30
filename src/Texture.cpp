@@ -7,6 +7,8 @@
 #include <cstring>
 #include <memory>
 #include <zfp/include/zfp.h>
+#include <chrono>
+#include <thread>
 #include "Texture.h"
 
 Texture::~Texture() {
@@ -98,35 +100,56 @@ void Texture::bind(ShaderProgram *program, GLuint point, std::string s) {
 TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 	this->height = height;
 	this->width = width;
+	initialized = false;
 
-	std::cout << "data with size: " << (float)(width*height*sizeof(float))/1000000 << "M\n";
 
-	zfp_type type = zfp_type_float;
-	zfp_field* field = zfp_field_2d(data.get(), type, width, height);
+	auto f = [this](std::unique_ptr<float[]> data) {
+		std::unique_lock<std::mutex> lk(mtx);
 
-	// allocate metadata for a compressed stream
-	zfp_stream* zfp = zfp_stream_open(NULL);
+		float c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
-	zfp_stream_set_accuracy(zfp, 1e-6);
+		std::cout << "data with size: " << (float) (this->width * this->height * sizeof(float)) / 1000000 << "M\n";
 
-	// allocate buffer for compressed data
-	bufsize = zfp_stream_maximum_size(zfp, field);
+		zfp_type type = zfp_type_float;
+		zfp_field *field = zfp_field_2d(data.get(), type, this->width, this->height);
 
-	auto tmpbuffer = std::make_unique<uchar[]>(bufsize);
+		// allocate metadata for a compressed stream
+		zfp_stream *zfp = zfp_stream_open(NULL);
 
-	// associate bit stream with allocated buffer
-	bitstream* stream = stream_open(tmpbuffer.get(), bufsize);
-	zfp_stream_set_bit_stream(zfp, stream);
+		zfp_stream_set_accuracy(zfp, 1e-6);
 
-	// compress entire array
-	size_t size = zfp_compress(zfp, field);
-	std::cout << "compressed size: " << (float)(size)/1000000 << "M\n";
+		// allocate buffer for compressed data
+		bufsize = zfp_stream_maximum_size(zfp, field);
 
-	buffer = new uchar[size];
-	memcpy(buffer,tmpbuffer.get(),size);
+		auto tmpbuffer = std::make_unique<uchar[]>(bufsize);
+
+		// associate bit stream with allocated buffer
+		bitstream *stream = stream_open(tmpbuffer.get(), bufsize);
+		zfp_stream_set_bit_stream(zfp, stream);
+
+		// compress entire array
+		size_t size = zfp_compress(zfp, field);
+		std::cout << "compressed size: " << (float) (size) / 1000000 << "M\n";
+
+		buffer = new uchar[size];
+		memcpy(buffer, tmpbuffer.get(), size);
+
+		float c2 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+		std::cout << "time: " << c2 - c1 << "\n";
+
+		initialized = true;
+		cv.notify_all();
+	};
+
+	std::thread t = std::thread(f,std::move(data));
+	t.detach();
 }
 
 std::unique_ptr<float[]> TextureData::get() {
+	std::unique_lock<std::mutex> lk(mtx);
+	if(!initialized) cv.wait(lk);
 
 	auto data = std::make_unique<float[]>(width*height);
 

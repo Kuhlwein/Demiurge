@@ -11,6 +11,8 @@
 #include <zfp/include/zfp/types.h>
 #include "ShaderProgram.h"
 #include <memory>
+#include <mutex>
+#include <condition_variable>
 
 class TextureData;
 
@@ -43,6 +45,12 @@ private:
 	uchar* buffer;
 	int width, height;
 	size_t bufsize;
+
+	bool initialized;
+	std::mutex mtx;
+	std::condition_variable cv;
+
+
 };
 
 

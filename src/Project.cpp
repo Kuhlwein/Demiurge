@@ -21,6 +21,7 @@
 #include <select/AllSelect.h>
 #include <select/InverseSelect.h>
 #include <filter/BlurMenu.h>
+#include <thread>
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
@@ -235,10 +236,19 @@ void Project::update() {
 
 			std::cout << ((float*)mappedBuffer)[0] << " <- mapped buffer\n";
 
+//			auto f = [this](void* buffer){
+//				auto data = std::make_unique<float[]>(width*height);
+//				memcpy(data.get(),buffer,width*height*sizeof(float));
+//				auto tdata = new TextureData(std::move(data),width,height);
+//				add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
+//			};
+//			std::thread t = std::thread(f,mappedBuffer);
+//			t.detach();
+
 			auto data = std::make_unique<float[]>(width*height);
 			memcpy(data.get(),mappedBuffer,width*height*sizeof(float));
-			auto tdata = new TextureData(std::move(data),width,height);
-			add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
+			//auto tdata = new TextureData(std::move(data),width,height);
+			//add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
 
 			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 			downloadingTex = false;
