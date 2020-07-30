@@ -5,7 +5,6 @@
 #include "Project.h"
 #include <imgui/imgui.h>
 #include <algorithm>
-#include <iostream>
 #include "BlurMenu.h"
 
 BlurMenu::BlurMenu() : FilterModal("Blur") {

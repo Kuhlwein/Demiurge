@@ -30,5 +30,17 @@ protected:
 	virtual std::function<Texture *(Project *p)> targetGetter() = 0;
 };
 
+class InstantFilterModal : public Modal {
+public:
+	InstantFilterModal(std::string title);
+	bool update_InstantFilterModal(Project* p);
+	virtual void update_self(Project* p) = 0;
+	virtual std::unique_ptr<BackupFilter> makeFilter(Project* p) = 0;
+protected:
+	std::unique_ptr<BackupFilter> filter;
+private:
+	bool first = true;
+};
+
 
 #endif //DEMIURGE_FILTERMODAL_H

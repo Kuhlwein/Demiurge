@@ -64,7 +64,12 @@ fc = s*texture(to_be_copied, st).r + (1-s)*texture(tmp, st).r;
 }
 
 void BackupFilter::restoreBackup() {
-	target(p)->swap(tmp);
+	ShaderProgram *program_backup = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	p->apply(program_backup,target(p),{{tmp,"to_be_copied"}});
+	//target(p)->swap(tmp);
 }
 
 

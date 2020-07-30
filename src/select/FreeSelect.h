@@ -24,7 +24,6 @@ public:
 	FreeSelectFilter(Project *p, Shader* mode);
 	~FreeSelectFilter();
 	void run() override;
-	//void finalize() override;
 	Shader* getShader() override;
 	bool isFinished() override;
 private:

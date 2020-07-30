@@ -49,6 +49,8 @@ protected:
 	std::function<Texture *(Project *p)> target;
 };
 
+
+
 class ProgressFilter : public BackupFilter {
 public:
 	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target);

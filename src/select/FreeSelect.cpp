@@ -4,7 +4,6 @@
 
 #include "Project.h"
 #include <Shader.h>
-#include <bits/unique_ptr.h>
 #include <iostream>
 #include "FreeSelect.h"
 #include "selection.h"
@@ -21,7 +20,7 @@ bool FreeSelect::update_self(Project *p) {
 
 	Shader* mode = selection::selection_mode();
 
-	if(ImGui::Button("Close")) {
+	if(ImGui::Button("Apply")) {
 		return true;
 	}
 

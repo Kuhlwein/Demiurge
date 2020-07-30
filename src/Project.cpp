@@ -15,12 +15,14 @@
 
 //todo remove
 
-#include <glm/glm.hpp>
+#include <glm/glm/glm.hpp>
 #include <imgui/imgui.h>
 #include <select/AllSelect.h>
 #include <select/InverseSelect.h>
 #include <filter/BlurMenu.h>
 #include <thread>
+#include <filter/OffsetMenu.h>
+
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
@@ -34,10 +36,6 @@
 #include "projections/EckertIV.h"
 #include "menus/BrushWindow.h"
 #include "menus/AppearanceWindow.h"
-
-#include "zfp.h"
-#include "zfparray2.h"
-
 
 void Project::file_load(const std::string& filename) {
 	int w, h, comp;
@@ -164,6 +162,7 @@ Project::Project(GLFWwindow* window) {
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
+	filter_menu.push_back(new OffsetMenu());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
@@ -234,15 +233,6 @@ void Project::update() {
 			void* mappedBuffer = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
 
 			std::cout << ((float*)mappedBuffer)[0] << " <- mapped buffer\n";
-
-//			auto f = [this](void* buffer){
-//				auto data = std::make_unique<float[]>(width*height);
-//				memcpy(data.get(),buffer,width*height*sizeof(float));
-//				auto tdata = new TextureData(std::move(data),width,height);
-//				add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
-//			};
-//			std::thread t = std::thread(f,mappedBuffer);
-//			t.detach();
 
 			auto data = std::make_unique<float[]>(width*height);
 			memcpy(data.get(),mappedBuffer,width*height*sizeof(float));

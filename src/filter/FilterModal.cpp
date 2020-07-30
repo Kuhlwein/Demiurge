@@ -26,7 +26,6 @@ bool FilterModal::update_FilterModal(Project *p) {
 
 		filter = makeFilter(p);
 		p->dispatchFilter(filter);
-
 		return false;
 	}
 	ImGui::SameLine();
@@ -86,3 +85,33 @@ fc = texture(tmp,st).r - texture(target, st).r;
 
 }
 
+InstantFilterModal::InstantFilterModal(std::string title) : Modal(title, [this](Project* p) {
+	return this->update_InstantFilterModal(p);
+}) {
+
+}
+
+bool InstantFilterModal::update_InstantFilterModal(Project *p) {
+	if (first) {
+		filter = makeFilter(p);
+		filter->run();
+		first = false;
+	}
+
+	update_self(p);
+
+	if(ImGui::Button("Apply")) {
+		first = true;
+		filter->add_history();
+		filter.release();
+		return true;
+	}
+	ImGui::SameLine();
+	if(ImGui::Button("Cancel")) {
+		first = true;
+		filter->restoreBackup();
+		filter.release();
+		return true;
+	}
+	return false;
+}

@@ -6,7 +6,7 @@
 #define DEMIURGE_CANVAS_H
 
 
-#include <glm/glm.hpp>
+#include <glm/glm/glm.hpp>
 #include <imgui/imgui.h>
 #include "Vbo.h"
 #include "Shader.h"
