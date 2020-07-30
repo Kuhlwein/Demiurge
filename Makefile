@@ -71,9 +71,9 @@ endif
 
 ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
    ECHO_MESSAGE = "Windows"
-   LIBS = -static -lglfw3 -lgdi32 -lopengl32 -limm32
+   LIBS = -static -lglfw3 -lgdi32 -lopengl32 -limm32 -L$(zfp)/lib -lzfp
 
-   CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib
+   CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib -I$(zfp)/array -I$(zfp)/include
    CXXFLAGS += -Wall -Wformat
    CFLAGS = $(CXXFLAGS)
 endif
