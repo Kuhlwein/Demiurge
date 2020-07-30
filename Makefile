@@ -102,7 +102,7 @@ all: $(EXE)
 	@echo Build complete for $(ECHO_MESSAGE)
 	./$(EXE)
 
-$(EXE): $(OBJS)
+$(EXE): $(OBJS) lib/zfp/lib/libzfp.a
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
 
 clean:

@@ -22,6 +22,7 @@
 #include <filter/BlurMenu.h>
 #include <thread>
 #include <filter/OffsetMenu.h>
+#include <filter/ScaleMenu.h>
 
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
@@ -163,6 +164,7 @@ Project::Project(GLFWwindow* window) {
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
 	filter_menu.push_back(new OffsetMenu());
+	filter_menu.push_back(new ScaleMenu());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
@@ -456,6 +458,7 @@ void Project::addAsyncTex(Texture *tex) {
 
 	asyncTex->bind(0);
 	glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+	//TODO calculate brush position boundaries, then use SubImage
 	glGetTexImage(GL_TEXTURE_2D,0,GL_RED,GL_FLOAT,nullptr);
 
 	sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);

@@ -6,7 +6,7 @@
 #include <imgui/imgui.h>
 #include "OffsetMenu.h"
 
-OffsetMenu::OffsetMenu() : InstantFilterModal("Offset") {}
+OffsetMenu::OffsetMenu() : InstantFilterModal("Offset (Add)") {}
 
 void OffsetMenu::update_self(Project *p) {
 	if(ImGui::DragFloat("Value", &offset, 0.01f/10, 0, 0, "%.4f", 1.0f)) {

@@ -6,8 +6,6 @@
 #define DEMIURGE_OFFSETMENU_H
 
 
-#include <Menu.h>
-#include <memory>
 #include "Filter.h"
 #include "FilterModal.h"
 
