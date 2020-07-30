@@ -224,7 +224,6 @@ void Project::update() {
 		undo();
 	}
 
-
 	if (downloadingTex) {
 		GLint result;
 		glGetSynciv(sync, GL_SYNC_STATUS, sizeof(result), NULL, &result);
