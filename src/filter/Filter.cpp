@@ -100,8 +100,8 @@ void ProgressFilter::run() {
 	if (aborting) {
 		restoreBackup();
 		p->finalizeFilter();
-		finished = true;
-		return;
+		//finished = true;
+		//return;
 	}
 
 	if(finished) {

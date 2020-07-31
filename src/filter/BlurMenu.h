@@ -42,7 +42,7 @@ public:
 	~BlurTerrain();
 	std::pair<bool,float> step();
 private:
-	ShaderProgram* program;
+
 	Blur* newblur;
 };
 

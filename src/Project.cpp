@@ -23,6 +23,7 @@
 #include <thread>
 #include <filter/OffsetMenu.h>
 #include <filter/ScaleMenu.h>
+#include <filter/Morphological.h>
 
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
@@ -163,8 +164,11 @@ Project::Project(GLFWwindow* window) {
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
-	filter_menu.push_back(new OffsetMenu());
-	filter_menu.push_back(new ScaleMenu());
+	auto math = new SubMenu("Mathematical");
+	math->addMenu(new OffsetMenu());
+	math->addMenu(new ScaleMenu());
+	filter_menu.push_back(math);
+	filter_menu.push_back(new ErodeMenu());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
