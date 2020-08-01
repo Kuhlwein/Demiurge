@@ -8,11 +8,11 @@
 #include <algorithm>
 #include "Morphological.h"
 
-ErodeMenu::ErodeMenu() : FilterModal("Erode/Dilate") {
+MorphologicalMenu::MorphologicalMenu() : FilterModal("Erode/Dilate") {
 
 }
 
-void ErodeMenu::update_self(Project *p) {
+void MorphologicalMenu::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
 	const char* items[] = { "Erode","Dilate"};
@@ -20,8 +20,8 @@ void ErodeMenu::update_self(Project *p) {
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
-std::shared_ptr<Filter> ErodeMenu::makeFilter(Project *p) {
-	auto morph = new Morphological(p, radius, p->get_terrain(),(current==0) ? "max" : "min");
+std::shared_ptr<Filter> MorphologicalMenu::makeFilter(Project *p) {
+	auto morph = new Morphological(p, radius, p->get_terrain(),(current==0) ? "min" : "max");
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},morph);
 }
 
@@ -34,11 +34,9 @@ Morphological::Morphological(Project *p, float radius, Texture *target, std::str
 		if (x<radius) {
 			radius-=x;
 			r.push_back(x);
-			std::cout << x << "\n";
 			x*=2;
 		} else {
 			r.push_back(radius);
-			std::cout << radius << "\n";
 			break;
 		}
 	}
@@ -65,8 +63,8 @@ for (int i=0; i<N; i++) {
 	Shader* fragment_set = Shader::builder()
 			.include(fragmentBase)
 			.include(defineErode)
-			.create("uniform float radius;",R"(
-fc = erode(img,st,radius);
+			.create("uniform float radius; uniform sampler2D target;",R"(
+fc = erode(target,st,radius);
 )");
 	erodeProgram = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -78,9 +76,55 @@ std::pair<bool, float> Morphological::step(Project* p) {
 	erodeProgram->bind();
 	int id = glGetUniformLocation(erodeProgram->getId(), "radius");
 	glUniform1f(id,r[steps]);
-	p->apply(erodeProgram, p->get_scratch1());
+	p->apply(erodeProgram, p->get_scratch1(),{{target,"target"}});
 	p->get_scratch1()->swap(target);
 	steps++;
 
 	return {steps>=r.size(),(float(steps))/r.size()};
+}
+
+MorphologicalGradient::MorphologicalGradient(Project *p, float radius, Texture *target) {
+	dilate = new Morphological(p,(radius+1)/2,target,"max");
+	erode = new Morphological(p,radius/2,target,"min");
+	this->target = target;
+	tmp = new Texture(target->getWidth(),target->getHeight(),GL_R32F,"img",GL_NEAREST);
+
+	auto copyProgram = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	p->apply(copyProgram, tmp, {{target, "to_be_copied"}});
+
+}
+
+std::pair<bool, float> MorphologicalGradient::step(Project *p) {
+	float progress;
+	if (!finish_part1) {
+		auto [finished,f] = erode->step(p);
+		finish_part1 = finished;
+		progress = f*0.5f;
+		if (finished) tmp->swap(target);
+	} else {
+		auto [finished,f] = dilate->step(p);
+		progress = 0.5f + f*0.5f;
+		if (finished) {
+			auto difference = Shader::builder()
+					.include(fragmentBase)
+					.create("uniform sampler2D eroded; uniform sampler2D dilated;",R"(
+fc = texture(dilated, st).r - texture(eroded, st).r;
+)");
+
+			auto copyProgram = ShaderProgram::builder()
+					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+					.addShader(difference->getCode(), GL_FRAGMENT_SHADER)
+					.link();
+			p->apply(copyProgram, p->get_scratch1(), {{target, "dilated"},{tmp,"eroded"}});
+			p->get_scratch1()->swap(target);
+
+			return {true,1.0f};
+		}
+	}
+
+
+	return {false, progress};
 }

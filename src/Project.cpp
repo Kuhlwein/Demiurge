@@ -24,6 +24,7 @@
 #include <filter/OffsetMenu.h>
 #include <filter/ScaleMenu.h>
 #include <filter/Morphological.h>
+#include <select/selection.h>
 
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
@@ -161,6 +162,8 @@ Project::Project(GLFWwindow* window) {
 	selection_menu.push_back(new AllSelect());
 	selection_menu.push_back(new InverseSelect());
 	selection_menu.push_back(new FreeSelect());
+	selection_menu.push_back(new GrowShrinkMenu());
+	selection_menu.push_back(new BorderMenu());
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
@@ -168,7 +171,7 @@ Project::Project(GLFWwindow* window) {
 	math->addMenu(new OffsetMenu());
 	math->addMenu(new ScaleMenu());
 	filter_menu.push_back(math);
-	filter_menu.push_back(new ErodeMenu());
+	filter_menu.push_back(new MorphologicalMenu());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);

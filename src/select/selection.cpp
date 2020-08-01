@@ -2,11 +2,11 @@
 // Created by kuhlwein on 4/11/20.
 //
 
+#include "Project.h"
 #include <iostream>
 #include <imgui/imgui.h>
 #include <algorithm>
-#include "Menu.h"
-#include "Project.h"
+#include <filter/Morphological.h>
 #include "selection.h"
 
 
@@ -21,6 +21,7 @@
  * 	slope
  * Expand
  * Contract
+ * Border
  * Blur
  */
 
@@ -73,6 +74,38 @@ float selection_mode(float old, float new) {
 			return intersect;
 	}
 }
+
+
+GrowShrinkMenu::GrowShrinkMenu() : FilterModal("Grow/Shrink") {
+
+}
+
+void GrowShrinkMenu::update_self(Project *p) {
+	ImGuiIO io = ImGui::GetIO();
+	const char* items[] = { "Shrink","Grow"};
+	ImGui::Combo("Operation",&current, items,IM_ARRAYSIZE(items));
+	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
+}
+
+std::shared_ptr<Filter> GrowShrinkMenu::makeFilter(Project *p) {
+	auto morph = new Morphological(p, radius, p->get_selection(),(current==0) ? "min" : "max");
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},morph);
+}
+
+void BorderMenu::update_self(Project *p) {
+	ImGuiIO io = ImGui::GetIO();
+	ImGui::DragFloat("Width", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
+}
+
+std::shared_ptr<Filter> BorderMenu::makeFilter(Project *p) {
+	auto morph = new MorphologicalGradient(p, radius, p->get_selection());
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},morph);
+}
+
+BorderMenu::BorderMenu() : FilterModal("Border") {
+
+}
+
 //
 //bool selection::by_height(Project* p) {
 //	static float low = -1;

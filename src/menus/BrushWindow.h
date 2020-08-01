@@ -7,7 +7,7 @@
 
 
 #include <Menu.h>
-#include <glm/fwd.hpp>
+#include <glm/glm/fwd.hpp>
 
 
 class Project;

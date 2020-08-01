@@ -11,9 +11,9 @@
 
 class Project;
 
-class ErodeMenu : public FilterModal {
+class MorphologicalMenu : public FilterModal {
 public:
-	ErodeMenu();
+	MorphologicalMenu();
 	void update_self(Project* p) override;
 	std::shared_ptr<Filter> makeFilter(Project* p) override;
 private:
@@ -30,6 +30,16 @@ private:
 	Texture* target;
 	int steps = 0;
 	std::vector<float> r;
+};
+
+class MorphologicalGradient : public SubFilter {
+public:
+	MorphologicalGradient(Project *p, float radius, Texture *target);
+	std::pair<bool,float> step(Project* p) override;
+private:
+	Texture *tmp, *target;
+	Morphological* erode, *dilate;
+	bool finish_part1 = false;
 };
 
 

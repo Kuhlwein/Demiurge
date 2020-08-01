@@ -105,7 +105,7 @@ void ProgressFilter::run(Project* p) {
 	}
 
 	if(finished) {
-		restoreUnselected();
+		//restoreUnselected(); //TODO move elsewhere
 		add_history();
 		p->finalizeFilter();
 	}

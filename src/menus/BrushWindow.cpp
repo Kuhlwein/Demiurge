@@ -56,7 +56,9 @@ void BrushWindow::brush_stroke(Project *p) {
 	glm::vec2 texcoordPrev = p->getMousePrev();
 
 	auto program = p->program;
+	program->bind();
 
+	//TODO brush window should not be responsible for mouse position!
 	int id = glGetUniformLocation(program->getId(),"mouse");
 	glUniform2f(id,texcoord.x,texcoord.y);
 	id = glGetUniformLocation(program->getId(),"mousePrev");
