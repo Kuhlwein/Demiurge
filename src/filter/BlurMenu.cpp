@@ -18,20 +18,7 @@ void BlurMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<Filter> BlurMenu::makeFilter(Project* p) {
-	return std::make_shared<BlurTerrain>(p, radius);
-}
-
-
-BlurTerrain::BlurTerrain(Project *p, float radius) : ProgressFilter(p, [](Project* p){return p->get_terrain();}) {
-	newblur = new Blur(p, radius, p->get_terrain());
-}
-
-BlurTerrain::~BlurTerrain() {
-
-}
-
-std::pair<bool, float> BlurTerrain::step() {
-	return newblur->step();
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},new Blur(p, radius, p->get_terrain()));
 }
 
 Blur::Blur(Project *p, float radius, Texture *target) : SubFilter(p) {
@@ -115,8 +102,6 @@ std::pair<bool,float> Blur::step() {
 
 	bool finished = false;
 
-	//Preview
-	//p->apply(copyProgram, target, {{tex1, "to_be_copied"}});
 	if(i>rlist.size()-1) {
 		p->apply(copyProgram, target, {{tex1, "to_be_copied"}});
 		finished = true;

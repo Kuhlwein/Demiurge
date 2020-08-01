@@ -69,11 +69,11 @@ void BackupFilter::restoreBackup() {
 			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 	p->apply(program_backup,target(p),{{tmp,"to_be_copied"}});
-	//target(p)->swap(tmp);
 }
 
 
-ProgressFilter::ProgressFilter(Project *p, std::function<Texture *(Project *)> target) : BackupFilter(p, target) {
+ProgressFilter::ProgressFilter(Project *p, std::function<Texture *(Project *)> target, SubFilter* subfilter) : BackupFilter(p, target) {
+	this->subFilter = subfilter;
 	progressModal = new Modal("Applying filter",[this](Project* p) {
 		ImGui::ProgressBar(this->progress,ImVec2(360,0));
 		bool a = ImGui::Button("Cancel");
@@ -92,7 +92,8 @@ void ProgressFilter::progressBar(float a) {
 
 void ProgressFilter::run() {
 	if (finished) return;
-	auto [f, progress] = step();
+	auto [f, progress] = subFilter->step();
+
 	finished = f;
 
 	progressBar(progress);
@@ -100,8 +101,6 @@ void ProgressFilter::run() {
 	if (aborting) {
 		restoreBackup();
 		p->finalizeFilter();
-		//finished = true;
-		//return;
 	}
 
 	if(finished) {

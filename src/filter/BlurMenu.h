@@ -31,19 +31,6 @@ public:
 	std::shared_ptr<Filter> makeFilter(Project* p) override;
 private:
 	float radius = 1.0f;
-	//std::shared_ptr<Filter> filter;
-};
-
-
-
-class BlurTerrain : public ProgressFilter {
-public:
-	BlurTerrain(Project *p, float radius);
-	~BlurTerrain();
-	std::pair<bool,float> step();
-private:
-
-	Blur* newblur;
 };
 
 

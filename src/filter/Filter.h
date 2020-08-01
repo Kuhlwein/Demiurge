@@ -49,23 +49,6 @@ protected:
 	std::function<Texture *(Project *p)> target;
 };
 
-
-
-class ProgressFilter : public BackupFilter {
-public:
-	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target);
-	virtual ~ProgressFilter();
-	void progressBar(float a);
-	virtual std::pair<bool,float> step() = 0;
-	void run() override;
-	bool isFinished() override;
-private:
-	float progress;
-	Modal* progressModal;
-	bool aborting = false;
-	bool finished = false;
-};
-
 class SubFilter {
 public:
 	SubFilter(Project* p) {
@@ -75,6 +58,23 @@ public:
 protected:
 	Project* p;
 };
+
+class ProgressFilter : public BackupFilter {
+public:
+	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target, SubFilter* subfilter);
+	virtual ~ProgressFilter();
+	void progressBar(float a);
+	void run() override;
+	bool isFinished() override;
+private:
+	float progress;
+	Modal* progressModal;
+	bool aborting = false;
+	bool finished = false;
+	SubFilter* subFilter;
+};
+
+
 
 
 

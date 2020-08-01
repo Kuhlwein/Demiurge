@@ -19,7 +19,7 @@ void ErodeMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<Filter> ErodeMenu::makeFilter(Project *p) {
-	return std::make_shared<ErodeTerrain>(p,radius);
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},new Erode(p,radius,p->get_terrain()));
 }
 
 Erode::Erode(Project *p, float radius, Texture *target) : SubFilter(p) {
@@ -80,16 +80,4 @@ std::pair<bool, float> Erode::step() {
 	steps++;
 
 	return {steps>=r.size(),(float(steps))/r.size()};
-}
-
-ErodeTerrain::ErodeTerrain(Project *p, float radius) : ProgressFilter(p, [](Project* p){return p->get_terrain();}) {
-	erode = new Erode(p,radius,p->get_terrain());
-}
-
-ErodeTerrain::~ErodeTerrain() {
-
-}
-
-std::pair<bool, float> ErodeTerrain::step() {
-	return erode->step();
 }

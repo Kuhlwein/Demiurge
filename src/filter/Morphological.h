@@ -31,14 +31,5 @@ private:
 	std::vector<float> r;
 };
 
-class ErodeTerrain : public ProgressFilter {
-public:
-	ErodeTerrain(Project *p, float radius);
-	~ErodeTerrain() override;
-	std::pair<bool,float> step();
-private:
-	Erode* erode;
-};
-
 
 #endif //DEMIURGE_MORPHOLOGICAL_H
