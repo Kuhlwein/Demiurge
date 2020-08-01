@@ -70,8 +70,4 @@ private:
 };
 
 
-
-
-
-
 #endif //DEMIURGE_FILTER_H

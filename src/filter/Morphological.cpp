@@ -8,21 +8,24 @@
 #include <algorithm>
 #include "Morphological.h"
 
-ErodeMenu::ErodeMenu() : FilterModal("Erode") {
+ErodeMenu::ErodeMenu() : FilterModal("Erode/Dilate") {
 
 }
 
 void ErodeMenu::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
+	const char* items[] = { "Erode","Dilate"};
+	ImGui::Combo("Operation",&current, items,IM_ARRAYSIZE(items));
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
 std::shared_ptr<Filter> ErodeMenu::makeFilter(Project *p) {
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},new Erode(p,radius,p->get_terrain()));
+	auto morph = new Morphological(p, radius, p->get_terrain(),(current==0) ? "max" : "min");
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},morph);
 }
 
-Erode::Erode(Project *p, float radius, Texture *target) : SubFilter() {
+Morphological::Morphological(Project *p, float radius, Texture *target, std::string operation) : SubFilter() {
 	this->target = target;
 
 	r = {};
@@ -53,7 +56,7 @@ float factor = 1/cos(abs(phi));
 
 int N = 64;
 for (int i=0; i<N; i++) {
-	a = max(a,texture(image, offset(uv, vec2(cos(2*3.14159*i/N)*radius*factor,sin(2*3.14159*i/N)*radius),resolution)).r);
+	a = )"+operation+R"((a,texture(image, offset(uv, vec2(cos(2*3.14159*i/N)*radius*factor,sin(2*3.14159*i/N)*radius),resolution)).r);
 }
 	return a;
 }
@@ -71,12 +74,12 @@ fc = erode(img,st,radius);
 			.link();
 }
 
-std::pair<bool, float> Erode::step(Project* p) {
+std::pair<bool, float> Morphological::step(Project* p) {
 	erodeProgram->bind();
 	int id = glGetUniformLocation(erodeProgram->getId(), "radius");
-	glUniform1f(id,r[steps]); //TODO factor on steps
+	glUniform1f(id,r[steps]);
 	p->apply(erodeProgram, p->get_scratch1());
-	p->get_scratch1()->swap(p->get_terrain());
+	p->get_scratch1()->swap(target);
 	steps++;
 
 	return {steps>=r.size(),(float(steps))/r.size()};
