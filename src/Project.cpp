@@ -164,6 +164,7 @@ Project::Project(GLFWwindow* window) {
 	selection_menu.push_back(new FreeSelect());
 	selection_menu.push_back(new GrowShrinkMenu());
 	selection_menu.push_back(new BorderMenu());
+	selection_menu.push_back(new BlurSelection());
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());

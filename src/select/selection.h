@@ -36,4 +36,13 @@ private:
 	float radius = 1.0f;
 };
 
+class BlurSelection : public FilterModal {
+public:
+	BlurSelection();
+	void update_self(Project* p) override;
+	std::shared_ptr<Filter> makeFilter(Project* p) override;
+private:
+	float radius = 1.0f;
+};
+
 #endif //DEMIURGE_SELECTION_H

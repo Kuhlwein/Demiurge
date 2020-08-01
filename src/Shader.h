@@ -222,11 +222,11 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
     float y1 = texture(sel, st-vec2(0,dy2)).r;
     float y2 = texture(sel, st+vec2(0,dy2)).r;
 
-    float k = round(dx2*20000);
+
     float test = round(mod(gl_FragCoord.x/8-gl_FragCoord.y/8+u_time,1));
 
-    if (abs(x1-mod(x1,0.2)-(x2-mod(x2,0.2)))>0) fc = vec4(test,test,test,0);
-    if (abs(y1-mod(y1,0.2)-(y2-mod(y2,0.2)))>0) fc = vec4(test,test,test,0);
+    if (bool(x1) != bool(x2)) fc = vec4(test,test,test,0);
+    if (bool(y1) != bool(y2)) fc = vec4(test,test,test,0);
 }
 )","draw_selection_outline(fc,st_p);");
 

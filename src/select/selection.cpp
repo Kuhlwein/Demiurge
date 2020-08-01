@@ -7,6 +7,7 @@
 #include <imgui/imgui.h>
 #include <algorithm>
 #include <filter/Morphological.h>
+#include <filter/BlurMenu.h>
 #include "selection.h"
 
 
@@ -105,6 +106,22 @@ std::shared_ptr<Filter> BorderMenu::makeFilter(Project *p) {
 BorderMenu::BorderMenu() : FilterModal("Border") {
 
 }
+
+
+BlurSelection::BlurSelection() : FilterModal("Blur##Selection") {
+
+}
+
+void BlurSelection::update_self(Project *p) {
+	ImGuiIO io = ImGui::GetIO();
+
+	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
+}
+
+std::shared_ptr<Filter> BlurSelection::makeFilter(Project* p) {
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_selection();},new Blur(p, radius, p->get_selection()));
+}
+
 
 //
 //bool selection::by_height(Project* p) {
