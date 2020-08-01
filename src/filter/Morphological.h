@@ -23,7 +23,7 @@ private:
 class Erode : public SubFilter {
 public:
 	Erode(Project *p, float radius, Texture *target);
-	std::pair<bool,float> step() override;
+	std::pair<bool,float> step(Project* p) override;
 private:
 	ShaderProgram *erodeProgram;
 	Texture* target;

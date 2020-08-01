@@ -15,25 +15,23 @@ class Texture;
 
 class Filter {
 public:
-	Filter(Project* p) {
-		this->p = p;
+	Filter() {
 		noneshader = Shader::builder().create("","");
 	}
 	virtual ~Filter() = default;
-	virtual void run() = 0;
+	virtual void run(Project* p) = 0;
 	virtual Shader* getShader() {return noneshader;};
 	virtual bool isFinished() = 0;
 protected:
-	Project* p;
 	Shader* noneshader;
 };
 
 class NoneFilter : public Filter {
-	void run() override {}
+	void run(Project* p) override {}
 	virtual Shader* getShader() override {return Shader::builder().create("","");}
 	bool isFinished() override {return false;}
 public:
-	NoneFilter() : Filter(nullptr) {}
+	NoneFilter() : Filter() {}
 	~NoneFilter() = default;
 };
 
@@ -45,18 +43,15 @@ public:
 	void restoreUnselected();
 	void restoreBackup();
 protected:
+	Project* p;
 	Texture* tmp;
 	std::function<Texture *(Project *p)> target;
 };
 
 class SubFilter {
 public:
-	SubFilter(Project* p) {
-		this->p = p;
-	}
-	virtual std::pair<bool,float> step() = 0;
-protected:
-	Project* p;
+	SubFilter() {}
+	virtual std::pair<bool,float> step(Project* p) = 0;
 };
 
 class ProgressFilter : public BackupFilter {
@@ -64,7 +59,7 @@ public:
 	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target, SubFilter* subfilter);
 	virtual ~ProgressFilter();
 	void progressBar(float a);
-	void run() override;
+	void run(Project* p) override;
 	bool isFinished() override;
 private:
 	float progress;

@@ -24,7 +24,7 @@ bool FreeSelect::update_self(Project *p) {
 		return true;
 	}
 
-	filter->run();
+	filter->run(p);
 
 	bool a = ImGui::IsAnyWindowHovered() || ImGui::IsAnyItemHovered();
 	if(!a && io.MouseDown[0] && io.MouseDownDuration[0]==0) {
@@ -67,7 +67,7 @@ if (free_select(mouseFirst,mouse,mousePrev)) {
 	delete program;
 }
 
-void FreeSelectFilter::run() {
+void FreeSelectFilter::run(Project* p) {
 	if (finished) return;
 
 	ImGuiIO io = ImGui::GetIO();

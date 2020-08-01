@@ -8,8 +8,9 @@
 #include "Filter.h"
 #include "Texture.h"
 
-BackupFilter::BackupFilter(Project *p, std::function<Texture *(Project *p)> target) : Filter(p) {
+BackupFilter::BackupFilter(Project *p, std::function<Texture *(Project *p)> target) : Filter() {
 	this->target = target;
+	this->p = p;
 	std::cout << "creating backup\n";
 	tmp = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"tmp");
 
@@ -90,9 +91,9 @@ void ProgressFilter::progressBar(float a) {
 	progressModal->update(p);
 }
 
-void ProgressFilter::run() {
+void ProgressFilter::run(Project* p) {
 	if (finished) return;
-	auto [f, progress] = subFilter->step();
+	auto [f, progress] = subFilter->step(p);
 
 	finished = f;
 

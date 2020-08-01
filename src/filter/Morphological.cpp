@@ -22,7 +22,7 @@ std::shared_ptr<Filter> ErodeMenu::makeFilter(Project *p) {
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},new Erode(p,radius,p->get_terrain()));
 }
 
-Erode::Erode(Project *p, float radius, Texture *target) : SubFilter(p) {
+Erode::Erode(Project *p, float radius, Texture *target) : SubFilter() {
 	this->target = target;
 
 	r = {};
@@ -71,7 +71,7 @@ fc = erode(img,st,radius);
 			.link();
 }
 
-std::pair<bool, float> Erode::step() {
+std::pair<bool, float> Erode::step(Project* p) {
 	erodeProgram->bind();
 	int id = glGetUniformLocation(erodeProgram->getId(), "radius");
 	glUniform1f(id,r[steps]); //TODO factor on steps

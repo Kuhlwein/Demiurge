@@ -22,7 +22,7 @@ class ScaleFilter : public BackupFilter {
 public:
 	ScaleFilter(Project* p, float* scale);
 	~ScaleFilter();
-	void run() override;
+	void run(Project* p) override;
 	bool isFinished() override;
 private:
 	ShaderProgram* program;

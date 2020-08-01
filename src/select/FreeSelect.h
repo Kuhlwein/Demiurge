@@ -23,7 +23,7 @@ class FreeSelectFilter : public BackupFilter {
 public:
 	FreeSelectFilter(Project *p, Shader* mode);
 	~FreeSelectFilter();
-	void run() override;
+	void run(Project* p) override;
 	Shader* getShader() override;
 	bool isFinished() override;
 private:

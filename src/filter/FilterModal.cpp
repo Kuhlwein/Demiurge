@@ -16,7 +16,7 @@ FilterModal::FilterModal(std::string title) : Modal(title, [this](Project* p) {
 bool FilterModal::update_FilterModal(Project *p) {
 	update_self(p);
 
-	filter->run();
+	filter->run(p);
 
 	if(ImGui::Button("Preview")) {
 		if (previewing) {
@@ -94,7 +94,7 @@ InstantFilterModal::InstantFilterModal(std::string title) : Modal(title, [this](
 bool InstantFilterModal::update_InstantFilterModal(Project *p) {
 	if (first) {
 		filter = makeFilter(p);
-		filter->run();
+		filter->run(p);
 		first = false;
 	}
 

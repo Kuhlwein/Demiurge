@@ -22,7 +22,7 @@ class OffsetFilter : public BackupFilter {
 public:
 	OffsetFilter(Project* p, float* offset);
 	~OffsetFilter();
-	void run() override;
+	void run(Project* p) override;
 	bool isFinished() override;
 private:
 	ShaderProgram* program;

@@ -10,7 +10,7 @@ ScaleMenu::ScaleMenu() : InstantFilterModal("Scale (Multiply)") {}
 
 void ScaleMenu::update_self(Project *p) {
 	if(ImGui::DragFloat("Value", &scale, 0.01f/10, 0, 0, "%.4f", 1.0f)) {
-		filter->run();
+		filter->run(p);
 	}
 }
 
@@ -32,7 +32,7 @@ ScaleFilter::ScaleFilter(Project *p, float* scale) : BackupFilter(p, [](Project*
 			.link();
 }
 
-void ScaleFilter::run() {
+void ScaleFilter::run(Project* p) {
 	restoreBackup();
 
 	program->bind();

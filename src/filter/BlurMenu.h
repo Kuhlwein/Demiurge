@@ -12,7 +12,7 @@
 class Blur : public SubFilter {
 public:
 	Blur(Project *p, float radius, Texture *target);
-	std::pair<bool,float> step() override;
+	std::pair<bool,float> step(Project* p) override;
 private:
 	float radius;
 	ShaderProgram *blurProgram;

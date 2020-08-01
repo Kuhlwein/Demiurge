@@ -21,7 +21,7 @@ std::shared_ptr<Filter> BlurMenu::makeFilter(Project* p) {
 	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},new Blur(p, radius, p->get_terrain()));
 }
 
-Blur::Blur(Project *p, float radius, Texture *target) : SubFilter(p) {
+Blur::Blur(Project *p, float radius, Texture *target) : SubFilter() {
 	this->target = target;
 
 	radius = radius/2; //radius vs diameter??
@@ -90,7 +90,7 @@ fc = blur13(img,st,direction);
 	std::sort(rlist.begin(),rlist.end());
 }
 
-std::pair<bool,float> Blur::step() {
+std::pair<bool,float> Blur::step(Project* p) {
 	blurProgram->bind();
 	int id = glGetUniformLocation(blurProgram->getId(), "direction");
 	glUniform2f(id,0,rlist[i]);
