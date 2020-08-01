@@ -25,12 +25,10 @@ public:
 	Erode(Project *p, float radius, Texture *target);
 	std::pair<bool,float> step() override;
 private:
-	float radius;
-	ShaderProgram* copyProgram;
 	ShaderProgram *erodeProgram;
 	Texture* target;
 	int steps = 0;
-	Texture* tex;
+	std::vector<float> r;
 };
 
 class ErodeTerrain : public ProgressFilter {

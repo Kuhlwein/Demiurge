@@ -4,6 +4,8 @@
 
 #include "Project.h"
 #include <imgui/imgui.h>
+#include <iostream>
+#include <algorithm>
 #include "Morphological.h"
 
 ErodeMenu::ErodeMenu() : FilterModal("Erode") {
@@ -20,14 +22,24 @@ std::shared_ptr<Filter> ErodeMenu::makeFilter(Project *p) {
 	return std::make_shared<ErodeTerrain>(p,radius);
 }
 
-
-
-
 Erode::Erode(Project *p, float radius, Texture *target) : SubFilter(p) {
-	this->radius = radius;
 	this->target = target;
 
-	tex = new Texture(target->getWidth(),target->getHeight(),GL_R32F,"img",GL_NEAREST);
+	r = {};
+	int x = 1;
+	while (radius>=0) {
+		if (x<radius) {
+			radius-=x;
+			r.push_back(x);
+			std::cout << x << "\n";
+			x*=2;
+		} else {
+			r.push_back(radius);
+			std::cout << radius << "\n";
+			break;
+		}
+	}
+	std::sort(r.begin(),r.end());
 
 	Shader* defineErode = Shader::builder()
 			.include(p->getGeometry()->offset())
@@ -39,29 +51,10 @@ float erode(sampler2D image, vec2 uv, float radius) {
 float phi = (uv.y-0.5)*3.14159;
 float factor = 1/cos(abs(phi));
 
-int N = 50;
+int N = 64;
 for (int i=0; i<N; i++) {
 	a = max(a,texture(image, offset(uv, vec2(cos(2*3.14159*i/N)*radius*factor,sin(2*3.14159*i/N)*radius),resolution)).r);
 }
-
-//a = max(a,texture(image, offset(uv, vec2(radius*factor,0),resolution)).r);
-//a = max(a,texture(image, offset(uv, vec2(-radius*factor,0),resolution)).r);
-//a = max(a,texture(image, offset(uv, vec2(0,radius),resolution)).r);
-//a = max(a,texture(image, offset(uv, vec2(0,-radius),resolution)).r);
-
-//a = max(a,texture(image, offset(uv, vec2(radius,radius),resolution)).r);
-//a = max(a,texture(image, offset(uv, vec2(-radius,-radius),resolution)).r);
-//a = max(a,texture(image, offset(uv, vec2(-radius,radius),resolution)).r);
-//a = max(a,texture(image, offset(uv, vec2(radius,-radius),resolution)).r);
-
-
-
-//int r = 5;
-//for (int i=-r; i<=r; i++) for (int j=-r; j<=r; j++) {
-//if(i*i+j*j<=(r)*(r+0.5)) a = max(a,texture(image, offset(uv, vec2(i*factor,j),resolution)).r);
-//if(i*i+j*j<=(r)*(r+0.5)) a = max(a,texture(image, offset(uv, vec2(i,j),resolution)).r);
-//}
-
 	return a;
 }
 )","");
@@ -69,30 +62,24 @@ for (int i=0; i<N; i++) {
 	Shader* fragment_set = Shader::builder()
 			.include(fragmentBase)
 			.include(defineErode)
-			.create("uniform float radius; uniform sampler2D tex;",R"(
-fc = erode(tex,st,radius);
+			.create("uniform float radius;",R"(
+fc = erode(img,st,radius);
 )");
 	erodeProgram = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-
-	copyProgram = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-			.link();
 }
 
 std::pair<bool, float> Erode::step() {
-	copyProgram->bind();
-	p->apply(copyProgram,tex,{{p->get_terrain(), "to_be_copied"}});
-
 	erodeProgram->bind();
 	int id = glGetUniformLocation(erodeProgram->getId(), "radius");
-	glUniform1f(id,steps+1); //TODO factor on steps
-	p->apply(erodeProgram, p->get_terrain(),{{tex, "tex"}});
+	glUniform1f(id,r[steps]); //TODO factor on steps
+	p->apply(erodeProgram, p->get_scratch1());
+	p->get_scratch1()->swap(p->get_terrain());
 	steps++;
-	return {steps>=radius,(float(steps))/radius};
+
+	return {steps>=r.size(),(float(steps))/r.size()};
 }
 
 ErodeTerrain::ErodeTerrain(Project *p, float radius) : ProgressFilter(p, [](Project* p){return p->get_terrain();}) {
