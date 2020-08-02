@@ -5,7 +5,6 @@
 #include "Project.h"
 #include <imgui/imgui.h>
 #include "FilterModal.h"
-#include "BlurMenu.h"
 
 FilterModal::FilterModal(std::string title) : Modal(title, [this](Project* p) {
 	return this->update_FilterModal(p);

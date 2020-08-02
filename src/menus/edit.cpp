@@ -37,8 +37,10 @@ bool edit::preferences(Project* p) {
 
 	}
 
-	ImGui::DragFloatRange2("Lattitude", &begin, &end, 0.25f, -90.0f, 90.0f, "Min: %.1f", "Max: %.1f");
-	ImGui::DragFloatRange2("Longitude", &begin2, &end2, 0.25f, -180.0f, 180.0f, "Min: %.1f", "Max: %.1f");
+	bool updated = false;
+	updated |= ImGui::DragFloatRange2("Lattitude", &begin, &end, 0.25f, -90.0f, 90.0f, "Min: %.1f", "Max: %.1f");
+	updated |= ImGui::DragFloatRange2("Longitude", &begin2, &end2, 0.25f, -180.0f, 180.0f, "Min: %.1f", "Max: %.1f");
+	if (updated) p->setCoords({begin,end,begin2,end2});
 
 	if (ImGui::Button("Apply")) {
 		switch (current) {
@@ -50,7 +52,6 @@ bool edit::preferences(Project* p) {
 			case 4: { p->setGeometry(new SphericalGeometry(p)); break;}
 		}
 		first = true;
-		p->setCoords({begin,end,begin2,end2});
 		return true;
 	}
 	ImGui::SameLine();

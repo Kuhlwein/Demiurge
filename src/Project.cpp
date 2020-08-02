@@ -25,6 +25,7 @@
 #include <filter/ScaleMenu.h>
 #include <filter/Morphological.h>
 #include <select/selection.h>
+#include <filter/GradientNoise.h>
 
 #include "select/FreeSelect.h"
 #include "geometry/SphericalGeometry.h"
@@ -165,6 +166,12 @@ Project::Project(GLFWwindow* window) {
 	selection_menu.push_back(new GrowShrinkMenu());
 	selection_menu.push_back(new BorderMenu());
 	selection_menu.push_back(new BlurSelection());
+	auto fromterrain = new SubMenu("From...");
+	//height
+	//direction
+	//slope
+	//layer
+	selection_menu.push_back(fromterrain);
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
@@ -173,6 +180,7 @@ Project::Project(GLFWwindow* window) {
 	math->addMenu(new ScaleMenu());
 	filter_menu.push_back(math);
 	filter_menu.push_back(new MorphologicalMenu());
+	filter_menu.push_back(new GradientNoiseMenu());
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);

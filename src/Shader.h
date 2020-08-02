@@ -27,11 +27,21 @@ private:
     std::vector<Shader*> includes = {};
 };
 
-static Shader* cornerCoords = Shader::builder()
-		.create("uniform float cornerCoords[4];");
-
 static Shader* def_pi = Shader::builder()
 		.create("#define M_PI 3.1415926535897932384626433832795");
+
+static Shader* cornerCoords = Shader::builder()
+		.include(def_pi)
+		.create(R"(
+uniform float cornerCoords[4];
+
+vec2 to_geographic(vec2 p) {
+p.x = (p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2]);
+p.y = (p.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]);
+return p;
+}
+
+)");
 
 /*
  *  Vertex shaders
@@ -185,8 +195,7 @@ static Shader* graticules = Shader::builder()
 		.create(R"(
 void draw_graticules(inout vec4 fc, in vec2 st, in float grat, in vec4 grat_color) {
 
-st.x = (st.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])/M_PI/2*360;
-st.y = (st.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0])/M_PI*180;
+st = to_geographic(st)/M_PI*180;
 
 vec2 dx = dFdx(st);
 vec2 dy = dFdy(st);
