@@ -6,7 +6,7 @@
 #include <imgui/imgui.h>
 #include <iostream>
 #include "GradientNoise.h"
-#include "OffsetMenu.h"
+
 
 GradientNoiseMenu::GradientNoiseMenu() : InstantFilterModal("Gradient noise") {
 
@@ -14,10 +14,10 @@ GradientNoiseMenu::GradientNoiseMenu() : InstantFilterModal("Gradient noise") {
 
 void GradientNoiseMenu::update_self(Project *p) {
 	bool updated = false;
-	updated |= ImGui::DragFloat("Scale", &scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
-	updated |= ImGui::DragInt("Octaves", &octaves,1.0f,1,0);
-	updated |= ImGui::DragFloat("Lacunarity", &scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
-	updated |= ImGui::DragFloat("Persistence", &scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
+	updated |= ImGui::DragFloat("Scale", &params.scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
+	updated |= ImGui::DragInt("Octaves", &params.octaves,0.01f,1,64);
+	updated |= ImGui::DragFloat("Lacunarity", &params.lacunarity, 0.01f/10, 0, 0, "%.4f", 1.0f);
+	updated |= ImGui::DragFloat("Persistence", &params.persistence, 0.01f/10, 0, 0, "%.4f", 1.0f);
 
 	if (updated) {
 		filter->run(p);
@@ -25,7 +25,7 @@ void GradientNoiseMenu::update_self(Project *p) {
 }
 
 std::unique_ptr<BackupFilter> GradientNoiseMenu::makeFilter(Project *p) {
-	return std::move(std::make_unique<GradientNoiseFilter>(p,[](Project* p){return p->get_terrain();},&scale));
+	return std::move(std::make_unique<GradientNoiseFilter>(p,[](Project* p){return p->get_terrain();},&params));
 }
 
 void GradientNoiseFilter::run(Project *p) {
@@ -38,21 +38,33 @@ void GradientNoiseFilter::run(Project *p) {
 	glUniform1fv(id, 4, v.data());
 
 	id = glGetUniformLocation(program->getId(), "scale");
-	glUniform1f(id,*scale);
+	glUniform1f(id,params->scale);
+
+	id = glGetUniformLocation(program->getId(), "octaves");
+	glUniform1i(id,params->octaves);
+
+	id = glGetUniformLocation(program->getId(), "lacunarity");
+	glUniform1f(id,params->lacunarity);
+
+	id = glGetUniformLocation(program->getId(), "persistence");
+	glUniform1f(id,params->persistence);
 
 	p->apply(program, p->get_scratch1());
 	p->get_scratch1()->swap(p->get_terrain());
 }
 
-GradientNoiseFilter::GradientNoiseFilter(Project *p, std::function<Texture *(Project *)> target, float* scale)
+GradientNoiseFilter::GradientNoiseFilter(Project *p, std::function<Texture *(Project *)> target, NoiseParams* params)
 		: BackupFilter(p, target) {
-	this->scale = scale;
+	this->params = params;
 
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.include(cornerCoords)
 			.create(R"(
 uniform float scale;
+uniform float persistence = 0.5;
+uniform float lacunarity = 2;
+uniform int octaves = 8;
 
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex
@@ -163,16 +175,14 @@ float snoise(vec3 v)
 
 	float current_amplitude = 1;
 	float total_amplitude = 0;
-	float persistence = 0.5;
-	float lacunarity = 2;
 
 	fc = 0;
-	for(int i=0; i<9; i++) {
-	fc += snoise(p)*current_amplitude;
-	p *= lacunarity;
-	total_amplitude += current_amplitude;
-	current_amplitude *= persistence;
-}
+	for(int i=0; i<=octaves; i++) {
+		fc += snoise(p)*current_amplitude;
+		p *= lacunarity;
+		total_amplitude += current_amplitude;
+		current_amplitude *= persistence;
+	}
 	fc /= total_amplitude;
 
 )");

@@ -42,6 +42,9 @@ bool edit::preferences(Project* p) {
 	updated |= ImGui::DragFloatRange2("Longitude", &begin2, &end2, 0.25f, -180.0f, 180.0f, "Min: %.1f", "Max: %.1f");
 	if (updated) p->setCoords({begin,end,begin2,end2});
 
+	static float circumference = 42000;
+	ImGui::DragFloat("Planet circumference",&circumference,10,1,MAXFLOAT,"%.1f m");
+
 	if (ImGui::Button("Apply")) {
 		switch (current) {
 			//TODO FIX

@@ -109,13 +109,6 @@ static Shader* copy_img = Shader::builder()
 fc = texture(to_be_copied, st).r;
 )");
 
-static Shader* fix_0 = Shader::builder()
-		.include(fragmentBase)
-		.create("",R"(
-fc = texture(img, st).r;
-if (fc>-0 && fc<1e-9) fc=0.0;
-)");
-
 static Shader* fragment_set = Shader::builder()
         .include(fragmentBase)
         .create(R"(
@@ -127,33 +120,6 @@ fc = value;
 /*
  * Drawing map
  */
-
-static Shader* draw_grayscale = Shader::builder()
-		.include(fragmentColor)
-		.create("",R"(
-fc = (texture(img, st_p).rrrr+1)*0.5;
-)");
-
-//static Shader* draw_gradient = Shader::builder()
-//		.include(fragmentColor)
-//        .create(R"(
-//uniform sampler2D gradient_land;
-//uniform sampler2D gradient_ocean;
-//)",R"(
-//float h = texture(img, st_p).r;
-//if (h>0) {
-//    fc = texture(gradient_land,vec2(h,0));
-//} else {
-//    fc = texture(gradient_ocean,vec2(1+h,0));
-//}
-//)");
-
-static Shader* deltaxy = Shader::builder()
-		.create(R"(
-float dx = dFdx(st.x);
-float dy = dFdy(st.y);
-)");
-
 
 static Shader* draw_normal = Shader::builder()
 		.include(fragmentColor)
@@ -241,6 +207,7 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
 
 
 static Shader* texturespace_gradient = Shader::builder()
+		.include(cornerCoords)
 		.create(R"(
 void get_texture_gradient(inout float delta_x, inout float delta_y) {
 vec2 texture_stepsize_x = vec2(1,0)/textureSize(img,0);
@@ -251,8 +218,10 @@ float x2 = texture(img, projection(st)+texture_stepsize_x).r;
 float y1 = texture(img, projection(st)-texture_stepsize_y).r;
 float y2 = texture(img, projection(st)+texture_stepsize_y).r;
 
-delta_x = x1-x2;
-delta_y = y2-y1;
+vec2 geo = to_geographic(projection(st));
+
+delta_x = (x1-x2)/cos(geo.y);
+delta_y = (y2-y1);
 }
 float delta_x;
 float delta_y;
@@ -273,7 +242,7 @@ static Shader* get_slope = Shader::builder()
 		.include(texturespace_gradient)
 		.create(R"(
 float get_slope(float z_factor) {
-return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));
+return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));2
 }
 )","");
 
