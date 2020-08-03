@@ -68,9 +68,6 @@ public:
 	void redo();
 	void add_history(UndoHistory* h);
 
-	void setGeometry(Geometry* g);
-	Geometry* getGeometry();
-
 	void setCoords(std::vector<float> v);
 	std::vector<float> getCoords();
 
@@ -98,7 +95,6 @@ private:
     Texture* selection = nullptr;
 
     Shader* terrain_shader;
-    Geometry* geometry;
     AppearanceWindow* appearanceWindow;
 
     Texture* tmp = nullptr;

@@ -4,6 +4,7 @@
 
 #include <imgui/imgui.h>
 #include <iostream>
+#include <glm/glm/ext.hpp>
 #include "BrushWindow.h"
 #include "Project.h"
 
@@ -137,7 +138,7 @@ void BrushWindow::brush(Project* p, glm::vec2 pos, glm::vec2 prev, bool flag) {
 
 	Shader* brush_shader = Shader::builder()
 			.include(fragmentBase)
-			.include(p->getGeometry()->brush_calc())
+			.include(brush_calc_shader)
 			.create(R"(
 uniform float brush_flow;
 )",R"(
@@ -162,8 +163,33 @@ fc = texture(scratch2,st).r + brush_flow*(texture(sel,st).r*(texture(brush_tex,v
 	id = glGetUniformLocation(program2->getId(),"brush_flow");
 	glUniform1f(id,flow);
 
+	//TODO setup brush calc, move to method?
+	{
+		auto v = p->getCoords();
+		for (auto &e : v) e=e/180.0f*M_PI;
 
-	p->getGeometry()->setup_brush_calc(program2,pos,prev);
+		glm::mat4 rotationo(1.f);
+		glm::mat4 rotation(1.f);
+		float dtheta = -pos.x*(v[3]-v[2])+M_PI;
+		rotation = glm::rotate(rotationo, dtheta, glm::vec3(0, 0, 1));
+		float dphi = (pos.y)*(v[1]-v[0])+v[0];
+		rotation = glm::rotate(rotationo, dphi, glm::vec3(0, 1, 0))*rotation;
+
+		float phi = (prev.y-0.5)*M_PI;
+		phi = (prev.y)*(v[1]-v[0])+v[0];
+		float theta = prev.x*(v[3]-v[2])+M_PI;
+
+		glm::vec4 pos_ = glm::vec4(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi),1);
+		glm::vec4 prev_ = rotation*pos_;
+		dtheta = -atan2(prev_.z,prev_.y);
+		rotation = glm::rotate(rotationo, dtheta, glm::vec3(1, 0, 0))*rotation;
+
+		int id = glGetUniformLocation(program2->getId(),"rotation");
+		glUniformMatrix4fv(id,1,GL_FALSE,glm::value_ptr(rotation));
+
+		id = glGetUniformLocation(program2->getId(),"cornerCoords");
+		glUniform1fv(id, 4, v.data());
+	}
 
 	p->apply(program2,p->get_terrain());
 	p->get_terrain()->swap(p->get_scratch2());

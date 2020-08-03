@@ -41,7 +41,7 @@ FreeSelectFilter::FreeSelectFilter(Project *p, Shader* mode) : BackupFilter(p,[]
 	this->mode = mode;
 
 	Shader* shader = Shader::builder()
-			.include(p->getGeometry()->triangle())
+			.include(triangle_shader)
 			.create("",R"(
 if (free_select(mouseFirst,mouse,mousePrev)) {
 	fc = 1.0 - texture(scratch2,vec2(st)).r;
@@ -82,7 +82,23 @@ void FreeSelectFilter::run(Project* p) {
 	if (io.MouseDown[0]) {
 		if (a) {
 			program->bind();
-			p->getGeometry()->setup_triangle(program,first_mousepos,texcoord,texcoordPrev);
+
+			//TODO setup triangle
+			//p->getGeometry()->setup_triangle(program,first_mousepos,texcoord,texcoordPrev);
+			{
+				int id = glGetUniformLocation(program->getId(), "mouse");
+				glUniform2f(id, texcoord.x, texcoord.y);
+				id = glGetUniformLocation(program->getId(), "mousePrev");
+				glUniform2f(id, texcoordPrev.x, texcoordPrev.y);
+				id = glGetUniformLocation(program->getId(), "mouseFirst");
+				glUniform2f(id, first_mousepos.x, first_mousepos.y);
+
+				auto v = p->getCoords();
+				for (auto &e : v) e=e/180.0f*M_PI;
+
+				id = glGetUniformLocation(program->getId(),"cornerCoords");
+				glUniform1fv(id, 4, v.data());
+			}
 
 			p->apply(program, p->get_scratch1());
 			p->get_scratch2()->swap(p->get_scratch1());
@@ -91,7 +107,7 @@ void FreeSelectFilter::run(Project* p) {
 	} else {
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
-				.include(p->getGeometry()->offset())
+				.include(offset_shader)
 				.include(mode)
 				.create("",R"(
 float a = 0;

@@ -48,11 +48,11 @@ bool edit::preferences(Project* p) {
 	if (ImGui::Button("Apply")) {
 		switch (current) {
 			//TODO FIX
-			case 0: { p->setGeometry(new FlatGeometry(p)); break;}
-			case 1: { p->setGeometry(new WrapXGeometry(p)); break;}
-			case 2: { p->setGeometry(new WrapYGeometry(p)); break;}
-			case 3: { p->setGeometry(new WrapXYGeometry(p)); break;}
-			case 4: { p->setGeometry(new SphericalGeometry(p)); break;}
+//			case 0: { p->setGeometry(new FlatGeometry(p)); break;}
+//			case 1: { p->setGeometry(new WrapXGeometry(p)); break;}
+//			case 2: { p->setGeometry(new WrapYGeometry(p)); break;}
+//			case 3: { p->setGeometry(new WrapXYGeometry(p)); break;}
+//			case 4: { p->setGeometry(new SphericalGeometry(p)); break;}
 		}
 		first = true;
 		return true;

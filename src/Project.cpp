@@ -28,7 +28,6 @@
 #include <filter/GradientNoise.h>
 
 #include "select/FreeSelect.h"
-#include "geometry/SphericalGeometry.h"
 #include "projections/Orthographic.h"
 #include "projections/Mollweide.h"
 #include "projections/Mercator.h"
@@ -190,8 +189,6 @@ Project::Project(GLFWwindow* window) {
 	windows.emplace_back("Windows",windows_menu);
 
 	filter = std::make_unique<NoneFilter>();
-
-	geometry = new SphericalGeometry(this);
 
 	canvas = new img(this);
 	appearanceWindow->setShader(this);
@@ -367,7 +364,7 @@ void Project::update_terrain_shader() {
 
 	Shader::builder builder = Shader::builder()
 			.include(fragmentColor)
-			.include(geometry->distance())
+			.include(distance)
 			.include(canvas->projection_shader())
 			.include(terrain_shader);
 
@@ -457,15 +454,6 @@ void Project::dispatchFilter(std::shared_ptr<Filter> filter) {
 void Project::finalizeFilter() {
 	filter = std::make_unique<NoneFilter>();
 	update_terrain_shader();
-}
-
-void Project::setGeometry(Geometry *g) {
-	geometry = g;
-	update_terrain_shader();
-}
-
-Geometry *Project::getGeometry() {
-	return geometry;
 }
 
 void Project::addAsyncTex(Texture *tex) {

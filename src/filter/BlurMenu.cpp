@@ -60,7 +60,7 @@ off3.x = off3.x/cos(abs(phi));
 
 	Shader* fragment_set = Shader::builder()
 			.include(fragmentBase)
-			.include(p->getGeometry()->offset())
+			.include(offset_shader)
 			.include(blurshader)
 			.create("uniform vec2 direction;",R"(
 fc = blur13(img,st,direction);
