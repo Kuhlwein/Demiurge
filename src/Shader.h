@@ -210,18 +210,22 @@ static Shader* texturespace_gradient = Shader::builder()
 		.include(cornerCoords)
 		.create(R"(
 void get_texture_gradient(inout float delta_x, inout float delta_y) {
-vec2 texture_stepsize_x = vec2(1,0)/textureSize(img,0);
-vec2 texture_stepsize_y = vec2(0,1)/textureSize(img,0);
+vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
 
-float x1 = texture(img, projection(st)-texture_stepsize_x).r;
-float x2 = texture(img, projection(st)+texture_stepsize_x).r;
-float y1 = texture(img, projection(st)-texture_stepsize_y).r;
-float y2 = texture(img, projection(st)+texture_stepsize_y).r;
+float a = texture(img, projection(st)-texture_stepsize*vec2(1,1)).r;
+float b = texture(img, projection(st)-texture_stepsize*vec2(0,1)).r;
+float c = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
+float d = texture(img, projection(st)-texture_stepsize*vec2(1,0)).r;
+float f = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
+float g = texture(img, projection(st)-texture_stepsize*vec2(1,-1)).r;
+float h = texture(img, projection(st)-texture_stepsize*vec2(0,-1)).r;
+float i = texture(img, projection(st)-texture_stepsize*vec2(-1,-1)).r;
+
 
 vec2 geo = to_geographic(projection(st));
 
-delta_x = (x1-x2)/cos(geo.y);
-delta_y = (y2-y1);
+delta_x = ((c + 2*f + i) - (a + 2*d + g))/(8*cos(geo.y));
+delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8);
 }
 float delta_x;
 float delta_y;
@@ -242,7 +246,7 @@ static Shader* get_slope = Shader::builder()
 		.include(texturespace_gradient)
 		.create(R"(
 float get_slope(float z_factor) {
-return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));2
+return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));
 }
 )","");
 
