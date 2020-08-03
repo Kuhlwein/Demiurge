@@ -19,9 +19,9 @@ public:
 	bool update(Project* p) override;
 private:
 	bool brush_window(Project* p);
-	void brush_stroke(Project* p);
+	void handle_brush(Project* p);
 	void set_hardness(float hardness);
-	void brush(Project* p, glm::vec2 pos, glm::vec2 prev, bool flag=false);
+	void brush(Project* p, glm::vec2 pos, glm::vec2 prev);
 	void initbrush(Project* p);
 
 	Texture* brush_tex;

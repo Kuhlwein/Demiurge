@@ -5,6 +5,7 @@
 #include "Project.h"
 #include <Shader.h>
 #include <iostream>
+#include <glm/glm/ext.hpp>
 #include "FreeSelect.h"
 #include "selection.h"
 
@@ -40,10 +41,27 @@ FreeSelectFilter::FreeSelectFilter(Project *p, Shader* mode) : BackupFilter(p,[]
 	first_mousepos = p->getMouse();
 	this->mode = mode;
 
+	Shader* triangle_shader = Shader::builder()
+			.include(fragmentBase)
+			.include(cornerCoords)
+			.include(mouseLocation)
+			.include(def_pi)
+			.create(R"(
+uniform vec3 a;
+uniform vec3 b;
+uniform vec3 c;
+uniform float s;
+
+bool free_select() {
+	vec3 P = spheric_to_cartesian(tex_to_spheric(st)).xyz;
+	return s*dot(a,P)>0 && s*dot(b,P)>0 && s*dot(c,P)>0;
+}
+)","");
+
 	Shader* shader = Shader::builder()
 			.include(triangle_shader)
 			.create("",R"(
-if (free_select(mouseFirst,mouse,mousePrev)) {
+if (free_select()) {
 	fc = 1.0 - texture(scratch2,vec2(st)).r;
 } else {
 	fc = texture(scratch2,vec2(st)).r;
@@ -61,8 +79,10 @@ if (free_select(mouseFirst,mouse,mousePrev)) {
 			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 	program->bind();
+
 	int id = glGetUniformLocation(program->getId(),"value");
 	glUniform1f(id,0);
+
 	p->apply(program,p->get_scratch2());
 	delete program;
 }
@@ -93,11 +113,31 @@ void FreeSelectFilter::run(Project* p) {
 				id = glGetUniformLocation(program->getId(), "mouseFirst");
 				glUniform2f(id, first_mousepos.x, first_mousepos.y);
 
-				auto v = p->getCoords();
-				for (auto &e : v) e=e/180.0f*M_PI;
+				auto cornerCoords = p->getCoords();
+				auto f = [cornerCoords](glm::vec2 p) {
+					p.x = (p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2]);
+					p.y = (p.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]);
+					return glm::vec3(cos(p.y)*cos(p.x),cos(p.y)*sin(p.x),sin(p.y));
+				};
 
-				id = glGetUniformLocation(program->getId(),"cornerCoords");
-				glUniform1fv(id, 4, v.data());
+				auto A = f(texcoord);
+				auto B = f(texcoordPrev);
+				auto C = f(first_mousepos);
+				auto a = cross(A,B);
+				auto b = cross(B,C);
+				auto c = cross(C,A);
+				id = glGetUniformLocation(program->getId(), "a");
+				glUniform3fv(id, 1,glm::value_ptr(a));
+				id = glGetUniformLocation(program->getId(), "b");
+				glUniform3fv(id, 1,glm::value_ptr(b));
+				id = glGetUniformLocation(program->getId(), "c");
+				glUniform3fv(id, 1,glm::value_ptr(c));
+				auto average = (A+B+C);
+				float s = glm::sign(dot(a,average));
+				id = glGetUniformLocation(program->getId(), "s");
+				glUniform1f(id,s);
+
+				p->setCanvasUniforms(program);
 			}
 
 			p->apply(program, p->get_scratch1());

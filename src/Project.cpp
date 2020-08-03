@@ -17,8 +17,6 @@
 
 #include <glm/glm/glm.hpp>
 #include <imgui/imgui.h>
-#include <select/AllSelect.h>
-#include <select/InverseSelect.h>
 #include <filter/BlurMenu.h>
 #include <thread>
 #include <filter/OffsetMenu.h>
@@ -26,17 +24,9 @@
 #include <filter/Morphological.h>
 #include <select/selection.h>
 #include <filter/GradientNoise.h>
+#include <projections/Equiretangular.h>
 
-#include "select/FreeSelect.h"
-#include "projections/Orthographic.h"
-#include "projections/Mollweide.h"
-#include "projections/Mercator.h"
-#include "projections/Equiretangular.h"
-#include "projections/img.h"
-#include "menus/CanvasMenu.h"
-#include "projections/Sinusoidal.h"
-#include "projections/GoodeHomolosine.h"
-#include "projections/EckertIV.h"
+#include "projections/Projections.h"
 #include "menus/BrushWindow.h"
 #include "menus/AppearanceWindow.h"
 
@@ -85,14 +75,12 @@ void Project::file_new(int w, int h) {
 	while(!undo_list.empty()) undo_list.pop();
 	while(!redo_list.empty()) redo_list.pop();
 
-	canvas = new img(this);
+	canvas = new Equiretangular(this);
 	update_terrain_shader();
 
-	//TODO breaks UNDO/REDO??
 	glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
 	glBufferData(GL_PIXEL_PACK_BUFFER, getWidth() * getHeight() * 4, NULL, GL_STREAM_READ);
 	glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
-
 }
 
 Project::Project(GLFWwindow* window) {
@@ -131,46 +119,11 @@ Project::Project(GLFWwindow* window) {
 	edit_menu.push_back(new SeparatorMenu());
 	edit_menu.push_back(new Modal("Preferences",edit::preferences));
 
-	std::vector<Menu*> projections = {};
-	projections.push_back(new Menu("None", [](Project* p) {
-		p->canvas = new img(p);
-		p->update_terrain_shader();
-		return true;
-	}));
-	projections.push_back(new CanvasMenu("Equiretangular...",new Equiretangular(this)));
-	projections.push_back(new Menu("Orthographic", [](Project* p){
-		p->canvas = new Orthographic(p);
-		p->update_terrain_shader();
-		return true;
-	}));
-
-	projections.push_back(new CanvasMenu("Mollweide...",new Mollweide(this)));
-	projections.push_back(new CanvasMenu("Sinusoidal...",new Sinusoidal(this)));
-	projections.push_back(new CanvasMenu("Goode Homolosine...",new GoodeHomolosine(this)));
-	projections.push_back(new CanvasMenu("Eckert IV...",new EckertIV(this)));
-	projections.push_back(new CanvasMenu("Mercator...",new Mercator(this)));
-
 	std::vector<Menu*> windows_menu = {};
 	windows_menu.push_back(new BrushWindow("Brush",this));
 	appearanceWindow = new AppearanceWindow("Appearance");
 	windows_menu.push_back(appearanceWindow);
 	windows_menu.push_back(new Window("Layers", testnamespace::layers));
-
-
-	std::vector<Menu*> selection_menu = {};
-
-	selection_menu.push_back(new AllSelect());
-	selection_menu.push_back(new InverseSelect());
-	selection_menu.push_back(new FreeSelect());
-	selection_menu.push_back(new GrowShrinkMenu());
-	selection_menu.push_back(new BorderMenu());
-	selection_menu.push_back(new BlurSelection());
-	auto fromterrain = new SubMenu("From...");
-	//height
-	//direction
-	//slope
-	//layer
-	selection_menu.push_back(fromterrain);
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
@@ -183,18 +136,17 @@ Project::Project(GLFWwindow* window) {
 
 	windows.emplace_back("File",file_menu);
 	windows.emplace_back("Edit",edit_menu);
-	windows.emplace_back("Select",selection_menu);
-	windows.emplace_back("Projections",projections);
+	windows.emplace_back("Select",selection::get_selection_menu());
+	windows.emplace_back("Projections",projections::get_projection_menu(this));
 	windows.emplace_back("Filter",filter_menu);
 	windows.emplace_back("Windows",windows_menu);
 
 	filter = std::make_unique<NoneFilter>();
 
-	canvas = new img(this);
+	canvas = new Equiretangular(this);
 	appearanceWindow->setShader(this);
 
 	glGenBuffers(1, &pbo);
-
 
 	file_new(1000,500);
 }
@@ -252,8 +204,8 @@ void Project::update() {
 			auto data = std::make_unique<float[]>(width*height);
 			memcpy(data.get(),mappedBuffer,width*height*sizeof(float));
 			auto tdata = new TextureData(std::move(data),width,height);
-			add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
 
+			add_history(new SnapshotHistory(tdata,[](Project* p){return p->get_terrain();}));
 			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 			downloadingTex = false;
 			glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
@@ -361,7 +313,6 @@ void Project::remove_layer(int i) {
 }
 
 void Project::update_terrain_shader() {
-
 	Shader::builder builder = Shader::builder()
 			.include(fragmentColor)
 			.include(distance)
@@ -429,6 +380,7 @@ void Project::set_terrain_shader(Shader *s) {
 }
 
 void Project::setCoords(std::vector<float> v) {
+	for (auto &e : v) e=e/180.0f*M_PI;
 	coords = v;
 }
 
@@ -467,6 +419,11 @@ void Project::addAsyncTex(Texture *tex) {
 
 	sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 	glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
+}
+
+void Project::setCanvasUniforms(ShaderProgram *p) {
+	int id = glGetUniformLocation(p->getId(),"cornerCoords");
+	glUniform1fv(id, 4, coords.data());
 }
 
 

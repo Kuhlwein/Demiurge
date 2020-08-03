@@ -32,12 +32,9 @@ void GradientNoiseFilter::run(Project *p) {
 	restoreBackup();
 
 	program->bind();
-	int id = glGetUniformLocation(program->getId(),"cornerCoords");
-	auto v = p->getCoords();
-	for (auto &e : v) e=e/180.0f*M_PI;
-	glUniform1fv(id, 4, v.data());
+	p->setCanvasUniforms(program);
 
-	id = glGetUniformLocation(program->getId(), "scale");
+	int id = glGetUniformLocation(program->getId(), "scale");
 	glUniform1f(id,params->scale);
 
 	id = glGetUniformLocation(program->getId(), "octaves");
@@ -170,7 +167,7 @@ float snoise(vec3 v)
                                 dot(p2,x2), dot(p3,x3) ) );
   }
 )",R"(
-	vec2 geo = to_geographic(st);
+	vec2 geo = tex_to_spheric(st);
 	vec3 p = scale*vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
 
 	float current_amplitude = 1;

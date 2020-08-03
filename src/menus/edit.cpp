@@ -2,8 +2,6 @@
 // Created by kuhlwein on 4/16/20.
 //
 #include <iostream>
-#include <geometry/FlatGeometry.h>
-#include <geometry/SphericalGeometry.h>
 #include "Project.h"
 #include "edit.h"
 
@@ -25,16 +23,10 @@ bool edit::preferences(Project* p) {
 	if (first) {
 		first = false;
 		auto v = p->getCoords();
-		begin = v[0];
-		end = v[1];
-		begin2 = v[2];
-		end2 = v[3];
-	}
-
-	static int current = 4;
-	const char* items[] = {"Flat","Wrap x-axis", "Wrap y-axis","Toroidal","Spherical"};
-	if(ImGui::Combo("Canvas geometry",&current,items,IM_ARRAYSIZE(items))) {
-
+		begin = v[0]/M_PI*180.0f;
+		end = v[1]/M_PI*180.0f;
+		begin2 = v[2]/M_PI*180.0f;
+		end2 = v[3]/M_PI*180.0f;
 	}
 
 	bool updated = false;
@@ -46,14 +38,6 @@ bool edit::preferences(Project* p) {
 	ImGui::DragFloat("Planet circumference",&circumference,10,1,MAXFLOAT,"%.1f m");
 
 	if (ImGui::Button("Apply")) {
-		switch (current) {
-			//TODO FIX
-//			case 0: { p->setGeometry(new FlatGeometry(p)); break;}
-//			case 1: { p->setGeometry(new WrapXGeometry(p)); break;}
-//			case 2: { p->setGeometry(new WrapYGeometry(p)); break;}
-//			case 3: { p->setGeometry(new WrapXYGeometry(p)); break;}
-//			case 4: { p->setGeometry(new SphericalGeometry(p)); break;}
-		}
 		first = true;
 		return true;
 	}

@@ -35,12 +35,19 @@ static Shader* cornerCoords = Shader::builder()
 		.create(R"(
 uniform float cornerCoords[4];
 
-vec2 to_geographic(vec2 p) {
-p.x = (p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2]);
-p.y = (p.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]);
-return p;
+vec2 tex_to_spheric(vec2 p) {
+	p.x = (p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2]);
+	p.y = (p.y*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]);
+	return p;
 }
 
+vec4 spheric_to_cartesian(vec2 p) {
+	return vec4(cos(p.y)*cos(p.x),cos(p.y)*sin(p.x),sin(p.y),1);
+}
+
+vec2 cartesian_to_spheric(vec4 p) {
+	return vec2(atan(p.y,p.x),asin(p.z));
+}
 )");
 
 /*
@@ -144,13 +151,13 @@ static Shader* brush_outline = Shader::builder()
 		.include(mouseLocation)
         .create(R"(
 void draw_brush_outline(inout vec4 fc, in vec2 st) {
-float r = geodistance(mouse,st,textureSize(img,0));
-float delta = 2*length(vec2(dFdx(r),dFdy(r)));
-if (r<brush_size && r>brush_size-delta) {
-  //fc = vec4(1,1,1,0);
-float w = abs(r-(brush_size-0.5*delta))/(0.5*delta);
-    fc = fc*(w) + vec4(1,1,1,0)*(1-w);
-}
+	float r = geodistance(mouse,st,textureSize(img,0));
+	float delta = 2*length(vec2(dFdx(r),dFdy(r)));
+	if (r<brush_size && r>brush_size-delta) {
+	  	//fc = vec4(1,1,1,0);
+		float w = abs(r-(brush_size-0.5*delta))/(0.5*delta);
+		fc = fc*(w) + vec4(1,1,1,0)*(1-w);
+	}
 }
 )","draw_brush_outline(fc,st_p);");
 
@@ -161,7 +168,7 @@ static Shader* graticules = Shader::builder()
 		.create(R"(
 void draw_graticules(inout vec4 fc, in vec2 st, in float grat, in vec4 grat_color) {
 
-st = to_geographic(st)/M_PI*180;
+st = tex_to_spheric(st)/M_PI*180;
 
 vec2 dx = dFdx(st);
 vec2 dy = dFdy(st);
@@ -180,9 +187,6 @@ r = min(absdiff,grat-absdiff);
 w = 1-r/(ydiff);
 if (r<ydiff) fc = fc*(1-w*grat_color.w) + grat_color*(w*grat_color.w);
 
-
-//if (abs(dx.x)>360) fc = vec4(1,0,0,0);
-
 }
 )","");
 
@@ -197,7 +201,6 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
     float y1 = texture(sel, st-vec2(0,dy2)).r;
     float y2 = texture(sel, st+vec2(0,dy2)).r;
 
-
     float test = round(mod(gl_FragCoord.x/8-gl_FragCoord.y/8+u_time,1));
 
     if (bool(x1) != bool(x2)) fc = vec4(test,test,test,0);
@@ -210,22 +213,22 @@ static Shader* texturespace_gradient = Shader::builder()
 		.include(cornerCoords)
 		.create(R"(
 void get_texture_gradient(inout float delta_x, inout float delta_y) {
-vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
+	vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
 
-float a = texture(img, projection(st)-texture_stepsize*vec2(1,1)).r;
-float b = texture(img, projection(st)-texture_stepsize*vec2(0,1)).r;
-float c = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
-float d = texture(img, projection(st)-texture_stepsize*vec2(1,0)).r;
-float f = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
-float g = texture(img, projection(st)-texture_stepsize*vec2(1,-1)).r;
-float h = texture(img, projection(st)-texture_stepsize*vec2(0,-1)).r;
-float i = texture(img, projection(st)-texture_stepsize*vec2(-1,-1)).r;
+	float a = texture(img, projection(st)-texture_stepsize*vec2(1,1)).r;
+	float b = texture(img, projection(st)-texture_stepsize*vec2(0,1)).r;
+	float c = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
+	float d = texture(img, projection(st)-texture_stepsize*vec2(1,0)).r;
+	float f = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
+	float g = texture(img, projection(st)-texture_stepsize*vec2(1,-1)).r;
+	float h = texture(img, projection(st)-texture_stepsize*vec2(0,-1)).r;
+	float i = texture(img, projection(st)-texture_stepsize*vec2(-1,-1)).r;
 
 
-vec2 geo = to_geographic(projection(st));
+	vec2 geo = tex_to_spheric(projection(st));
 
-delta_x = ((c + 2*f + i) - (a + 2*d + g))/(8*cos(geo.y));
-delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8);
+	delta_x = ((c + 2*f + i) - (a + 2*d + g))/(8*cos(geo.y));
+	delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8);
 }
 float delta_x;
 float delta_y;
@@ -236,7 +239,7 @@ static Shader* get_aspect = Shader::builder()
 		.include(texturespace_gradient)
 		.create(R"(
 float get_aspect() {
-return M_PI-atan(delta_y, -(delta_x));
+	return M_PI-atan(delta_y, -(delta_x));
 }
 )","");
 
@@ -246,7 +249,7 @@ static Shader* get_slope = Shader::builder()
 		.include(texturespace_gradient)
 		.create(R"(
 float get_slope(float z_factor) {
-return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));
+	return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));
 }
 )","");
 
@@ -256,115 +259,33 @@ static Shader* distance = Shader::builder()
 		.include(def_pi)
 		.create(R"(
 float geodistance(vec2 p1, vec2 p2, vec2 size) {
-  float dx = abs(p1.x-p2.x)*(cornerCoords[3]-cornerCoords[2]);
-  dx = dx>M_PI ? 2*M_PI-dx : dx;
-  float y1 = (p1.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0];
-  float y2 = (p2.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0];
-  float delta_sigma = 2*asin(sqrt( pow(sin(abs(y2-y1)/2) , 2) + cos(y1)*cos(y2)*pow(sin(dx/2),2)));
-  return delta_sigma/(cornerCoords[3]-cornerCoords[2])*size.x;
+	p1 = tex_to_spheric(p1);
+	p2 = tex_to_spheric(p2);
+	float delta_sigma = 2*asin(sqrt( pow(sin(abs(p2.y-p1.y)/2) , 2) + cos(p1.y)*cos(p2.y)*pow(sin((p1.x-p2.x)/2),2)));
+	return delta_sigma/(cornerCoords[3]-cornerCoords[2])*size.x;
 }
 )","");
 
 static Shader* offset_shader = Shader::builder()
 		.create(R"(
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
-  p = p + dp/resolution;
-  p.x = mod(p.x,1);
-  if (p.y<0) {
-    p.y=-p.y;
-    p.x=p.x-0.5;
-  }
-  if (p.y>1) {
-    p.y=2-p.y;
-    p.x=p.x-0.5;
-  }
-  p.x = mod(p.x,1);
-  return p;
+	p = p + dp/resolution;
+	p.x = mod(p.x,1);
+	if (p.y<0) {
+	p.y=-p.y;
+	p.x=p.x-0.5;
+	}
+	if (p.y>1) {
+	p.y=2-p.y;
+	p.x=p.x-0.5;
+	}
+	p.x = mod(p.x,1);
+	return p;
 }
 )","");
 
-static Shader* brush_calc_shader = Shader::builder()
-		.include(mouseLocation)
-		.include(cornerCoords)
-		.include(def_pi)
-		.create(R"(
-uniform sampler2D brush_tex;
-uniform mat4 rotation;
 
-void brush_calc(inout vec2 vstart, inout vec2 vstop) {
-  float phi = (st.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
-  float theta = st.x*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
 
-  vec4 pos = vec4(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi),1);
-  pos = rotation * pos;
-  phi = asin(pos.z);
-  theta = atan(pos.y,pos.x);
-
-  float phi_prev = (mousePrev.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0];
-  float theta_prev = mousePrev.x*2*M_PI;
-  theta_prev = mousePrev.x*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
-
-  pos = vec4(sin(M_PI/2-phi_prev)*cos(theta_prev),sin(M_PI/2-phi_prev)*sin(theta_prev),cos(M_PI/2-phi_prev),1);
-  pos = rotation * pos;
-  phi_prev = asin(pos.z);
-  theta_prev = atan(pos.y,pos.x);
-
-  float d = abs(phi)/(cornerCoords[3]-cornerCoords[2])*textureSize(img,0).x;
-  float width = sqrt(pow(brush_size,2)-pow(d,2));
-
-  float rightstart = 0 + width;
-  rightstart = min(theta,rightstart);
-  rightstart = max(-width,rightstart);
-
-  float leftend = theta_prev - width;
-  leftend = max(theta,leftend);
-  leftend = min(theta_prev+width,leftend)-theta_prev;
-
-  float stop = rightstart/(cornerCoords[3]-cornerCoords[2])*textureSize(img,0).x;
-  float start = leftend/(cornerCoords[3]-cornerCoords[2])*textureSize(img,0).x;
-  vstop = vec2(stop/width/2+0.5,d/brush_size);
-  vstart = vec2(start/width/2+0.5,d/brush_size);
-}
-)");
-
-static Shader* triangle_shader = Shader::builder()
-		.include(fragmentBase)
-		.include(cornerCoords)
-		.include(mouseLocation)
-		.include(def_pi)
-		.create(R"(
-uniform vec2 mouseFirst;
-bool free_select(vec2 start, vec2 mouse, vec2 prev) {
-//float phi = (mouse.y*2-1)*M_PI/2;
-//float theta = (mouse.x*2-1)*M_PI;
-float phi = (mouse.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
-float theta = mouse.x*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
-vec3 A = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
-
-phi = (mousePrev.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
-theta = (mousePrev.x)*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
-vec3 B = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
-
-phi = (mouseFirst.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
-theta = (mouseFirst.x)*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
-vec3 C = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
-
-phi = (st.y)*(cornerCoords[1]-cornerCoords[0])+cornerCoords[0]; //-pi/2 to pi/2
-theta = (st.x)*(cornerCoords[3]-cornerCoords[2])+M_PI; // 0 to 2*pi
-vec3 P = vec3(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi));
-
-vec3 average = (A+B+C);
-
-vec3 a = cross(A,B);
-vec3 b = cross(B,C);
-vec3 c = cross(C,A);
-//same sign as P!
-
-float s = sign(dot(a,average));
-
-return s*dot(a,P)>0 && s*dot(b,P)>0 && s*dot(c,P)>0;
-}
-)","");
 
 
 #endif //DEMIURGE_SHADER_H

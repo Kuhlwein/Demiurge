@@ -79,10 +79,7 @@ void AbstractCanvas::render() {
 	id = glGetUniformLocation(programId,"zoom");
 	glUniform1f(id,pow(ZOOM,z));
 
-	id = glGetUniformLocation(programId,"cornerCoords");
-	auto v = project->getCoords();
-	for (auto &e : v) e=e/180.0f*M_PI;
-	glUniform1fv(id, 4, v.data());
+	project->setCanvasUniforms(project->program);
 
 	id = glGetUniformLocation(programId,"isinterrupted");
 	glUniform1fv(id, 1, &isinterrupted);
@@ -183,7 +180,6 @@ glm::vec2 AbstractCanvas::mousePos(ImVec2 pos) {
 	coord.x = atan2(coord2.y,coord2.x); // -pi to pi
 
 	auto v = project->getCoords();
-	for (auto &e : v) e=e/180.0f*M_PI;
 	float theta = (coord.x-v[2])/(v[3]-v[2]);
 	float phi = (coord.y-v[0])/(v[1]-v[0]);
 	return glm::vec2(theta,phi);

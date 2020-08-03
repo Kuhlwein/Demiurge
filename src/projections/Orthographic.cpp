@@ -63,10 +63,7 @@ void Orthographic::render() {
 	id = glGetUniformLocation(programId,"zoom");
 	glUniform1f(id,pow(ZOOM,z));
 
-	id = glGetUniformLocation(programId,"cornerCoords");
-	auto v = project->getCoords();
-	for (auto &e : v) e=e/180.0f*M_PI;
-	glUniform1fv(id, 4, v.data());
+	project->setCanvasUniforms(project->program);
 
 	vbo->render();
 }
@@ -84,7 +81,6 @@ void Orthographic::update() {
 
 		if (!(std::isnan(pos.x) || std::isnan(pos.y))) {
 			auto v = project->getCoords();
-			for (auto &e : v) e=e/180.0f*M_PI;
 			delta_phi += pos.y*(v[1]-v[0]);
 			delta_theta -= pos.x*(v[3]-v[2]);
 			if (delta_phi < 0) delta_phi = 0;
@@ -116,7 +112,6 @@ glm::vec2 Orthographic::mousePos(ImVec2 pos) {
 	float theta = atan2(coord.y,coord.x); // -pi to pi
 
 	auto v = project->getCoords();
-	for (auto &e : v) e=e/180.0f*M_PI;
 
 	float phi2 = (phi-v[0])/(v[1]-v[0]);
 	float theta2 = (fmod(theta+M_PI-v[2],M_PI*2))/(v[3]-v[2]);

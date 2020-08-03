@@ -11,9 +11,7 @@
 #include <stack>
 #include <menus/AppearanceWindow.h>
 #include <filter/Filter.h>
-#include <geometry/Geometry.h>
 #include <memory>
-
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"
@@ -79,6 +77,8 @@ public:
 
 	void addAsyncTex(Texture* tex);
 
+	void setCanvasUniforms(ShaderProgram* p);
+
 private:
 	Texture* asyncTex;
 	bool downloadingTex = false;
@@ -87,7 +87,9 @@ private:
 
 	std::shared_ptr<Filter> filter;
 
-	std::vector<float> coords = {-90.0f, 90.0f, -180.0f,180.0f};
+	std::vector<float> coords = {-M_PI/2, M_PI/2, -M_PI,M_PI};
+	float circumference;
+
     GLFWwindow* window;
 	Texture* terrain = nullptr;
     Texture* scratchPad = nullptr;

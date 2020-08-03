@@ -12,8 +12,8 @@ class Shader;
 
 namespace selection {
 	Shader* selection_mode();
+	std::vector<Menu*> get_selection_menu();
 	bool by_height(Project* p);
-	bool blur(Project* p);
 }
 
 

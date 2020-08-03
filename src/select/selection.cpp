@@ -9,6 +9,9 @@
 #include <filter/Morphological.h>
 #include <filter/BlurMenu.h>
 #include "selection.h"
+#include "AllSelect.h"
+#include "InverseSelect.h"
+#include "FreeSelect.h"
 
 
 /*
@@ -25,6 +28,25 @@
  * Border
  * Blur
  */
+
+std::vector<Menu*> selection::get_selection_menu() {
+	std::vector<Menu*> selection_menu = {};
+
+	selection_menu.push_back(new AllSelect());
+	selection_menu.push_back(new InverseSelect());
+	selection_menu.push_back(new FreeSelect());
+	selection_menu.push_back(new GrowShrinkMenu());
+	selection_menu.push_back(new BorderMenu());
+	selection_menu.push_back(new BlurSelection());
+	//	auto fromterrain = new SubMenu("From...");
+		//height
+		//direction
+		//slope
+		//layer
+	//	selection_menu.push_back(fromterrain);
+	return selection_menu;
+}
+
 
 Shader* selection::selection_mode() {
 	ImGuiIO io = ImGui::GetIO();
