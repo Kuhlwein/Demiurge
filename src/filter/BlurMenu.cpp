@@ -17,7 +17,7 @@ void BlurMenu::update_self(Project *p) {
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
-std::shared_ptr<Filter> BlurMenu::makeFilter(Project* p) {
+std::shared_ptr<BackupFilter> BlurMenu::makeFilter(Project* p) {
 	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},new Blur(p, radius, p->get_terrain()));
 }
 

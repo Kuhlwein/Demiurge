@@ -21,7 +21,7 @@ class GrowShrinkMenu : public FilterModal {
 public:
 	GrowShrinkMenu();
 	void update_self(Project* p) override;
-	std::shared_ptr<Filter> makeFilter(Project* p) override;
+	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
 	float radius = 1.0f;
 	int current = 1;
@@ -31,7 +31,7 @@ class BorderMenu : public FilterModal {
 public:
 	BorderMenu();
 	void update_self(Project* p) override;
-	std::shared_ptr<Filter> makeFilter(Project* p) override;
+	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
 	float radius = 1.0f;
 };
@@ -40,7 +40,7 @@ class BlurSelection : public FilterModal {
 public:
 	BlurSelection();
 	void update_self(Project* p) override;
-	std::shared_ptr<Filter> makeFilter(Project* p) override;
+	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
 	float radius = 1.0f;
 };

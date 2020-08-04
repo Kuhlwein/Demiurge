@@ -15,7 +15,7 @@ class MorphologicalMenu : public FilterModal {
 public:
 	MorphologicalMenu();
 	void update_self(Project* p) override;
-	std::shared_ptr<Filter> makeFilter(Project* p) override;
+	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
 	float radius = 1.0f;
 	int current = 0;

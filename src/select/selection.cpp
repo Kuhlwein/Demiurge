@@ -110,7 +110,7 @@ void GrowShrinkMenu::update_self(Project *p) {
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
-std::shared_ptr<Filter> GrowShrinkMenu::makeFilter(Project *p) {
+std::shared_ptr<BackupFilter> GrowShrinkMenu::makeFilter(Project *p) {
 	auto morph = new Morphological(p, radius, p->get_selection(),(current==0) ? "min" : "max");
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},morph);
 }
@@ -120,7 +120,7 @@ void BorderMenu::update_self(Project *p) {
 	ImGui::DragFloat("Width", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
-std::shared_ptr<Filter> BorderMenu::makeFilter(Project *p) {
+std::shared_ptr<BackupFilter> BorderMenu::makeFilter(Project *p) {
 	auto morph = new MorphologicalGradient(p, radius, p->get_selection());
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},morph);
 }
@@ -140,7 +140,7 @@ void BlurSelection::update_self(Project *p) {
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
-std::shared_ptr<Filter> BlurSelection::makeFilter(Project* p) {
+std::shared_ptr<BackupFilter> BlurSelection::makeFilter(Project* p) {
 	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_selection();},new Blur(p, radius, p->get_selection()));
 }
 

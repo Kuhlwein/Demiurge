@@ -9,21 +9,22 @@
 FilterModal::FilterModal(std::string title) : Modal(title, [this](Project* p) {
 	return this->update_FilterModal(p);
 }) {
-	filter = std::make_shared<NoneFilter>();
+	//filter = std::make_shared<NoneFilter>();
 }
 
 bool FilterModal::update_FilterModal(Project *p) {
 	update_self(p);
 
-	filter->run(p);
+	if (isFiltering) filter->run(p);
 
 	if(ImGui::Button("Preview")) {
 		if (previewing) {
-			p->undo();
+			filter->restoreBackup();
 		}
 		previewing = true;
 
 		filter = makeFilter(p);
+		isFiltering = true;
 		p->dispatchFilter(filter);
 		return false;
 	}
@@ -31,19 +32,25 @@ bool FilterModal::update_FilterModal(Project *p) {
 	if(ImGui::Button("Apply")) {
 		if (!previewing) {
 			filter = makeFilter(p);
+			isFiltering = true;
 			p->dispatchFilter(filter);
 		}
 		previewing = false;
 	}
 	ImGui::SameLine();
 	if(ImGui::Button("Close")) {
-		if (previewing) p->undo();
+		if (previewing) {
+			filter->restoreBackup();
+		}
 		previewing=false;
-		filter = std::make_shared<NoneFilter>();
+		filter.reset();
+		isFiltering = false;
 		return true;
 	}
-	if (filter->isFinished() && !previewing) {
-		filter = std::make_shared<NoneFilter>();
+	if (isFiltering && filter->isFinished() && !previewing) {
+		filter->add_history();
+		filter.reset();
+		isFiltering = false;
 		return true;
 	}
 

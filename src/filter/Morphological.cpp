@@ -20,7 +20,7 @@ void MorphologicalMenu::update_self(Project *p) {
 	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
-std::shared_ptr<Filter> MorphologicalMenu::makeFilter(Project *p) {
+std::shared_ptr<BackupFilter> MorphologicalMenu::makeFilter(Project *p) {
 	auto morph = new Morphological(p, radius, p->get_terrain(),(current==0) ? "min" : "max");
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},morph);
 }

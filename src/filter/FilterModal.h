@@ -16,10 +16,11 @@ public:
 	FilterModal(std::string title);
 	bool update_FilterModal(Project* p);
 	virtual void update_self(Project* p) = 0;
-	virtual std::shared_ptr<Filter> makeFilter(Project* p) = 0;
+	virtual std::shared_ptr<BackupFilter> makeFilter(Project* p) = 0;
 private:
-	std::shared_ptr<Filter> filter;
+	std::shared_ptr<BackupFilter> filter;
 	bool previewing = false;
+	bool isFiltering = false;
 };
 
 class FilterMenu : public Menu {

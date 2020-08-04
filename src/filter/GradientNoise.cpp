@@ -5,55 +5,38 @@
 #include "Project.h"
 #include <imgui/imgui.h>
 #include <iostream>
+#include <random>
+#include <glm/glm/ext.hpp>
 #include "GradientNoise.h"
 
 
-GradientNoiseMenu::GradientNoiseMenu() : InstantFilterModal("Gradient noise") {
+GradientNoiseMenu::GradientNoiseMenu() : FilterModal("Gradient noise") {
 
 }
 
 void GradientNoiseMenu::update_self(Project *p) {
-	bool updated = false;
-	updated |= ImGui::DragFloat("Scale", &params.scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
-	updated |= ImGui::DragInt("Octaves", &params.octaves,0.01f,1,64);
-	updated |= ImGui::DragFloat("Lacunarity", &params.lacunarity, 0.01f/10, 0, 0, "%.4f", 1.0f);
-	updated |= ImGui::DragFloat("Persistence", &params.persistence, 0.01f/10, 0, 0, "%.4f", 1.0f);
-
-	if (updated) {
-		filter->run(p);
-	}
+	ImGui::DragInt("Seed", &params.seed,0.01f,0,0);
+	ImGui::DragFloat("Scale", &params.scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
+	ImGui::DragInt("Octaves", &params.octaves,0.01f,1,64);
+	ImGui::DragFloat("Lacunarity", &params.lacunarity, 0.01f/10, 0, 0, "%.4f", 1.0f);
+	ImGui::DragFloat("Persistence", &params.persistence, 0.01f/10, 0, 0, "%.4f", 1.0f);
 }
 
-std::unique_ptr<BackupFilter> GradientNoiseMenu::makeFilter(Project *p) {
-	return std::move(std::make_unique<GradientNoiseFilter>(p,[](Project* p){return p->get_terrain();},&params));
+std::shared_ptr<BackupFilter> GradientNoiseMenu::makeFilter(Project *p) {
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},new GradientNoiseFilter(p,p->get_terrain(),params));
 }
 
-void GradientNoiseFilter::run(Project *p) {
-	restoreBackup();
-
-	program->bind();
-	p->setCanvasUniforms(program);
-
-	int id = glGetUniformLocation(program->getId(), "scale");
-	glUniform1f(id,params->scale);
-
-	id = glGetUniformLocation(program->getId(), "octaves");
-	glUniform1i(id,params->octaves);
-
-	id = glGetUniformLocation(program->getId(), "lacunarity");
-	glUniform1f(id,params->lacunarity);
-
-	id = glGetUniformLocation(program->getId(), "persistence");
-	glUniform1f(id,params->persistence);
-
-	p->apply(program, p->get_scratch1());
-	p->get_scratch1()->swap(p->get_terrain());
-}
-
-GradientNoiseFilter::GradientNoiseFilter(Project *p, std::function<Texture *(Project *)> target, NoiseParams* params)
-		: BackupFilter(p, target) {
+GradientNoiseFilter::GradientNoiseFilter(Project *p, Texture* target, NoiseParams params) : SubFilter() {
 	this->params = params;
+}
 
+
+
+GradientNoiseFilter::~GradientNoiseFilter() {
+
+}
+
+std::pair<bool, float> GradientNoiseFilter::step(Project *p) {
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.include(cornerCoords)
@@ -62,6 +45,7 @@ uniform float scale;
 uniform float persistence = 0.5;
 uniform float lacunarity = 2;
 uniform int octaves = 8;
+uniform vec3 seed_offset;
 
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex
@@ -175,7 +159,7 @@ float snoise(vec3 v)
 
 	fc = 0;
 	for(int i=0; i<=octaves; i++) {
-		fc += snoise(p)*current_amplitude;
+		fc += snoise(p+seed_offset)*current_amplitude;
 		p *= lacunarity;
 		total_amplitude += current_amplitude;
 		current_amplitude *= persistence;
@@ -188,13 +172,34 @@ float snoise(vec3 v)
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-}
+
+	program->bind();
+	p->setCanvasUniforms(program);
+
+	int id = glGetUniformLocation(program->getId(), "scale");
+	glUniform1f(id,params.scale);
+
+	id = glGetUniformLocation(program->getId(), "octaves");
+	glUniform1i(id,params.octaves);
+
+	id = glGetUniformLocation(program->getId(), "lacunarity");
+	glUniform1f(id,params.lacunarity);
+
+	id = glGetUniformLocation(program->getId(), "persistence");
+	glUniform1f(id,params.persistence);
 
 
-bool GradientNoiseFilter::isFinished() {
-	return false;
-}
 
-GradientNoiseFilter::~GradientNoiseFilter() {
+	std::mt19937 engine{(uint)params.seed};
+	std::uniform_real_distribution<float> dis(0.0, 10000.0);
+	glm::vec3 offset = glm::vec3(dis(engine),dis(engine),dis(engine));
+	std::cout << offset.x << "\n";
+	id = glGetUniformLocation(program->getId(), "seed_offset");
+	glUniform3fv(id,1,glm::value_ptr(offset));
 
+
+	p->apply(program, p->get_scratch1());
+	p->get_scratch1()->swap(p->get_terrain());
+
+	return {true,1.0};
 }
