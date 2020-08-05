@@ -9,7 +9,7 @@
 FilterModal::FilterModal(std::string title) : Modal(title, [this](Project* p) {
 	return this->update_FilterModal(p);
 }) {
-	//filter = std::make_shared<NoneFilter>();
+
 }
 
 bool FilterModal::update_FilterModal(Project *p) {
@@ -18,7 +18,7 @@ bool FilterModal::update_FilterModal(Project *p) {
 	if (isFiltering) filter->run(p);
 
 	if(ImGui::Button("Preview")) {
-		if (previewing) {
+		if(previewing) {
 			filter->restoreBackup();
 		}
 		previewing = true;

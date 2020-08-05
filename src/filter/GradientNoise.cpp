@@ -15,11 +15,30 @@ GradientNoiseMenu::GradientNoiseMenu() : FilterModal("Gradient noise") {
 }
 
 void GradientNoiseMenu::update_self(Project *p) {
+	//operation
+	ImGui::DragFloatRange2("Limits",&params.min,&params.max,0.01);
+	static int current;
+	const char* items[] = {"Default","Ridged","Billowy","IQ","Swiss","Jordan"};
+	if(ImGui::Combo("Mode",&current,items,IM_ARRAYSIZE(items))) {
+		switch (current) {
+			case 0: params.mode = DEFAULT; break;
+			case 1: params.mode = RIDGED; break;
+			case 2: params.mode = BILLOWY; break;
+			case 3: params.mode = IQNoise; break;
+			case 4: params.mode = SWISS; break;
+			case 5: params.mode = Jordan; break;
+		}
+	};
+	//Mode
+
+	ImGui::Separator();
+
 	ImGui::DragInt("Seed", &params.seed,0.01f,0,0);
-	ImGui::DragFloat("Scale", &params.scale, 0.01f/10, 0, 0, "%.4f", 1.0f);
-	ImGui::DragInt("Octaves", &params.octaves,0.01f,1,64);
+	ImGui::DragFloat("Scale", &params.scale, 0.001f, 0, 0, "%.4f", 1.0f);
+	ImGui::DragInt("Octaves", &params.octaves,0.05f,1,64);
 	ImGui::DragFloat("Lacunarity", &params.lacunarity, 0.01f/10, 0, 0, "%.4f", 1.0f);
 	ImGui::DragFloat("Persistence", &params.persistence, 0.01f/10, 0, 0, "%.4f", 1.0f);
+	ImGui::DragFloat("Domain warp", &params.warp, 0.01f/10, 0, 0, "%.4f", 1.0f);
 }
 
 std::shared_ptr<BackupFilter> GradientNoiseMenu::makeFilter(Project *p) {
@@ -37,22 +56,16 @@ GradientNoiseFilter::~GradientNoiseFilter() {
 }
 
 std::pair<bool, float> GradientNoiseFilter::step(Project *p) {
-	Shader* shader = Shader::builder()
+	Shader* noise = Shader::builder()
 			.include(fragmentBase)
 			.include(cornerCoords)
 			.create(R"(
-uniform float scale;
-uniform float persistence = 0.5;
-uniform float lacunarity = 2;
-uniform int octaves = 8;
-uniform vec3 seed_offset;
-
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex
 //               noise functions.
 //      Author : Ian McEwan, Ashima Arts.
 //  Maintainer : stegu
-//     Lastmod : 20110822 (ijm)
+//     Lastmod : 20150104 (JcBernack)
 //     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
 //               Distributed under the MIT License. See LICENSE file.
 //               https://github.com/ashima/webgl-noise
@@ -76,8 +89,8 @@ vec4 taylorInvSqrt(vec4 r)
   return 1.79284291400159 - 0.85373472095314 * r;
 }
 
-float snoise(vec3 v)
-  {
+float snoise(vec3 v, out vec3 gradient)
+{
   const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
   const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
 
@@ -146,27 +159,179 @@ float snoise(vec3 v)
 
 // Mix final noise value
   vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
-                                dot(p2,x2), dot(p3,x3) ) );
-  }
-)",R"(
+  vec4 m2 = m * m;
+  vec4 m4 = m2 * m2;
+  vec4 pdotx = vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3));
+
+// Determine noise gradient
+  vec4 temp = m2 * m * pdotx;
+  gradient = -8.0 * (temp.x * x0 + temp.y * x1 + temp.z * x2 + temp.w * x3);
+  gradient += m4.x * p0 + m4.y * p1 + m4.z * p2 + m4.w * p3;
+  gradient *= 42.0;
+
+  return 42.0 * dot(m4, pdotx);
+}
+
+)","");
+
+	//TODO multiply seed by "i"
+	std::string code;
+	switch (params.mode) {
+		case DEFAULT: {
+			code = R"(
 	vec2 geo = tex_to_spheric(st);
 	vec3 p = scale*vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
 
 	float current_amplitude = 1;
 	float total_amplitude = 0;
 
+	vec3 tmp;
+
+
+
+	snoise(p,tmp);
+
+	vec3 a;
+	//tmp = vec3(snoise(p+5,a),snoise(p+8,a),snoise(p+15,a))*0.5+0.5;
+
+	//tmp = vec3(1,0,0);
+	tmp = tmp-dot(tmp,p)/length(p) * p/length(p);
+
+	//vec3 u = cross(p,tmp);
+	vec3 u = p+tmp;
+	u = u/dot(u,u);
+
+	float theta = warp_factor*0.1*length(tmp);
+	mat3 R = mat3(
+		vec3(cos(theta)+u.x*u.x*(1-cos(theta)),u.y*u.x*(1-cos(theta))+u.z*sin(theta),u.z*u.x*(1-cos(theta))-u.y*sin(theta)),
+		vec3(u.x*u.y*(1-cos(theta))-u.z*sin(theta),cos(theta)+u.y*u.y*(1-cos(theta)),u.z*u.y*(1-cos(theta))+u.x*sin(theta)),
+		vec3(u.x*u.z*(1-cos(theta))+u.y*sin(theta),u.y*u.z*(1-cos(theta))-u.x*sin(theta),cos(theta)+u.z*u.z*(1-cos(theta))));
+	p = R*p;
+
 	fc = 0;
-	for(int i=0; i<=octaves; i++) {
-		fc += snoise(p+seed_offset)*current_amplitude;
+	for(int i=0; i<octaves; i++) {
+		fc += snoise(p+seed_offset*(i+1),tmp)*current_amplitude;  //  (1+0.4*length(snoise(p/scale,tmp)))
 		p *= lacunarity;
 		total_amplitude += current_amplitude;
 		current_amplitude *= persistence;
 	}
 	fc /= total_amplitude;
+	fc = (fc+1)*0.5*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+		}
+		case RIDGED:
+			code = R"(
+	vec2 geo = tex_to_spheric(st);
+	vec3 p = scale*vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
 
-)");
+	float current_amplitude = 1;
+	float total_amplitude = 0;
+
+	vec3 tmp;
+	fc = 0;
+	for(int i=0; i<octaves; i++) {
+		fc += (1-abs(snoise(p+seed_offset,tmp)))*current_amplitude;
+		p *= lacunarity;
+		total_amplitude += current_amplitude;
+		current_amplitude *= persistence;
+	}
+	fc /= total_amplitude;
+	fc = (fc)*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+		case BILLOWY:
+			code = R"(
+	vec2 geo = tex_to_spheric(st);
+	vec3 p = scale*vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
+
+	float current_amplitude = 1;
+	float total_amplitude = 0;
+
+	vec3 tmp;
+	fc = 0;
+	for(int i=0; i<octaves; i++) {
+		fc += abs(snoise(p+seed_offset,tmp))*current_amplitude;
+		p *= lacunarity;
+		total_amplitude += current_amplitude;
+		current_amplitude *= persistence;
+	}
+	fc /= total_amplitude;
+	fc = (fc)*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+		case IQNoise:
+			code = R"(
+	vec2 geo = tex_to_spheric(st);
+	vec3 p = scale*vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
+
+	float current_amplitude = 1;
+	float total_amplitude = 0;
+
+	vec3 tmp;
+	vec3 dsum = vec3(0,0,0);
+	fc = 0;
+	for(int i=0; i<octaves; i++) {
+		float n = snoise(p+seed_offset,tmp)*current_amplitude;
+		vec3 radial = dot(tmp,p)/length(p) * p/length(p);
+		dsum += (tmp-radial);
+		fc += n/(1.0+dot(dsum,dsum));
+		p *= lacunarity;
+		total_amplitude += current_amplitude/(1.0+dot(dsum,dsum));
+		current_amplitude *= persistence;
+	}
+	fc /= total_amplitude;
+	fc = (fc+1)*0.5*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+		case SWISS:
+			code = R"(
+	vec2 geo = tex_to_spheric(st);
+	vec3 p = vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
+	float freq = scale;
+
+	float current_amplitude = 1;
+	float total_amplitude = 0;
+
+	vec3 tmp;
+	vec3 dsum = vec3(0,0,0);
+	fc = 0;
+	for(int i=0; i<octaves; i++) {
+		float n = snoise(freq*(p + 0.15*dsum)+seed_offset,tmp);
+		vec3 radial = dot(tmp,p)/length(p) * p/length(p);
+		dsum += (tmp-radial)*(-n);
+		fc += (1-abs(n))*current_amplitude;
+		freq *= lacunarity;
+		//p *= lacunarity;
+		total_amplitude += current_amplitude;
+		current_amplitude *= persistence*clamp(fc, 0, 1);
+	}
+	fc /= total_amplitude;
+	fc = (fc)*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+	}
+
+
+
+	Shader* shader = Shader::builder()
+			.include(noise)
+			.create(R"(
+	uniform float scale;
+	uniform float persistence = 0.5;
+	uniform float lacunarity = 2;
+	uniform int octaves = 8;
+	uniform vec3 seed_offset;
+	uniform float lower_limit;
+	uniform float higher_limit;
+	uniform float warp_factor;
+
+	//mat3 rotation_matrix(float theta, vec3 u) {
+
+	//}
+)",code);
+
+
 
 	program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -188,12 +353,19 @@ float snoise(vec3 v)
 	id = glGetUniformLocation(program->getId(), "persistence");
 	glUniform1f(id,params.persistence);
 
+	id = glGetUniformLocation(program->getId(), "warp_factor");
+	glUniform1f(id,params.warp);
+
+	id = glGetUniformLocation(program->getId(), "lower_limit");
+	glUniform1f(id,params.min);
+	id = glGetUniformLocation(program->getId(), "higher_limit");
+	glUniform1f(id,params.max);
+
 
 
 	std::mt19937 engine{(uint)params.seed};
 	std::uniform_real_distribution<float> dis(0.0, 10000.0);
 	glm::vec3 offset = glm::vec3(dis(engine),dis(engine),dis(engine));
-	std::cout << offset.x << "\n";
 	id = glGetUniformLocation(program->getId(), "seed_offset");
 	glUniform3fv(id,1,glm::value_ptr(offset));
 

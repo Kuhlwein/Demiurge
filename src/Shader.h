@@ -227,7 +227,7 @@ void get_texture_gradient(inout float delta_x, inout float delta_y) {
 
 	vec2 geo = tex_to_spheric(projection(st));
 
-	delta_x = ((c + 2*f + i) - (a + 2*d + g))/(8*cos(geo.y));
+	delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*cos(geo.y));
 	delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8);
 }
 float delta_x;
