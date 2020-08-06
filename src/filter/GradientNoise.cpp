@@ -18,7 +18,7 @@ void GradientNoiseMenu::update_self(Project *p) {
 	//operation
 	ImGui::DragFloatRange2("Limits",&params.min,&params.max,0.01);
 	static int current;
-	const char* items[] = {"Default","Ridged","Billowy","IQ","Swiss","Jordan"};
+	const char* items[] = {"Default","Ridged","Billowy","IQ","Swiss","Jordan","Plateaus"};
 	if(ImGui::Combo("Mode",&current,items,IM_ARRAYSIZE(items))) {
 		switch (current) {
 			case 0: params.mode = DEFAULT; break;
@@ -27,6 +27,7 @@ void GradientNoiseMenu::update_self(Project *p) {
 			case 3: params.mode = IQNoise; break;
 			case 4: params.mode = SWISS; break;
 			case 5: params.mode = Jordan; break;
+			case 6: params.mode = Plateaus; break;
 		}
 	};
 	//Mode
@@ -179,8 +180,7 @@ float snoise(vec3 v, out vec3 gradient)
 	switch (params.mode) {
 		case DEFAULT: {
 			code = R"(
-	vec2 geo = tex_to_spheric(st);
-	vec3 p = scale*vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
+	vec3 p = scale*spheric_to_cartesian(tex_to_spheric(st)).xyz;
 
 	float current_amplitude = 1;
 	float total_amplitude = 0;
@@ -190,23 +190,20 @@ float snoise(vec3 v, out vec3 gradient)
 
 
 	snoise(p,tmp);
+	//vec3 a = tmp;
+	//snoise(p,tmp);
+	//tmp = a*0.7+tmp*0.3;
 
-	vec3 a;
 	//tmp = vec3(snoise(p+5,a),snoise(p+8,a),snoise(p+15,a))*0.5+0.5;
 
 	//tmp = vec3(1,0,0);
 	tmp = tmp-dot(tmp,p)/length(p) * p/length(p);
 
-	//vec3 u = cross(p,tmp);
 	vec3 u = p+tmp;
 	u = u/dot(u,u);
 
 	float theta = warp_factor*0.1*length(tmp);
-	mat3 R = mat3(
-		vec3(cos(theta)+u.x*u.x*(1-cos(theta)),u.y*u.x*(1-cos(theta))+u.z*sin(theta),u.z*u.x*(1-cos(theta))-u.y*sin(theta)),
-		vec3(u.x*u.y*(1-cos(theta))-u.z*sin(theta),cos(theta)+u.y*u.y*(1-cos(theta)),u.z*u.y*(1-cos(theta))+u.x*sin(theta)),
-		vec3(u.x*u.z*(1-cos(theta))+u.y*sin(theta),u.y*u.z*(1-cos(theta))-u.x*sin(theta),cos(theta)+u.z*u.z*(1-cos(theta))));
-	p = R*p;
+	p = rotation_matrix(theta,u)*p;
 
 	fc = 0;
 	for(int i=0; i<octaves; i++) {
@@ -294,20 +291,143 @@ float snoise(vec3 v, out vec3 gradient)
 	float total_amplitude = 0;
 
 	vec3 tmp;
+
+	//domain warp
+	snoise(p,tmp);
+	tmp = tmp-dot(tmp,p)/length(p) * p/length(p);
+	vec3 u = p+tmp;
+	u = u/dot(u,u);
+	float theta = warp_factor*0.1*length(tmp);
+	p = rotation_matrix(theta,u)*p;
+
+
+
 	vec3 dsum = vec3(0,0,0);
 	fc = 0;
 	for(int i=0; i<octaves; i++) {
-		float n = snoise(freq*(p + 0.15*dsum)+seed_offset,tmp);
+
+		vec3 u = p + cross(p,dsum);
+		u = u/dot(u,u);
+		float theta = 2*0.1*length(dsum);
+		vec3 p_ = rotation_matrix(theta,u)*p;
+
+		float n = snoise(freq*p_+seed_offset,tmp);
+//float n = snoise(freq*(p + 0.15*dsum)+seed_offset,tmp);
 		vec3 radial = dot(tmp,p)/length(p) * p/length(p);
-		dsum += (tmp-radial)*(-n);
+		dsum += (tmp-radial)*(-n)*current_amplitude;
 		fc += (1-abs(n))*current_amplitude;
 		freq *= lacunarity;
 		//p *= lacunarity;
 		total_amplitude += current_amplitude;
-		current_amplitude *= persistence*clamp(fc, 0, 1);
+		current_amplitude *= persistence*smoothstep(-1,1,fc*fc);
 	}
 	fc /= total_amplitude;
 	fc = (fc)*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+
+		case Jordan:
+			code = R"(
+	vec2 geo = tex_to_spheric(st);
+	vec3 p = vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
+	float freq = scale;
+
+	float current_amplitude = 0.8;
+	float total_amplitude = 0.8;
+
+	vec3 tmp;
+
+	//domain warp
+	snoise(p+seed_offset,tmp);
+	tmp = tmp-dot(tmp,p)/length(p) * p/length(p);
+	vec3 u = p+tmp;
+	u = u/dot(u,u);
+	float theta = warp_factor*0.1*length(tmp);
+	p = rotation_matrix(theta,u)*p;
+
+
+	float n = snoise(freq*p+seed_offset,tmp);
+	fc = n*n;
+	tmp = tmp*n;
+	vec3 dsum_warp = 0.4 * (tmp -dot(tmp,p)/length(p) * p/length(p));
+	vec3 dsum_damp = 1.0 * (tmp -dot(tmp,p)/length(p) * p/length(p));
+	float damped_amp = current_amplitude*persistence;
+
+	vec3 dsum = vec3(0,0,0);
+
+	for(int i=1; i<octaves; i++) {
+
+		vec3 u = p + cross(p,dsum_warp);
+		u = u/dot(u,u);
+		float theta = 2*0.1*length(dsum_warp);
+		vec3 p_ = rotation_matrix(theta,u)*p;
+
+		float n = snoise(freq*p_+seed_offset,tmp);
+		fc += damped_amp * n*n;
+		tmp = tmp*n;
+		dsum_warp += 0.35*(tmp -dot(tmp,p)/length(p) * p/length(p));
+		dsum_damp += 0.8 *(tmp -dot(tmp,p)/length(p) * p/length(p));
+
+		freq *= lacunarity;
+
+		total_amplitude += current_amplitude;
+		current_amplitude *= persistence;
+		damped_amp = current_amplitude * (1 - 1.0/(1+dot(dsum_damp,dsum_damp)));
+	}
+	fc /= total_amplitude;
+	fc = (fc)*(higher_limit-lower_limit)+lower_limit;
+)";
+			break;
+		case Plateaus:
+			code = R"(
+	vec2 geo = tex_to_spheric(st);
+	vec3 p = vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
+	float freq = scale;
+
+	float current_amplitude = 1;
+	float total_amplitude = 0;
+
+	vec3 tmp;
+
+	//domain warp
+	snoise(p,tmp);
+	tmp = tmp-dot(tmp,p)/length(p) * p/length(p);
+	vec3 u = p+tmp;
+	u = u/dot(u,u);
+	float theta = warp_factor*0.1*length(tmp);
+	p = rotation_matrix(theta,u)*p;
+
+
+
+	vec3 dsum = vec3(0,0,0);
+	fc = 0;
+	for(int i=0; i<octaves; i++) {
+
+
+
+		float n = snoise(freq*p+seed_offset*(i+1),tmp);
+
+
+		vec3 radial = dot(tmp,p)/length(p) * p/length(p);
+		dsum =  (tmp-radial)*(1-abs(n))*n*2;
+
+		vec3 u = p + cross(p,dsum);
+		u = u/dot(u,u);
+		float theta = 2*0.1*length(dsum);
+		vec3 p_ = rotation_matrix(theta,u)*p;
+
+		float r_offset = length(radial)*0.1*sign(n);
+		r_offset = sign(r_offset)*sin(pow(abs(r_offset)*sqrt(M_PI)-sqrt(M_PI),2));
+
+		n = snoise(freq*p_+seed_offset*(i+1),tmp) ;
+
+		fc += n*current_amplitude/(1+abs(fc)*abs(fc)*5);
+		freq *= lacunarity;
+		total_amplitude += current_amplitude;
+		current_amplitude *= persistence;
+	}
+	fc /= total_amplitude;
+	fc = (fc+1)*0.5*(higher_limit-lower_limit)+lower_limit;
 )";
 			break;
 	}
@@ -326,9 +446,12 @@ float snoise(vec3 v, out vec3 gradient)
 	uniform float higher_limit;
 	uniform float warp_factor;
 
-	//mat3 rotation_matrix(float theta, vec3 u) {
-
-	//}
+	mat3 rotation_matrix(float theta, vec3 u) {
+		return mat3(
+		vec3(cos(theta)+u.x*u.x*(1-cos(theta)),u.y*u.x*(1-cos(theta))+u.z*sin(theta),u.z*u.x*(1-cos(theta))-u.y*sin(theta)),
+		vec3(u.x*u.y*(1-cos(theta))-u.z*sin(theta),cos(theta)+u.y*u.y*(1-cos(theta)),u.z*u.y*(1-cos(theta))+u.x*sin(theta)),
+		vec3(u.x*u.z*(1-cos(theta))+u.y*sin(theta),u.y*u.z*(1-cos(theta))-u.x*sin(theta),cos(theta)+u.z*u.z*(1-cos(theta))));
+	}
 )",code);
 
 
