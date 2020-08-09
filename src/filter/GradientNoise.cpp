@@ -18,7 +18,7 @@ void GradientNoiseMenu::update_self(Project *p) {
 	//operation
 	ImGui::DragFloatRange2("Limits",&params.min,&params.max,0.01);
 	static int current;
-	const char* items[] = {"Default","Ridged","Billowy","IQ","Swiss","Jordan","Plateaus"};
+	const char* items[] = {"Default","Ridged","Billowy","Gradient supressed","Mountains","Hills","Plateaus"};
 	if(ImGui::Combo("Mode",&current,items,IM_ARRAYSIZE(items))) {
 		switch (current) {
 			case 0: params.mode = DEFAULT; break;
@@ -332,8 +332,8 @@ float snoise(vec3 v, out vec3 gradient)
 	vec3 p = vec3(sin(M_PI/2-geo.y)*cos(geo.x),sin(M_PI/2-geo.y)*sin(geo.x),cos(M_PI/2-geo.y));
 	float freq = scale;
 
-	float current_amplitude = 0.8;
-	float total_amplitude = 0.8;
+	float current_amplitude = 1.0;
+	float total_amplitude = current_amplitude;
 
 	vec3 tmp;
 
@@ -347,7 +347,7 @@ float snoise(vec3 v, out vec3 gradient)
 
 
 	float n = snoise(freq*p+seed_offset,tmp);
-	fc = n*n;
+	fc = n*n * current_amplitude;
 	tmp = tmp*n;
 	vec3 dsum_warp = 0.4 * (tmp -dot(tmp,p)/length(p) * p/length(p));
 	vec3 dsum_damp = 1.0 * (tmp -dot(tmp,p)/length(p) * p/length(p));

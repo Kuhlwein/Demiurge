@@ -8,7 +8,7 @@
 #include "FilterModal.h"
 
 enum noise_mode {DEFAULT, RIDGED, BILLOWY, IQNoise, SWISS, Jordan,Plateaus};
-//IQ-noise : supress details on slopes
+//IQ-noise : supress details on slopes //Gradient supressed
 //Swiss : Ridged with smoothed valleys, damp on height
 //Jordan : billowy-ish, damp on gradient?
 

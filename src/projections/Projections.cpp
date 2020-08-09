@@ -13,6 +13,8 @@
 #include "GoodeHomolosine.h"
 #include "EckertIV.h"
 #include "Mercator.h"
+#include "Hammer.h"
+#include "Robinson.h"
 
 std::vector<Menu *> projections::get_projection_menu(Project* p) {
 	std::vector<Menu*> projections = {};
@@ -29,6 +31,8 @@ std::vector<Menu *> projections::get_projection_menu(Project* p) {
 	}));
 
 	projections.push_back(new CanvasMenu("Mollweide...",new Mollweide(p)));
+	projections.push_back(new CanvasMenu("Hammer",new Hammer(p)));
+	projections.push_back(new CanvasMenu("Robinson",new Robinson(p)));
 	projections.push_back(new CanvasMenu("Sinusoidal...",new Sinusoidal(p)));
 	projections.push_back(new CanvasMenu("Goode Homolosine...",new GoodeHomolosine(p)));
 	projections.push_back(new CanvasMenu("Eckert IV...",new EckertIV(p)));

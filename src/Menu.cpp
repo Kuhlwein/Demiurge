@@ -42,7 +42,7 @@ bool Modal::update(Project *project) {
 		isOpen = false;
 	}
 	bool closing = true;
-	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg,ImVec4(0.60f, 0.60f, 0.60f, 0.15f));
+	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg,ImVec4(0.60f, 0.60f, 0.60f, 0.0f));
 	if (ImGui::BeginPopupModal(title.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		closing = fun(project);
