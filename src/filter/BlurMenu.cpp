@@ -36,25 +36,29 @@ Blur::Blur(Project *p, float radius, Texture *target) : SubFilter() {
 	p->apply(copyProgram, tex1, {{target, "to_be_copied"}});
 
 	Shader* blurshader = Shader::builder()
+			.include(cornerCoords)
 			.create(R"(
 float blur13(sampler2D image, vec2 uv, vec2 direction) {
-  float color = 0.0f;
-  vec2 resolution = textureSize(image,0);
-  vec2 off1 = vec2(1.411764705882353) * direction;
-float phi = (uv.y-0.5)*3.14159;
-off1.x = off1.x/cos(abs(phi));
-  vec2 off2 = vec2(3.2941176470588234) * direction;
-off2.x = off2.x/cos(abs(phi));
-  vec2 off3 = vec2(5.176470588235294) * direction;
-off3.x = off3.x/cos(abs(phi));
-  color += texture2D(image, uv).r * 0.1964825501511404;
-  color += texture2D(image, offset(uv, off1,resolution)).r * 0.2969069646728344;
-  color += texture2D(image, offset(uv,-off1,resolution)).r * 0.2969069646728344;
-  color += texture2D(image, offset(uv, off2,resolution)).r * 0.09447039785044732;
-  color += texture2D(image, offset(uv,-off2,resolution)).r * 0.09447039785044732;
-  color += texture2D(image, offset(uv, off3,resolution)).r * 0.010381362401148057;
-  color += texture2D(image, offset(uv,-off3,resolution)).r * 0.010381362401148057;
-  return color;
+  	float color = 0.0f;
+	vec2 resolution = textureSize(image,0);
+
+  	vec2 off1 = vec2(1.411764705882353) * direction;
+  	vec2 off2 = vec2(3.2941176470588234) * direction;
+  	vec2 off3 = vec2(5.176470588235294) * direction;
+
+	float phifactor = cos(abs(tex_to_spheric(uv).y));
+	off1.x = off1.x/phifactor;
+	off2.x = off2.x/phifactor;
+	off3.x = off3.x/phifactor;
+
+	color += texture2D(image, uv).r * 0.1964825501511404;
+	color += texture2D(image, offset(uv, off1,resolution)).r * 0.2969069646728344;
+	color += texture2D(image, offset(uv,-off1,resolution)).r * 0.2969069646728344;
+	color += texture2D(image, offset(uv, off2,resolution)).r * 0.09447039785044732;
+	color += texture2D(image, offset(uv,-off2,resolution)).r * 0.09447039785044732;
+	color += texture2D(image, offset(uv, off3,resolution)).r * 0.010381362401148057;
+	color += texture2D(image, offset(uv,-off3,resolution)).r * 0.010381362401148057;
+	return color;
 }
 )");
 
@@ -97,6 +101,7 @@ std::pair<bool,float> Blur::step(Project* p) {
 	p->apply(blurProgram, tex2, {{tex1, "img"}});
 	glUniform2f(id,rlist[i],0);
 	p->apply(blurProgram, tex1, {{tex2, "img"}});
+	p->setCanvasUniforms(blurProgram);
 
 	i++;
 

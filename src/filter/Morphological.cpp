@@ -44,12 +44,13 @@ Morphological::Morphological(Project *p, float radius, Texture *target, std::str
 
 	Shader* defineErode = Shader::builder()
 			.include(offset_shader)
+			.include(cornerCoords)
 			.create(R"(
 float erode(sampler2D image, vec2 uv, float radius) {
 	vec2 resolution = textureSize(image,0);
 	float a = texture(image,uv).r;
 
-float phi = (uv.y-0.5)*3.14159;
+float phi = tex_to_spheric(uv).y;
 float factor = 1/cos(abs(phi));
 
 int N = 64;
@@ -76,6 +77,7 @@ std::pair<bool, float> Morphological::step(Project* p) {
 	erodeProgram->bind();
 	int id = glGetUniformLocation(erodeProgram->getId(), "radius");
 	glUniform1f(id,r[steps]);
+	p->setCanvasUniforms(erodeProgram);
 	p->apply(erodeProgram, p->get_scratch1(),{{target,"target"}});
 	p->get_scratch1()->swap(target);
 	steps++;

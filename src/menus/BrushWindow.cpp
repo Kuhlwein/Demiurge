@@ -123,6 +123,7 @@ uniform mat4 rotation;
 
 void brush_calc(inout vec2 vstart, inout vec2 vstop) {
 	vec2 p = tex_to_spheric(st);
+//p.x - cornerCoords[2] + M_PI;
   	vec4 pos = spheric_to_cartesian(p);
   	pos = rotation * pos;
 	p = cartesian_to_spheric(pos);
@@ -184,14 +185,13 @@ fc = texture(scratch2,st).r + brush_flow*(texture(sel,st).r*(texture(brush_tex,v
 
 		glm::mat4 rotationo(1.f);
 		glm::mat4 rotation(1.f);
-		float dtheta = -pos.x*(v[3]-v[2])+M_PI;
-		rotation = glm::rotate(rotationo, dtheta, glm::vec3(0, 0, 1));
+		float dtheta = pos.x*(v[3]-v[2])+v[2];
+		rotation = glm::rotate(rotationo, -dtheta, glm::vec3(0, 0, 1));
 		float dphi = (pos.y)*(v[1]-v[0])+v[0];
 		rotation = glm::rotate(rotationo, dphi, glm::vec3(0, 1, 0))*rotation;
 
-		float phi = (prev.y-0.5)*M_PI;
-		phi = (prev.y)*(v[1]-v[0])+v[0];
-		float theta = prev.x*(v[3]-v[2])+M_PI;
+		float phi = (prev.y)*(v[1]-v[0])+v[0];
+		float theta = prev.x*(v[3]-v[2])+v[2];
 
 		glm::vec4 pos_ = glm::vec4(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),cos(M_PI/2-phi),1);
 		glm::vec4 prev_ = rotation*pos_;
