@@ -52,6 +52,19 @@ TextureData* Texture::downloadData(GLenum format,GLenum type) {
 	return nullptr;
 }
 
+std::unique_ptr<float[]> Texture::downloadDataRAW(GLenum format, GLenum type) {
+	this->bind(0);
+	if (type == GL_FLOAT) {
+		auto data = std::make_unique<float[]>(width*height);
+
+		glGetTexImage( GL_TEXTURE_2D,0,format,type,data.get());
+
+		return std::move(data);
+	}
+	std::cout << "not implemented yet, returning nullpointer...\n";
+	return nullptr;
+}
+
 GLuint Texture::getId() {
     return id;
 }
@@ -83,6 +96,7 @@ void Texture::bind(ShaderProgram *program, GLuint point, std::string s) {
 		glUniform1i(loc,point);
 	}
 }
+
 
 TextureData::TextureData(std::unique_ptr<float[]> data, int width, int height) {
 	this->height = height;

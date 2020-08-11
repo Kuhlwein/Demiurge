@@ -5,6 +5,7 @@
 #include "Project.h"
 #include <Shader.h>
 #include <iostream>
+#include <thread>
 #include "Filter.h"
 #include "Texture.h"
 
@@ -118,3 +119,41 @@ ProgressFilter::~ProgressFilter() {
 bool ProgressFilter::isFinished() {
 	return finished;
 }
+
+
+
+
+
+std::pair<bool, float> AsyncSubFilter::step(Project *p) {
+	if (first) {
+		setup(p);
+		progress = {false,0.0f};
+		std::thread t = std::thread([this]{this->run();});
+		t.detach();
+		first = false;
+		return getProgress();
+	} else {
+		auto progress = getProgress();
+		if (progress.first) {
+			finalize(p);
+		}
+		return progress;
+	}
+}
+
+std::pair<bool, float> AsyncSubFilter::getProgress() {
+	std::unique_lock<std::mutex> lk(progress_mtx);
+	std::pair<bool, float> p;
+	p = progress;
+	return p;
+}
+
+void AsyncSubFilter::setProgress(std::pair<bool, float> p) {
+	std::unique_lock<std::mutex> lk(progress_mtx);
+	progress = p;
+}
+
+AsyncSubFilter::AsyncSubFilter() {
+
+}
+

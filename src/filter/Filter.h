@@ -9,6 +9,8 @@
 #include <ShaderProgram.h>
 #include <Shader.h>
 #include <Menu.h>
+#include <mutex>
+#include <thread>
 
 class Project;
 class Texture;
@@ -52,6 +54,24 @@ class SubFilter {
 public:
 	SubFilter() {}
 	virtual std::pair<bool,float> step(Project* p) = 0;
+};
+
+class AsyncSubFilter : public SubFilter {
+public:
+	AsyncSubFilter();
+	std::pair<bool,float> step(Project* p) override;
+
+protected:
+	virtual void setup(Project* p) = 0;
+	virtual void run() = 0;
+	virtual void finalize(Project* p) = 0;
+	void setProgress(std::pair<bool, float> p);
+
+private:
+	std::pair<bool,float> getProgress();
+	bool first=true;
+	std::pair<bool,float> progress;
+	std::mutex progress_mtx;
 };
 
 class ProgressFilter : public BackupFilter {

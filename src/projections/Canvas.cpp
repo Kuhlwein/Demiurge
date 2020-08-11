@@ -260,7 +260,7 @@ if (theta>M_PI) discard;
 if (phi<-M_PI/2) discard;
 if (phi>M_PI/2) discard;
 
-vec4 coord2 = globeRotation*vec4(sin(M_PI/2-phi)*cos(theta),sin(M_PI/2-phi)*sin(theta),sin(phi),1);
+vec4 coord2 = globeRotation*vec4(cos(phi)*cos(theta),cos(phi)*sin(theta),sin(phi),1);
 phi = acos(-coord2.z)-0.5*M_PI; //0 to pi
 theta = atan(coord2.y,coord2.x); // -pi to pi
 

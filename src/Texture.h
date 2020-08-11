@@ -23,6 +23,7 @@ public:
 
 	void uploadData(GLenum format, GLenum type, const GLvoid * data);
 	TextureData* downloadData(GLenum format=GL_RED, GLenum type=GL_FLOAT);
+	std::unique_ptr<float[]> downloadDataRAW(GLenum format=GL_RED, GLenum type=GL_FLOAT);
     GLuint getId();
     int getWidth();
     int getHeight();
