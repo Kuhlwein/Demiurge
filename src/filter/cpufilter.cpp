@@ -51,30 +51,18 @@ void cpufilter::run() {
 	struct pointdata {
 		int points_to;
 		int lake;
+		int sink;
 	};
 	std::map<int,pointdata> index;
+	std::set<int> sinks;
 
-	//Find points of interest
-	std::function<void(std::pair<int,int>)> f = [this,level,&lock,&index](std::pair<int,int> a) {
+//Find points of interest, and connect edges
+	std::function<void(std::pair<int,int>)> f = [this,level,&lock,&index,coordof,indexof,&sinks](std::pair<int,int> a) {
 		std::map<int,pointdata> new_index;
+		std::set<int> new_sinks;
 		for (int i=a.first; i<a.second; i++) {
-			if(data[i]>level && selection[i]>0) new_index[i] = {};
-		}
-		lock.lock();
-		index.insert(new_index.begin(), new_index.end());
-		lock.unlock();
-	};
-	std::vector<std::pair<int,int>> jobs;
-	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
-	cputools::threadpool(f,jobs);
-	selection.reset();
+			if(data[i]<=level || selection[i]==0) continue;
 
-	std::cout << index.size() << "\n";
-
-	//Make connections
-	f = [this,&index,coordof,indexof](std::pair<int,int> a) {
-		for (int i=a.first; i<a.second; i++) {
-			if (index.count(i)==0) continue;
 			float minval = MAXFLOAT;
 			int min_i;
 			for (int dx : {-1,0,1}) for (int dy : {-1,0,1}) {
@@ -86,21 +74,92 @@ void cpufilter::run() {
 					min_i = id;
 				}
 			}
-			index[i].points_to = (float) min_i;
+			new_index[i] = {min_i,0};
+			if (min_i == i || data[min_i]<=level || selection[min_i]==0) { //If self or border pixel, make sink
+				new_sinks.insert(i);
+			}
 		}
+		lock.lock();
+		index.insert(new_index.begin(), new_index.end());
+		sinks.insert(new_sinks.begin(),new_sinks.end());
+		lock.unlock();
 	};
+	std::vector<std::pair<int,int>> jobs;
 	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
 	cputools::threadpool(f,jobs);
+	selection.reset();
 
+	std::cout << index.size() << "\n";
+	std::cout << sinks.size() << "\n";
 
-	f = [this,&index,coordof,indexof](std::pair<int,int> a) {
-		for (int i=a.first; i<a.second; i++) {
-			if (index.count(i)==0) continue;
-			data[i]	= (int)index[i].points_to;
+//Identify lakes
+	int i=0;
+	for (auto s : sinks) {
+		index[s].sink = i;
+		i++;
+	}
+
+	std::function<void(int)> f2 = [this,&index,coordof,indexof](int sink) {
+		std::stack<int> stack;
+		stack.push(sink);
+		int sid = index[sink].sink;
+		while (!stack.empty()) {
+			int s = stack.top();
+			stack.pop();
+			data[s] = sid;
+			index[s].sink = sid;
+			for (int dx : {-1,0,1}) for (int dy : {-1,0,1}) {
+				auto coord = coordof(s);
+				int id = indexof(coord.first + dx, coord.second + dy);
+				if (index.count(id)==0 || id==s) continue;
+				if (index[id].points_to == s) {
+					stack.push(id);
+				}
+			}
 		}
 	};
-	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
-	cputools::threadpool(f,jobs);
+	std::vector<int> sinkjobs;
+	sinkjobs.insert(sinkjobs.begin(),sinks.begin(),sinks.end());
+	cputools::threadpool(f2,sinkjobs);
+
+
+
+//Lake connections
+	struct connection {
+		int toLocation;
+		float height;
+	};
+
+//	//Make connections
+//	f = [this,&index,coordof,indexof](std::pair<int,int> a) {
+//		for (int i=a.first; i<a.second; i++) {
+//			if (index.count(i)==0) continue;
+//			float minval = MAXFLOAT;
+//			int min_i;
+//			for (int dx : {-1,0,1}) for (int dy : {-1,0,1}) {
+//				auto coord = coordof(i);
+//				int id = indexof(coord.first+dx,coord.second+dy);
+//				float val = data[id];
+//				if (val<minval) {
+//					minval = val;
+//					min_i = id;
+//				}
+//			}
+//			index[i].points_to = min_i;
+//		}
+//	};
+//	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
+//	cputools::threadpool(f,jobs);
+
+
+//	f = [this,&index,coordof,indexof](std::pair<int,int> a) {
+//		for (int i=a.first; i<a.second; i++) {
+//			if (index.count(i)==0) continue;
+//			data[i]	= (int)index[i].points_to;
+//		}
+//	};
+//	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
+//	cputools::threadpool(f,jobs);
 
 
 
