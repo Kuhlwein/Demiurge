@@ -18,7 +18,7 @@ void BlurMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> BlurMenu::makeFilter(Project* p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},new Blur(p, radius, p->get_terrain()));
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},std::move(std::make_unique<Blur>(p, radius, p->get_terrain())));
 }
 
 Blur::Blur(Project *p, float radius, Texture *target) : SubFilter() {

@@ -21,8 +21,8 @@ void MorphologicalMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> MorphologicalMenu::makeFilter(Project *p) {
-	auto morph = new Morphological(p, radius, p->get_terrain(),(current==0) ? "min" : "max");
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},morph);
+	auto morph = std::make_unique<Morphological>(p, radius, p->get_terrain(),(current==0) ? "min" : "max");
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(morph));
 }
 
 Morphological::Morphological(Project *p, float radius, Texture *target, std::string operation) : SubFilter() {

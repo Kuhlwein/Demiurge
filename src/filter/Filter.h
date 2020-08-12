@@ -53,12 +53,14 @@ protected:
 class SubFilter {
 public:
 	SubFilter() {}
+	virtual ~SubFilter() {}
 	virtual std::pair<bool,float> step(Project* p) = 0;
 };
 
 class AsyncSubFilter : public SubFilter {
 public:
 	AsyncSubFilter();
+	virtual ~AsyncSubFilter() {}
 	std::pair<bool,float> step(Project* p) override;
 
 protected:
@@ -72,11 +74,12 @@ private:
 	bool first=true;
 	std::pair<bool,float> progress;
 	std::mutex progress_mtx;
+	std::thread t;
 };
 
 class ProgressFilter : public BackupFilter {
 public:
-	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target, SubFilter* subfilter);
+	ProgressFilter(Project* p, std::function<Texture *(Project *p)> target, std::unique_ptr<SubFilter> subfilter);
 	virtual ~ProgressFilter();
 	void progressBar(float a);
 	void run(Project* p) override;
@@ -86,7 +89,7 @@ private:
 	Modal* progressModal;
 	bool aborting = false;
 	bool finished = false;
-	SubFilter* subFilter;
+	std::unique_ptr<SubFilter> subFilter;
 };
 
 

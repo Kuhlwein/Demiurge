@@ -22,8 +22,9 @@ private:
 class cpufilter : public AsyncSubFilter {
 public:
 	cpufilter(Project *p);
-	void setup(Project* p) override ;
-	void run() override ;
+	~cpufilter();
+	void setup(Project* p) override;
+	void run() override;
 	void finalize(Project* p) override;
 private:
 	std::unique_ptr<float[]> data;

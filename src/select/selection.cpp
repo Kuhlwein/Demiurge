@@ -111,8 +111,8 @@ void GrowShrinkMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> GrowShrinkMenu::makeFilter(Project *p) {
-	auto morph = new Morphological(p, radius, p->get_selection(),(current==0) ? "min" : "max");
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},morph);
+	auto morph = std::make_unique<Morphological>(p, radius, p->get_selection(),(current==0) ? "min" : "max");
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},std::move(morph));
 }
 
 void BorderMenu::update_self(Project *p) {
@@ -121,8 +121,8 @@ void BorderMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> BorderMenu::makeFilter(Project *p) {
-	auto morph = new MorphologicalGradient(p, radius, p->get_selection());
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},morph);
+	auto morph = std::make_unique<MorphologicalGradient>(p, radius, p->get_selection());
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},std::move(morph));
 }
 
 BorderMenu::BorderMenu() : FilterModal("Border") {
@@ -141,7 +141,7 @@ void BlurSelection::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> BlurSelection::makeFilter(Project* p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_selection();},new Blur(p, radius, p->get_selection()));
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_selection();},std::move(std::make_unique<Blur>(p, radius, p->get_selection())));
 }
 
 

@@ -211,6 +211,7 @@ void Project::update() {
 			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 			downloadingTex = false;
 			glBindBuffer(GL_PIXEL_PACK_BUFFER,0);
+			delete asyncTex;
 		} else {
 			std::cout << "waiting for sync\n";
 		}

@@ -23,6 +23,7 @@ BackupFilter::BackupFilter(Project *p, std::function<Texture *(Project *p)> targ
 }
 
 BackupFilter::~BackupFilter() {
+	std::cout << "\tdestroy backupfilter\n";
 	delete (tmp);
 }
 
@@ -41,6 +42,7 @@ fc = texture(tmp,st).r - texture(target, st).r;
 	p->apply(program2, p->get_scratch1(),{{target(p),"target"}});
 	p->remove_texture(tmp);
 	TextureData* data = p->get_scratch1()->downloadData();
+
 
 	auto h = new SnapshotHistory(data,target);
 	p->add_history(h);
@@ -74,8 +76,8 @@ void BackupFilter::restoreBackup() {
 }
 
 
-ProgressFilter::ProgressFilter(Project *p, std::function<Texture *(Project *)> target, SubFilter* subfilter) : BackupFilter(p, target) {
-	this->subFilter = subfilter;
+ProgressFilter::ProgressFilter(Project *p, std::function<Texture *(Project *)> target, std::unique_ptr<SubFilter> subfilter) : BackupFilter(p, target) {
+	this->subFilter = std::move(subfilter);
 	progressModal = new Modal("Applying filter",[this](Project* p) {
 		ImGui::ProgressBar(this->progress,ImVec2(360,0));
 		bool a = ImGui::Button("Cancel");
@@ -113,7 +115,7 @@ void ProgressFilter::run(Project* p) {
 }
 
 ProgressFilter::~ProgressFilter() {
-
+	std::cout << "\tdestroying progressfilter\n";
 }
 
 bool ProgressFilter::isFinished() {
@@ -128,13 +130,13 @@ std::pair<bool, float> AsyncSubFilter::step(Project *p) {
 	if (first) {
 		setup(p);
 		progress = {false,0.0f};
-		std::thread t = std::thread([this]{this->run();});
-		t.detach();
+		t = std::thread([this]{this->run();});
 		first = false;
 		return getProgress();
 	} else {
 		auto progress = getProgress();
 		if (progress.first) {
+			t.join();
 			finalize(p);
 		}
 		return progress;

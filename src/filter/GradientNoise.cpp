@@ -43,7 +43,7 @@ void GradientNoiseMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> GradientNoiseMenu::makeFilter(Project *p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},new GradientNoiseFilter(p,p->get_terrain(),params));
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},std::move(std::make_unique<GradientNoiseFilter>(p,p->get_terrain(),params)));
 }
 
 GradientNoiseFilter::GradientNoiseFilter(Project *p, Texture* target, NoiseParams params) : SubFilter() {

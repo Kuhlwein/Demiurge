@@ -44,12 +44,14 @@ bool FilterModal::update_FilterModal(Project *p) {
 		}
 		previewing=false;
 		filter.reset();
+		p->dispatchFilter(std::make_shared<NoneFilter>());
 		isFiltering = false;
 		return true;
 	}
 	if (isFiltering && filter->isFinished() && !previewing) {
 		filter->add_history();
 		filter.reset();
+		p->dispatchFilter(std::make_shared<NoneFilter>());
 		isFiltering = false;
 		return true;
 	}
