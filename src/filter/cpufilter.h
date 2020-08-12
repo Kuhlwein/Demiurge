@@ -30,6 +30,7 @@ private:
 	std::unique_ptr<float[]> selection;
 	int width;
 	int height;
+	float level = 0.0;
 };
 
 namespace cputools {
