@@ -26,10 +26,13 @@ public:
 	~FlowFilter();
 	void run() override;
 private:
+	std::vector<int> neighbours(int pos, int dat);
+	bool Nthbit(int num, int N);
 	std::unique_ptr<float[]> data;
-	std::unique_ptr<float[]> lakeID;
+	//std::unique_ptr<float[]> lakeID;
 	int width;
 	int height;
+	bool wrapx;
 	float level = 0.0;
 };
 

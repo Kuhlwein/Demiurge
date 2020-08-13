@@ -58,7 +58,7 @@ vec2 cartesian_to_spheric(vec4 p) {
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 	p = p + dp/resolution;
 
-	if (cornerCoords[2]<-M_PI+1e-3 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x,1);
+	if (cornerCoords[2]<-M_PI+1e-3 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x+1,1);
 	if (cornerCoords[0]<-M_PI/2+1e-3 && p.y<0) {
 		p.y=-p.y;
 		p.x=p.x-0.5;
@@ -70,7 +70,7 @@ vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 //	p.x = mod(p.x,1);
 	return p;
 }
-)");
+)");//TODO what about comment
 
 /*
  *  Vertex shaders

@@ -98,10 +98,11 @@ std::pair<bool,float> Blur::step(Project* p) {
 	blurProgram->bind();
 	int id = glGetUniformLocation(blurProgram->getId(), "direction");
 	glUniform2f(id,0,rlist[i]);
+	p->setCanvasUniforms(blurProgram);
 	p->apply(blurProgram, tex2, {{tex1, "img"}});
 	glUniform2f(id,rlist[i],0);
 	p->apply(blurProgram, tex1, {{tex2, "img"}});
-	p->setCanvasUniforms(blurProgram);
+
 
 	i++;
 
