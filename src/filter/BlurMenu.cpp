@@ -64,7 +64,7 @@ float blur13(sampler2D image, vec2 uv, vec2 direction) {
 
 	Shader* fragment_set = Shader::builder()
 			.include(fragmentBase)
-			.include(offset_shader)
+			.include(cornerCoords)
 			.include(blurshader)
 			.create("uniform vec2 direction;",R"(
 fc = blur13(img,st,direction);

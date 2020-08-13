@@ -23,8 +23,8 @@ bool edit::preferences(Project* p) {
 	if (first) {
 		first = false;
 		auto v = p->getCoords();
-		begin = v[0]/M_PI*180.0f;
-		end = v[1]/M_PI*180.0f;
+		begin = -v[1]/M_PI*180.0f;
+		end = -v[0]/M_PI*180.0f;
 		begin2 = v[2]/M_PI*180.0f;
 		end2 = v[3]/M_PI*180.0f;
 	}
@@ -32,7 +32,7 @@ bool edit::preferences(Project* p) {
 	bool updated = false;
 	updated |= ImGui::DragFloatRange2("Lattitude", &begin, &end, 0.25f, -90.0f, 90.0f, "Min: %.1f", "Max: %.1f");
 	updated |= ImGui::DragFloatRange2("Longitude", &begin2, &end2, 0.25f, -180.0f, 180.0f, "Min: %.1f", "Max: %.1f");
-	if (updated) p->setCoords({begin,end,begin2,end2});
+	if (updated) p->setCoords({-end,-begin,begin2,end2});
 
 	static float circumference = 42000;
 	ImGui::DragFloat("Planet circumference",&circumference,10,1,MAXFLOAT,"%.1f m");

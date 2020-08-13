@@ -41,12 +41,34 @@ vec2 tex_to_spheric(vec2 p) {
 	return p;
 }
 
+vec2 spheric_to_tex(vec2 p) {
+	p.x = (p.x-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
+	p.y = (p.y-cornerCoords[0])/(cornerCoords[1]-cornerCoords[0]);
+	return p;
+}
+
 vec4 spheric_to_cartesian(vec2 p) {
 	return vec4(cos(p.y)*cos(p.x),cos(p.y)*sin(p.x),sin(p.y),1);
 }
 
 vec2 cartesian_to_spheric(vec4 p) {
 	return vec2(atan(p.y,p.x),asin(p.z));
+}
+
+vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
+	p = p + dp/resolution;
+
+	if (cornerCoords[2]<-M_PI+1e-3 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x,1);
+	if (cornerCoords[0]<-M_PI/2+1e-3 && p.y<0) {
+		p.y=-p.y;
+		p.x=p.x-0.5;
+	}
+	if (cornerCoords[1]>M_PI/2-1e-3 && p.y>1) {
+		p.y=2-p.y;
+		p.x=p.x-0.5;
+	}
+//	p.x = mod(p.x,1);
+	return p;
 }
 )");
 
@@ -266,23 +288,25 @@ float geodistance(vec2 p1, vec2 p2, vec2 size) {
 }
 )","");
 
-static Shader* offset_shader = Shader::builder() //vec(1,0) is left, vec(0,1) is up
-		.create(R"(
-vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
-	p = p + dp/resolution;
-	p.x = mod(p.x,1);
-	if (p.y<0) {
-	p.y=-p.y;
-	p.x=p.x-0.5;
-	}
-	if (p.y>1) {
-	p.y=2-p.y;
-	p.x=p.x-0.5;
-	}
-	p.x = mod(p.x,1);
-	return p;
-}
-)","");
+//static Shader* offset_shader = Shader::builder() //vec(1,0) is left, vec(0,1) is up
+//		.include(cornerCoords)
+//		.create(R"(
+//vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
+//	p = p + dp/resolution;
+//
+//	if (cornerCoords[2]<-M_PI+1e-3 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x,1);
+////	if (p.y<0) {
+////	p.y=-p.y;
+////	p.x=p.x-0.5;
+////	}
+////	if (p.y>1) {
+////	p.y=2-p.y;
+////	p.x=p.x-0.5;
+////	}
+////	p.x = mod(p.x,1);
+//	return p;
+//}
+//)","");
 
 
 

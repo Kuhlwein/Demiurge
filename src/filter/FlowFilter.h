@@ -27,7 +27,7 @@ public:
 	void run() override;
 private:
 	std::unique_ptr<float[]> data;
-	std::unique_ptr<float[]> selection;
+	std::unique_ptr<float[]> lakeID;
 	int width;
 	int height;
 	float level = 0.0;

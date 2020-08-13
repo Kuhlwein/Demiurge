@@ -147,7 +147,7 @@ void FreeSelectFilter::run(Project* p) {
 	} else {
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
-				.include(offset_shader)
+				.include(cornerCoords)
 				.include(mode)
 				.create("",R"(
 float a = 0;
@@ -166,6 +166,8 @@ fc = selection_mode(texture(sel,st).r,val);
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 				.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 				.link();
+		program->bind();
+		p->setCanvasUniforms(program);
 		p->apply(program,p->get_scratch1());
 		p->get_scratch1()->swap(p->get_selection());
 

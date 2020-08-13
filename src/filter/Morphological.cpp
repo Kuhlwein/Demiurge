@@ -43,7 +43,6 @@ Morphological::Morphological(Project *p, float radius, Texture *target, std::str
 	std::sort(r.begin(),r.end());
 
 	Shader* defineErode = Shader::builder()
-			.include(offset_shader)
 			.include(cornerCoords)
 			.create(R"(
 float erode(sampler2D image, vec2 uv, float radius) {
