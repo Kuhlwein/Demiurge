@@ -41,13 +41,23 @@ std::vector<int> FlowFilter::neighbours(int pos, int dat) {
 		int x = pos%width;
 		int y = pos/width;
 		x = x+dx;
-		if (wrapx) {
+		if (std::abs(coords[3]-coords[2])>2*M_PI-1e-4) {
 			x = (x+width)%width;
 		} else {
 			if(x>=width || x<0) return;
 		}
 		y = y+dy;
 		if(y>=height || y<0) return;
+//		if (coords[0]<-M_PI/2+1e-3 && y<0) {
+//			y=-y;
+//			float x2 = std::fmod((((float)x)/(width-1)*(coords[3]-coords[2])+coords[2])+2*M_PI,2*M_PI)-M_PI;
+//			x = round((x2-coords[2])/(coords[3]-coords[2])*(width-1));
+//		}
+//		if (coords[1]>M_PI/2-1e-3 && y>=height) {
+//			y=2*height-y;
+//			float x2 = std::fmod((((float)x)/(width-1)*(coords[3]-coords[2])+coords[2])+2*M_PI,2*M_PI)-M_PI;
+//			x = round((x2-coords[2])/(coords[3]-coords[2])*(width-1));
+//		}
 		n.emplace_back(y*width+x);
 	};
 	if (Nthbit(dat,1)) f(pos,-1,-1);
@@ -77,9 +87,12 @@ void FlowFilter::run() {
 //Find magic numbers
 std::cout << "Finding points of interest\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-	dispatchGPU([this](Project* p){
-		wrapx = std::abs(p->getCoords()[3]-p->getCoords()[2])>2*M_PI-1e-3;
-		std::cout << wrapx << " wrap\n";
+
+	std::unique_ptr<float[]> data;
+	dispatchGPU([this,&data](Project* p){
+		coords = p->getCoords();
+		//wrapx = std::abs(p->getCoords()[3]-p->getCoords()[2])>2*M_PI-1e-3;
+		//std::cout << wrapx << " wrap\n";
 
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
@@ -92,49 +105,74 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	if (a<=0.0f) return;
 	if (texture2D(sel, st).r==0) return;
 	fc = 5.0;
-	float a2 = a;
+	float a2;
+	float s;
+	float s2 = 1;
 	//(vec(1,1)-> right/down)
 
 	a2 = texture2D(img, offset(st, vec2(1,1),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(1,1),resolution)).r;
 	if(a2<a) {
 		fc = 9;
 		a = a2;
+		s = s2;
 	}
 	a2 = texture2D(img, offset(st, vec2(0,1),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(0,1),resolution)).r;
 	if(a2<a) {
 		fc = 8;
 		a = a2;
+		s = s2;
 	}
 	a2 = texture2D(img, offset(st, vec2(-1,1),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(-1,1),resolution)).r;
 	if(a2<a) {
 		fc = 7;
 		a = a2;
+		s = s2;
 	}
 	a2 = texture2D(img, offset(st, vec2(1,0),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(1,0),resolution)).r;
 	if(a2<a) {
 		fc = 6;
 		a = a2;
+		s = s2;
 	}
 	a2 = texture2D(img, offset(st, vec2(-1,0),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(-1,0),resolution)).r;
 	if(a2<a) {
 		fc = 4;
 		a = a2;
+		s = s2;
 	}
 	a2= texture2D(img, offset(st, vec2(1,-1),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(1,-1),resolution)).r;
 	if(a2<a) {
 		fc = 3;
 		a = a2;
+		s = s2;
 	}
 	a2 = texture2D(img, offset(st, vec2(0,-1),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(0,-1),resolution)).r;
 	if(a2<a) {
 		fc = 2;
 		a = a2;
+		s = s2;
 	}
 	a2 = texture2D(img, offset(st, vec2(-1,-1),resolution)).r;
+	s2 = texture2D(sel, offset(st, vec2(-1,-1),resolution)).r;
 	if(a2<a) {
 		fc = 1;
 		a = a2;
+		s = s2;
 	}
+
+	//Edge of ocean
+	if(a<=0.0) {
+		fc = 5;
+	}
+	if(s==0) fc=5;
+
 )");
 		ShaderProgram* program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -143,9 +181,14 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 
 		program->bind();
 		p->setCanvasUniforms(program);
+		int id = glGetUniformLocation(program->getId(),"cornerCoords");
+		auto coordsMod = coords; //Kind of stupid fix for pole wrapping
+		coordsMod[0]+=1e-3;
+		coordsMod[1]-=1e-3;
+		glUniform1fv(id, 4, coordsMod.data());
+
 
 		p->apply(program,p->get_scratch1());
-		//p->get_scratch1()->swap(p->get_terrain());
 		delete shader;
 		delete program;
 
@@ -174,14 +217,15 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	if(texture2D(scratch1, offset(st, vec2(0,-1),resolution)).r==8) fc+=2;
 	if(texture2D(scratch1, offset(st, vec2(-1,-1),resolution)).r==9) fc+=1;
 
-	if(texture2D(scratch1, offset(st, vec2(1,1),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(0,1),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(-1,1),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(1,0),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(-1,0),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(1,-1),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(0,-1),resolution)).r<0) flag=true;
-	if(texture2D(scratch1, offset(st, vec2(-1,-1),resolution)).r<0) flag=true;
+	//If besides "bad" point, make river mouth
+	if(texture2D(scratch1, offset(st, vec2(1,1),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(0,1),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(-1,1),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(1,0),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(-1,0),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(1,-1),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(0,-1),resolution)).r==0) flag=true;
+	if(texture2D(scratch1, offset(st, vec2(-1,-1),resolution)).r==0) flag=true;
 	if (flag) fc +=512;
 )"); //TODO less samples
 		program = ShaderProgram::builder()
@@ -191,13 +235,12 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		program->bind();
 		p->setCanvasUniforms(program);
 		p->apply(program,p->get_scratch2());
-		//p->get_scratch2()->swap(p->get_terrain());
 
 		data = p->get_scratch2()->downloadDataRAW();
 		width = p->getWidth();
 		height = p->getHeight();
 	});
-	
+
 
 //Find points of interest
 std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
@@ -206,15 +249,17 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	std::mutex mtx;
 	std::vector<std::pair<int,int>> ofInterest;
 
-	std::function<void(std::pair<int,int>)> f = [this,&mtx,&ofInterest](std::pair<int,int> a) {
+	std::function<void(std::pair<int,int>)> f = [this,&data,&mtx,&ofInterest](std::pair<int,int> a) {
 		std::vector<std::pair<int,int>> newOfInterest;
 		int lower=a.first;
-		for (int i=a.first; i<a.second; i++) {
+		int i;
+		for (i=a.first; i<a.second; i++) {
 			if(data[i]<0) { //not interesting
 				if (i>lower) newOfInterest.emplace_back(lower,i);
 				lower = i+1;
 			}
 		}
+		if (i>lower) newOfInterest.emplace_back(lower,i);
 		//transfer to global
 		mtx.lock();
 		for (auto i : newOfInterest) ofInterest.emplace_back(i);
@@ -231,12 +276,13 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 
 	auto lakes = std::make_unique<std::vector<std::vector<int>>>();
 
-	f = [this,&mtx,lakes=lakes.get()](std::pair<int,int> a) {
+	f = [this,&mtx,&lakes, &data](std::pair<int,int> a) {
 		std::vector<int> new_lakes;
 		for (int i=a.first; i<a.second; i++) {
-			int d = (int) data[i];
-			if (Nthbit(d,5)) new_lakes.emplace_back(i);
-
+			int d = static_cast<int>(data[i]);
+			if (Nthbit(d,5)) {
+				new_lakes.emplace_back(i);
+			}
 		}
 		mtx.lock();
 		lakes->emplace_back(new_lakes);
@@ -250,40 +296,162 @@ std::cout << "Assigning lakes\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
 	auto lakeID = std::make_unique<float[]>(width*height);
-	std::function<void(std::vector<int>)> f2 = [this, b=lakeID.get()](std::vector<int> a) {
+	f = [this,b=lakeID.get()](std::pair<int,int> a){
+		for (int i=a.first; i<a.second; i++) b[i]=-1;
+	};
+	cputools2::threadpool(f,jobs);
+
+	std::function<void(std::vector<int>)> f2 = [this, &lakeID,&data](std::vector<int> a) {
 		for (int lake : a) {
 			std::stack<int> stack;
 			stack.push(lake);
 			while (!stack.empty()) {
 				int s = stack.top();
 				stack.pop();
-				b[s] = lake*(pow(2,23)/width/height);
-				std::cout << s%width << "," << s/width << " points to: ";
-				for (auto n : neighbours(s,data[s])) std::cout << n%width << "," <<n/width << " ";
-				std::cout << "\n";
+				lakeID[s] = lake*((pow(2,23)/width/height));
 				for (auto n : neighbours(s,data[s])) {
 					stack.push(n);
-					//std::cout << stack.size() << "\n";
-					//std::cout << "push " << n%width << "," <<n/width << " from " << s%width << "," << s/width << " " << s << "\n";
 				}
 			}
 		}
 	};
 	cputools2::threadpool(f2,*lakes);
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Finding possible connections\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
+	std::unique_ptr<float[]> passheights;
+	dispatchGPU([this,&lakeID,&passheights](Project* p){
+		p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
+		Shader* shader = Shader::builder()
+				.include(fragmentBase)
+				.include(cornerCoords)
+				.create("",R"(
+	vec2 resolution = textureSize(img,0);
 
-	dispatchGPU([this,&lakeID](Project* p){
-		auto a = p->get_scratch2()->downloadDataRAW();
-		a[129000] = -a[129000];
-		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,a.get());
+	fc = 0;
 
+	float a = texture2D(scratch1, st).r;
+	if (a<0.0f) return;
 
-		//auto a = p->get_terrain()->downloadDataRAW();
-		//for (int i=width*height; i>width; i--) a[i] = a[i-width];
-		//p->get_terrain()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
+	//(vec(1,1)-> right/down)
+
+	float a2;
+	float h = texture2D(img, st).r;
+	fc = h+1;
+
+	a2 = texture2D(scratch1, offset(st, vec2(1,1),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(0,1),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(-1,1),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(1,0),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(-1,0),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(1,-1),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(0,-1),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	a2 = texture2D(scratch1, offset(st, vec2(-1,-1),resolution)).r;
+	if (a2!=a && a2>0) fc = h;
+
+	if (fc!=h) fc = 0;
+)");
+		ShaderProgram* program = ShaderProgram::builder()
+				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+				.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+				.link();
+
+		program->bind();
+		p->setCanvasUniforms(program);
+
+		p->apply(program,p->get_scratch2());
+		delete shader;
+		delete program;
+		passheights = p->get_scratch2()->downloadDataRAW();
+
+		//p->get_scratch1()->swap(p->get_terrain());
+
 	});
 
+	struct pass {
+		float h;
+		float from; //Which lake is the flow from
+		//float to;
+		int tolocation; //In self
+	};
+	std::function<bool(const pass&, const pass&)> comp = [](const pass& c1, const pass& c2){return c1.h<c2.h;};
+	std::unordered_map<int,std::set<pass,decltype(comp)>*> passes; //map lake to set of passes, sorted by height. Passes are from some other lake to key of map //TODO MUST BE DELETED MANUALLY!
 
+	f2 = [this, &passheights,&data,&lakeID,&mtx,&passes,&comp](std::vector<int> a) {
+		std::map<int,std::set<pass,decltype(comp)>*> passSets;
+		for (int lake : a) {
+			std::map<float,pass> newpasses; //map to location
+
+			std::stack<int> stack;
+			stack.push(lake);
+			while (!stack.empty()) {
+				int s = stack.top();
+				stack.pop();
+
+				if (passheights[s]>0) {
+					float minpass = MAXFLOAT;
+					int nlake = -1;
+					int d = static_cast<int>(data[s]);
+					for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
+						float bd = passheights[n];
+						if (bd>0 && bd<minpass) {
+							minpass = bd;
+							nlake = n;
+						}
+					}
+					if (nlake>=0) {
+						float nheight = std::max(minpass,passheights[s]);
+						if(newpasses.count(lakeID[nlake])==0) {
+							newpasses[lakeID[nlake]] = {nheight,lakeID[nlake],s};
+						} else if (nheight<newpasses[lakeID[nlake]].h) {
+							newpasses[lakeID[nlake]] = {nheight,lakeID[nlake],s};
+						}
+					}
+				}
+
+				for (auto n : neighbours(s,data[s])) {
+					stack.push(n);
+				}
+			}
+			//all connections found for lake
+
+			std::set<pass,decltype(comp)>* newp = new std::set<pass,decltype(comp)>(comp);
+			for (auto pass : newpasses) newp->insert(pass.second);
+			passSets[lake] = newp;
+
+		}
+		mtx.lock();
+		for (auto p : passSets) passes[p.first] = p.second;
+		mtx.unlock();
+	};
+	cputools2::threadpool(f2,*lakes);
+
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Solving connections\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	std::set<pass,decltype(comp)> candidates(comp);
+	for (auto a : *lakes) for (int lake : a) {
+		int d = static_cast<int>(data[lake]);
+		if (!Nthbit(d,10)) continue; // Only river mouths for now
+		//Add best connection, not to existing lake
+		
+	}
 
 	setProgress({true,1.0f});
 
@@ -299,7 +467,6 @@ template<typename T>
 void cputools2::threadpool(std::function<void(T)> f, std::vector<T> arg) {
 	std::mutex mtx;
 	uint Nthreads = std::thread::hardware_concurrency();
-	Nthreads = 1;
 	auto it = arg.begin();
 	auto end = arg.end();
 

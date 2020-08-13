@@ -58,14 +58,16 @@ vec2 cartesian_to_spheric(vec4 p) {
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 	p = p + dp/resolution;
 
-	if (cornerCoords[2]<-M_PI+1e-3 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x+1,1);
-	if (cornerCoords[0]<-M_PI/2+1e-3 && p.y<0) {
+	if (cornerCoords[2]<-M_PI+1e-4 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x+1,1);
+	if (cornerCoords[0]<-M_PI/2+1e-4 && p.y<0) {
 		p.y=-p.y;
-		p.x=p.x-0.5;
+		p.x = mod((p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])+2*M_PI,2*M_PI)-M_PI;
+		p.x = (p.x-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
 	}
-	if (cornerCoords[1]>M_PI/2-1e-3 && p.y>1) {
+	if (cornerCoords[1]>M_PI/2-1e-4 && p.y>1) {
 		p.y=2-p.y;
-		p.x=p.x-0.5;
+		p.x = mod((p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])+2*M_PI,2*M_PI)-M_PI;
+		p.x = (p.x-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
 	}
 //	p.x = mod(p.x,1);
 	return p;

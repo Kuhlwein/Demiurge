@@ -28,11 +28,9 @@ public:
 private:
 	std::vector<int> neighbours(int pos, int dat);
 	bool Nthbit(int num, int N);
-	std::unique_ptr<float[]> data;
-	//std::unique_ptr<float[]> lakeID;
 	int width;
 	int height;
-	bool wrapx;
+	std::vector<float> coords;
 	float level = 0.0;
 };
 
