@@ -26,6 +26,7 @@
 #include <filter/GradientNoise.h>
 #include <projections/Equiretangular.h>
 #include <filter/cpufilter.h>
+#include <filter/FlowFilter.h>
 
 #include "projections/Projections.h"
 #include "menus/BrushWindow.h"
@@ -129,6 +130,7 @@ Project::Project(GLFWwindow* window) {
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());
 	filter_menu.push_back(new cpufilterMenu());
+	filter_menu.push_back(new FlowfilterMenu());
 	auto math = new SubMenu("Mathematical");
 	math->addMenu(new OffsetMenu());
 	math->addMenu(new ScaleMenu());

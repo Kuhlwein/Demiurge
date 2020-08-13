@@ -7,6 +7,8 @@
 #include <iostream>
 #include <thread>
 #include "cpufilter.h"
+#include "FlowFilter.h"
+
 
 cpufilterMenu::cpufilterMenu() : FilterModal("cpufilter") {
 	std::cout << "\tcreating cpufilter\n";
@@ -31,16 +33,18 @@ cpufilter::cpufilter(Project *p) {
 
 }
 
-void cpufilter::setup(Project *p) {
-	data = p->get_terrain()->downloadDataRAW();
-	selection = p->get_selection()->downloadDataRAW();
-	width = p->getWidth();
-	height = p->getHeight();
-}
-
 void cpufilter::run() {
 	std::mutex mtx;
 	std::vector<std::pair<int,int>> ofInterest;
+
+	dispatchGPU([this](Project* p){
+		data = p->get_terrain()->downloadDataRAW();
+		selection = p->get_selection()->downloadDataRAW();
+		width = p->getWidth();
+		height = p->getHeight();
+	});
+
+
 
 	float c1;
 
@@ -261,24 +265,23 @@ std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std
 
 		std::stack<int> stack;
 		stack.push(l.first);
-		//rec(l.first);
-		while (!stack.empty()) {
-			int s = stack.top();
-			stack.pop();
-			for (int n : points[s].children) stack.push(n);
-			data[s] = l.first*149874874%289;
-		}
+		rec(l.first);
+//		while (!stack.empty()) {
+//			int s = stack.top();
+//			stack.pop();
+//			for (int n : points[s].children) stack.push(n);
+//			data[s] = l.first*149874874%289;
+//		}
 	}
 	std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
 
+	dispatchGPU([this](Project* p){
+		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,data.get());
+		//selection.reset();
+		data.reset();
+	});
 
 	setProgress({true,1.0f});
-}
-
-void cpufilter::finalize(Project *p) {
-	p->get_terrain()->uploadData(GL_RED,GL_FLOAT,data.get());
-	//selection.reset();
-	data.reset();
 }
 
 cpufilter::~cpufilter() {
@@ -312,3 +315,4 @@ void cputools::threadpool(std::function<void(T)> f, std::vector<T> arg) {
 	for (auto &t : threads) t.reset();
 
 }
+

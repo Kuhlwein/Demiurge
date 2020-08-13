@@ -266,7 +266,7 @@ float geodistance(vec2 p1, vec2 p2, vec2 size) {
 }
 )","");
 
-static Shader* offset_shader = Shader::builder()
+static Shader* offset_shader = Shader::builder() //vec(1,0) is left, vec(0,1) is up
 		.create(R"(
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 	p = p + dp/resolution;

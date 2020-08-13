@@ -11,6 +11,7 @@
 #include <Menu.h>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 class Project;
 class Texture;
@@ -64,10 +65,9 @@ public:
 	std::pair<bool,float> step(Project* p) override;
 
 protected:
-	virtual void setup(Project* p) = 0;
 	virtual void run() = 0;
-	virtual void finalize(Project* p) = 0;
 	void setProgress(std::pair<bool, float> p);
+	void dispatchGPU(std::function<void(Project* p)> f);
 
 private:
 	std::pair<bool,float> getProgress();
@@ -75,6 +75,11 @@ private:
 	std::pair<bool,float> progress;
 	std::mutex progress_mtx;
 	std::thread t;
+
+	bool runningGPU = false;
+	std::function<void(Project* p)> f;
+	std::mutex gpu_mtx;
+	std::condition_variable cv;
 };
 
 class ProgressFilter : public BackupFilter {

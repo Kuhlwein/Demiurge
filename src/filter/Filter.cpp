@@ -122,25 +122,24 @@ bool ProgressFilter::isFinished() {
 	return finished;
 }
 
-
-
-
-
 std::pair<bool, float> AsyncSubFilter::step(Project *p) {
 	if (first) {
-		setup(p);
 		progress = {false,0.0f};
 		t = std::thread([this]{this->run();});
 		first = false;
-		return getProgress();
-	} else {
-		auto progress = getProgress();
-		if (progress.first) {
-			t.join();
-			finalize(p);
-		}
-		return progress;
 	}
+	std::unique_lock<std::mutex> lk(gpu_mtx);
+	if (runningGPU) {
+		f(p);
+		runningGPU = false;
+		cv.notify_all();
+	}
+
+	auto progress = getProgress();
+	if (progress.first) {
+		t.join();
+	}
+	return progress;
 }
 
 std::pair<bool, float> AsyncSubFilter::getProgress() {
@@ -157,5 +156,12 @@ void AsyncSubFilter::setProgress(std::pair<bool, float> p) {
 
 AsyncSubFilter::AsyncSubFilter() {
 
+}
+
+void AsyncSubFilter::dispatchGPU(std::function<void(Project *)> f) {
+	std::unique_lock<std::mutex> lk(gpu_mtx);
+	this->f = f;
+	runningGPU = true;
+	cv.wait(lk); //wait for function to finish
 }
 
