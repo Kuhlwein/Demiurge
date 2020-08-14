@@ -86,14 +86,11 @@ void FlowFilter::run() {
 	 */
 
 //Find magic numbers
-std::cout << "Finding points of interest\n";
+std::cout << "Finding magic numbers\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
-	std::unique_ptr<float[]> data;
-	dispatchGPU([this,&data](Project* p){
+	dispatchGPU([this](Project* p){
 		coords = p->getCoords();
-		//wrapx = std::abs(p->getCoords()[3]-p->getCoords()[2])>2*M_PI-1e-3;
-		//std::cout << wrapx << " wrap\n";
 
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
@@ -250,7 +247,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	std::mutex mtx;
 	std::vector<std::pair<int,int>> ofInterest;
 
-	std::function<void(std::pair<int,int>)> f = [this,&data,&mtx,&ofInterest](std::pair<int,int> a) {
+	std::function<void(std::pair<int,int>)> f = [this,&mtx,&ofInterest](std::pair<int,int> a) {
 		std::vector<std::pair<int,int>> newOfInterest;
 		int lower=a.first;
 		int i;
@@ -277,7 +274,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 
 	auto lakes = std::make_unique<std::vector<std::vector<int>>>();
 
-	f = [this,&mtx,&lakes, &data](std::pair<int,int> a) {
+	f = [this,&mtx,&lakes](std::pair<int,int> a) {
 		std::vector<int> new_lakes;
 		for (int i=a.first; i<a.second; i++) {
 			int d = static_cast<int>(data[i]);
@@ -296,13 +293,13 @@ std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std
 std::cout << "Assigning lakes\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
-	auto lakeID = std::make_unique<float[]>(width*height);
+	lakeID = std::make_unique<float[]>(width*height);
 	f = [this,b=lakeID.get()](std::pair<int,int> a){
 		for (int i=a.first; i<a.second; i++) b[i]=-1;
 	};
 	threadpool(f,jobs,0.015);
 
-	std::function<void(std::vector<int>)> f2 = [this, &lakeID,&data](std::vector<int> a) {
+	std::function<void(std::vector<int>)> f2 = [this](std::vector<int> a) {
 		for (int lake : a) {
 			std::stack<int> stack;
 			stack.push(lake);
@@ -325,7 +322,7 @@ std::cout << "Finding possible connections\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
 	std::unique_ptr<float[]> passheights;
-	dispatchGPU([this,&lakeID,&passheights](Project* p){
+	dispatchGPU([this,&passheights](Project* p){
 		p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
@@ -395,7 +392,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	std::function<bool(const pass&, const pass&)> comp = [](const pass& c1, const pass& c2){return c1.h<c2.h;};
 	std::unordered_map<int,std::set<pass,decltype(comp)>*> passes; //map lake to set of passes, sorted by height. Passes are from some other lake to key of map //TODO MUST BE DELETED MANUALLY!
 
-	f2 = [this, &passheights,&data,&lakeID,&mtx,&passes,&comp](std::vector<int> a) {
+	f2 = [this, &passheights,&mtx,&passes,&comp](std::vector<int> a) {
 		std::map<int,std::set<pass,decltype(comp)>*> passSets;
 		for (int lake : a) {
 			std::map<float,pass> newpasses; //map to location
@@ -559,32 +556,108 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	};
 	threadpool(f,jobs,0.9);
 
-	f2 = [this,&data,&lakeID,&connections](std::vector<int> a) {
+
+	std::function<int(int)> rec = [&rec,this,&connections](int p) {
+		int sum = 1;
+		for (auto n : neighbours(p, data[p])) {
+			sum+=rec(n);
+		}
+		if (connections.count(p) > 0) {
+			sum+=rec(connections[p].from);
+		}
+		lakeID[p] = pow(sum,0.66);
+		return sum;
+	};
+
+	f2 = [this,&connections,&rec](std::vector<int> a) {
 		std::stack<int> stack;
 		for (int lake : a) {
 			int d = static_cast<int>(data[lake]);
 			if (!Nthbit(d, 10)) continue; // Only river mouths for now
 
 
-			stack.push(lake);
-			while (!stack.empty()) {
-				int s = stack.top();
-				stack.pop();
-
-				lakeID[s] = std::fmod(abs(lake * 11412414), 289) + 1;
-
-				for (auto n : neighbours(s, data[s])) {
-					stack.push(n);
-				}
-				if (connections.count(s) > 0) {
-					stack.push(connections[s].from);
-				}
-			}
+			rec(lake);
+//			stack.push(lake);
+//			while (!stack.empty()) {
+//				int s = stack.top();
+//				stack.pop();
+//
+//				lakeID[s] = std::fmod(abs(lake * 11412414), 289) + 1;
+//
+//				for (auto n : neighbours(s, data[s])) {
+//					stack.push(n);
+//				}
+//				if (connections.count(s) > 0) {
+//					stack.push(connections[s].from);
+//				}
+//			}
 		}
 	};
 	threadpool(f2,*lakes,0.97);
 
-	dispatchGPU([&lakeID](Project* p){
+	std::unique_ptr<float[]> height;
+	dispatchGPU([this,&height](Project* p){
+		height = p->get_terrain()->downloadDataRAW();
+	});
+
+	//Draw lakes?
+	std::function<void(int,float,float)> lakefill = [this,&connections,&lakefill,&height](int lake, float waterheight, float waterlevel) {
+		std::stack<int> stack;
+		std::vector<pass> new_connections;
+		stack.push(lake);
+		while (!stack.empty()) {
+			auto p = stack.top();
+			stack.pop();
+			if (height[p] <= waterheight) lakeID[p] = std::max(lakeID[p], waterlevel);
+
+			for (auto n : neighbours(p,data[p])) {
+				stack.push(n);
+			}
+			if (connections.count(p) > 0) {
+				new_connections.emplace_back(connections[p]);
+			}
+		}
+		for (auto c : new_connections) {
+			if (waterheight>c.h) {
+				lakefill(c.from,waterheight,waterlevel);
+			} else {
+				lakefill(c.from,c.h,lakeID[c.from]);
+			}
+
+		}
+	};
+
+	//for (auto ll : *lakes) for (auto l : ll) {
+	//	if (!Nthbit(data[l],10)) continue;
+	//	lakefill(l,0.0f,lakeID[l]);
+	//}
+	f2 = [this,&connections,&rec,&lakefill](std::vector<int> a) {
+		for (int lake : a) {
+			if (!Nthbit(data[lake],10)) continue;
+			lakefill(lake,0.0f,lakeID[lake]);
+		}
+	};
+	threadpool(f2,*lakes,0.98);
+
+
+
+
+//	for (auto c : connections) {
+//		int lake = c.second.from;
+//		float height = c.second.h;
+//		std::stack<int> stack;
+//		stack.push(lake);
+//		while(!stack.empty()) {
+//			auto p = stack.top();
+//			stack.pop();
+//			lakeID[p] = lakeID[lake];
+//			for (auto n : neighbours(p, data[p])) {
+//				stack.push(n);
+//			}
+//		}
+//	}
+
+	dispatchGPU([this](Project* p){
 		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
 	});
 
