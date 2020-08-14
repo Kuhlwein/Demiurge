@@ -410,21 +410,22 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 				if (passheights[s]>0) {
 					float minpass = MAXFLOAT;
 					int nlake = -1;
-					int d = static_cast<int>(data[s]);
-					for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
+					for (auto n : neighbours(s,((int)pow(2,15)-1))) { //Fishy must check not part of same lake!
+					//for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
 						float bd = passheights[n];
-						if (bd>0 && bd<minpass) {
+						int lid = *((int*)lakeID.get()+n) - 1073741824;
+						if (lid!=lake && bd>0 && bd<minpass) {
 							minpass = bd;
 							nlake = n;
 						}
 					}
-					if (nlake>=0) {
+					if (minpass<MAXFLOAT) {
 						float nheight = std::max(minpass,passheights[s]);
 						int lid = *((int*)lakeID.get()+nlake) - 1073741824;
-						if(newpasses.count(lakeID[nlake])==0) {
-							newpasses[lakeID[nlake]] = {nheight,lid,s};
-						} else if (nheight<newpasses[lakeID[nlake]].h) {
-							newpasses[lakeID[nlake]] = {nheight,lid,s};
+						if(newpasses.count(lid)==0) {
+							newpasses[lid] = {nheight,lid,s};
+						} else if (nheight<newpasses[lid].h) {
+							newpasses[lid] = {nheight,lid,s};
 						}
 					}
 				}
@@ -441,7 +442,10 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 
 		}
 		mtx.lock();
-		for (auto p : passSets) passes[p.first] = p.second;
+		for (auto p : passSets) {
+			passes[p.first] = p.second;
+			//if (passes[p.first]->empty()) std::cout << "EMPTY passset " << p.first << " is rivermouth=" << Nthbit(data[p.first],10) << "\n";
+		}
 		mtx.unlock();
 	};
 	cputools2::threadpool(f2,*lakes);
@@ -456,11 +460,42 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	std::set<pass,decltype(comp)> candidates(comp);
 	std::unordered_set<int> placed_lakes;
 
+//	for (auto l : *lakes) for(auto ll : l) {
+//		//for each lake, find...
+//		bool flag = false;
+//		for (auto p : candidates) if (p.from==ll) {
+//			flag=true;
+//			break;
+//		}
+//		if (!flag) {
+//			std::cout << "SOMETHING IS WRONG HERE" << ll << " " << Nthbit(data[ll],10) << "\n";
+//		}
+//	}
+
+//Find duals
+	for (auto l : *lakes) for(auto ll : l) {
+		for (auto pass : *passes[ll]) {
+			if ((*((int*)lakeID.get()+pass.tolocation) - 1073741824)!=ll) std::cout << "lakeid not matching\n";
+			bool flag = true;
+			for (auto dual : *passes[pass.from]) {
+				if(dual.from==ll) flag=false;
+			}
+			if (flag) {
+				std::cout << "no dual to " << (*((int*)lakeID.get()+pass.tolocation) - 1073741824) <<" from " << pass.from << "\n";
+				for (auto dual : *passes[pass.from]) {
+					std::cout << pass.from << "has pass that comes from " << dual.from << "\n";
+				}
+			}
+		}
+	}
 
 
+	int count = 0;
 	for (auto a : *lakes) for (int lake : a) {
+		count++;
 		int d = static_cast<int>(data[lake]);
 		if (!Nthbit(d,10)) continue; // Only river mouths for now
+		count--;
 		placed_lakes.insert(lake);
 		//Add best connection, not to existing lake
 		while (!passes[lake]->empty()) {
@@ -468,9 +503,10 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 			passes[lake]->erase(c);
 			if (placed_lakes.count(c.from)>0) continue;
 			candidates.insert(c);
-			break;
+			//break;
 		}
 	}
+
 
 	std::unordered_map<int,pass> connections; //maps location to pass
 
@@ -485,7 +521,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 				passes[lake]->erase(c);
 				if (placed_lakes.count(c.from)>0) continue;
 				candidates.insert(c);
-				break;
+				//break;
 			}
 		} else { //Add new lake, and new lowest pass from that lake
 			placed_lakes.insert(p.from);
@@ -496,10 +532,12 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 				passes[lake]->erase(c);
 				if (placed_lakes.count(c.from)>0) continue;
 				candidates.insert(c);
-				break;
+				//break;
 			}
 		}
 	}
+	//Something wrong here
+	std::cout << "count: " << count << " passes " << connections.size() << "\n";
 
 std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
 std::cout << "Calculating flow\n";
@@ -521,7 +559,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 				int s = stack.top();
 				stack.pop();
 
-				lakeID[s] = std::fmod(lake*11412414,289)+1;
+				lakeID[s] = std::fmod(abs(lake*11412414),289)+1;
 
 				for (auto n : neighbours(s,data[s])) {
 					stack.push(n);
@@ -533,7 +571,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		}
 
 	dispatchGPU([&lakeID](Project* p){
-		//p->get_terrain()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
+		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
 	});
 
 
