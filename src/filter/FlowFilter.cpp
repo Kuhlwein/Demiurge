@@ -268,7 +268,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	};
 	std::vector<std::pair<int,int>> jobs;
 	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
-	cputools2::threadpool(f,jobs);
+	threadpool(f,jobs,0.005);
 
 //Make list of lakes
 std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
@@ -289,7 +289,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		lakes->emplace_back(new_lakes);
 		mtx.unlock();
 	};
-	cputools2::threadpool(f,ofInterest);
+	threadpool(f,ofInterest,0.01);
 
 
 std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
@@ -300,7 +300,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	f = [this,b=lakeID.get()](std::pair<int,int> a){
 		for (int i=a.first; i<a.second; i++) b[i]=-1;
 	};
-	cputools2::threadpool(f,jobs);
+	threadpool(f,jobs,0.015);
 
 	std::function<void(std::vector<int>)> f2 = [this, &lakeID,&data](std::vector<int> a) {
 		for (int lake : a) {
@@ -319,7 +319,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 			}
 		}
 	};
-	cputools2::threadpool(f2,*lakes);
+	threadpool(f2,*lakes,0.02);
 std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
 std::cout << "Finding possible connections\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
@@ -448,7 +448,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		}
 		mtx.unlock();
 	};
-	cputools2::threadpool(f2,*lakes);
+	threadpool(f2,*lakes,0.82);
 
 	//Alle har connection! kun et par rivermouths der ikke har, det er ok.
 	//for (auto p : passes) if(p.second->size()==0) std::cout << "lake: " << p.first << ", " << p.second->size() << ", is rivermouth: " << Nthbit(data[p.first],10) << "\n";
@@ -557,7 +557,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	f = [this,b=lakeID.get()](std::pair<int,int> a){
 		for (int i=a.first; i<a.second; i++) b[i]=-1;
 	};
-	cputools2::threadpool(f,jobs);
+	threadpool(f,jobs,0.9);
 
 	f2 = [this,&data,&lakeID,&connections](std::vector<int> a) {
 		std::stack<int> stack;
@@ -582,7 +582,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 			}
 		}
 	};
-	cputools2::threadpool(f2,*lakes);
+	threadpool(f2,*lakes,0.97);
 
 	dispatchGPU([&lakeID](Project* p){
 		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
@@ -601,32 +601,4 @@ std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std
 
 bool FlowFilter::Nthbit(int num, int N) {
 	return num & (1 << (N-1));
-}
-
-
-template<typename T>
-void cputools2::threadpool(std::function<void(T)> f, std::vector<T> arg) {
-	std::mutex mtx;
-	uint Nthreads = std::thread::hardware_concurrency();
-	auto it = arg.begin();
-	auto end = arg.end();
-
-	auto j = [f,&arg,&mtx,&it,&end](){
-		while (true) {
-			mtx.lock();
-			if (it==end) {
-				mtx.unlock();
-				return;
-			}
-			T a = *it;
-			it++;
-			mtx.unlock();
-			f(a);
-		}
-	};
-	std::vector<std::unique_ptr<std::thread>> threads;
-	for (uint i=0; i<Nthreads; i++) threads.push_back(std::make_unique<std::thread>(j));
-	for (auto &t : threads) t->join();
-	for (auto &t : threads) t.reset();
-
 }

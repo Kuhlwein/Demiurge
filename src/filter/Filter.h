@@ -68,6 +68,34 @@ protected:
 	virtual void run() = 0;
 	void setProgress(std::pair<bool, float> p);
 	void dispatchGPU(std::function<void(Project* p)> f);
+	template<typename T> void threadpool(std::function<void(T a)> f,std::vector<T> arg, float progress) {
+		std::mutex mtx;
+		uint Nthreads = std::thread::hardware_concurrency();
+		auto it = arg.begin();
+		auto end = arg.end();
+
+		float startp = getProgress().second;
+		float step = (progress-startp)/(std::distance(it,end));
+
+		auto j = [f,&arg,&mtx,&it,&end,&step,&startp,this](){
+			while (true) {
+				mtx.lock();
+				if (it==end) {
+					mtx.unlock();
+					return;
+				}
+				T a = *it;
+				it++;
+				setProgress(std::pair<bool,float>{false,startp+step*std::distance(arg.begin(),it)});
+				mtx.unlock();
+				f(a);
+			}
+		};
+		std::vector<std::unique_ptr<std::thread>> threads;
+		for (uint i=0; i<Nthreads; i++) threads.push_back(std::make_unique<std::thread>(j));
+		for (auto &t : threads) t->join();
+		for (auto &t : threads) t.reset();
+	}
 
 private:
 	std::pair<bool,float> getProgress();

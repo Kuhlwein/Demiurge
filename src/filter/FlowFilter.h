@@ -34,9 +34,5 @@ private:
 	float level = 0.0;
 };
 
-namespace cputools2 {
-	template<typename T> void threadpool(std::function<void(T a)> f,std::vector<T> arg);
-}
-
 
 #endif //DEMIURGE_FLOWFILTER_H
