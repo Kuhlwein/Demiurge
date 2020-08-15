@@ -72,23 +72,7 @@ std::vector<int> FlowFilter::neighbours(int pos, int dat) {
 	return n;
 }
 
-void FlowFilter::run() {
-	float c1;
-	/*
-	 * all bits zero -> not point of interest
-	 *
-	 * Bits set for neighbour, 5'th bit is self and indicates a sink/lake
-	 * 1 2 3
-	 * 4 5 6
-	 * 7 8 9
-	 *
-	 * the 10'th bit indicates that this is a border sink/lake, aka a river mouth
-	 */
-
-//Find magic numbers
-std::cout << "Finding magic numbers\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-
+void FlowFilter::findMagicNumbers() {
 	dispatchGPU([this](Project* p){
 		coords = p->getCoords();
 
@@ -238,16 +222,10 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		width = p->getWidth();
 		height = p->getHeight();
 	});
+}
 
-
-//Find points of interest
-std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
-std::cout << "Points of interest\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-	std::mutex mtx;
-	std::vector<std::pair<int,int>> ofInterest;
-
-	std::function<void(std::pair<int,int>)> f = [this,&mtx,&ofInterest](std::pair<int,int> a) {
+void FlowFilter::findPointsOfInterest() {
+	std::function<void(std::pair<int,int>)> f = [this](std::pair<int,int> a) {
 		std::vector<std::pair<int,int>> newOfInterest;
 		int lower=a.first;
 		int i;
@@ -266,15 +244,10 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	std::vector<std::pair<int,int>> jobs;
 	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
 	threadpool(f,jobs,0.005);
+}
 
-//Make list of lakes
-std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
-std::cout << "Indexing lakes\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-
-	auto lakes = std::make_unique<std::vector<std::vector<int>>>();
-
-	f = [this,&mtx,&lakes](std::pair<int,int> a) {
+void FlowFilter::indexLakes(std::vector<std::vector<int>> *lakes) {
+	std::function<void(std::pair<int,int>)> f = [this,&lakes](std::pair<int,int> a) {
 		std::vector<int> new_lakes;
 		for (int i=a.first; i<a.second; i++) {
 			int d = static_cast<int>(data[i]);
@@ -287,16 +260,15 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		mtx.unlock();
 	};
 	threadpool(f,ofInterest,0.01);
+}
 
-
-std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
-std::cout << "Assigning lakes\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-
+void FlowFilter::assignLakeIds(std::vector<std::vector<int>> *lakes) {
 	lakeID = std::make_unique<float[]>(width*height);
-	f = [this,b=lakeID.get()](std::pair<int,int> a){
+	std::function<void(std::pair<int,int>)> f = [this,b=lakeID.get()](std::pair<int,int> a){
 		for (int i=a.first; i<a.second; i++) b[i]=-1;
 	};
+	std::vector<std::pair<int,int>> jobs;
+	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
 	threadpool(f,jobs,0.015);
 
 	std::function<void(std::vector<int>)> f2 = [this](std::vector<int> a) {
@@ -317,10 +289,9 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		}
 	};
 	threadpool(f2,*lakes,0.02);
-std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
-std::cout << "Finding possible connections\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+}
 
+void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 	std::unique_ptr<float[]> passheights;
 	dispatchGPU([this,&passheights](Project* p){
 		p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
@@ -384,15 +355,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 
 	});
 
-	struct pass {
-		float h;
-		int from; //Which lake is the flow from
-		int tolocation; //In self
-	};
-	std::function<bool(const pass&, const pass&)> comp = [](const pass& c1, const pass& c2){return c1.h<c2.h;};
-	std::unordered_map<int,std::set<pass,decltype(comp)>*> passes; //map lake to set of passes, sorted by height. Passes are from some other lake to key of map //TODO MUST BE DELETED MANUALLY!
-
-	f2 = [this, &passheights,&mtx,&passes,&comp](std::vector<int> a) {
+	std::function<void(std::vector<int>)> f2 = [this, &passheights](std::vector<int> a) {
 		std::map<int,std::set<pass,decltype(comp)>*> passSets;
 		for (int lake : a) {
 			std::map<float,pass> newpasses; //map to location
@@ -408,7 +371,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 					int nlake = -1;
 					int d = data[s];
 					for (auto n : neighbours(s,((int)pow(2,15)-1))) { //Fishy must check not part of same lake!
-					//for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
+						//for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
 						float bd = passheights[n];
 						int lid = *((int*)lakeID.get()+n) - 1073741824;
 						if (lid!=lake && bd>0 && bd<minpass) {
@@ -431,7 +394,6 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 					stack.push(n);
 				}
 			}
-			//all connections found for lake
 
 			std::set<pass,decltype(comp)>* newp = new std::set<pass,decltype(comp)>(comp);
 			for (auto pass : newpasses) newp->insert(pass.second);
@@ -441,72 +403,33 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		mtx.lock();
 		for (auto p : passSets) {
 			passes[p.first] = p.second;
-			//if (passes[p.first]->empty()) std::cout << "EMPTY passset " << p.first << " is rivermouth=" << Nthbit(data[p.first],10) << "\n";
 		}
 		mtx.unlock();
 	};
 	threadpool(f2,*lakes,0.82);
+}
 
-	//Alle har connection! kun et par rivermouths der ikke har, det er ok.
-	//for (auto p : passes) if(p.second->size()==0) std::cout << "lake: " << p.first << ", " << p.second->size() << ", is rivermouth: " << Nthbit(data[p.first],10) << "\n";
-
-std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
-std::cout << "Solving connections\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-
+void FlowFilter::solvingConnections(std::vector<std::vector<int>> *lakes, std::unordered_map<int,pass> &connections) {
 	std::set<pass,decltype(comp)> candidates(comp);
 	std::unordered_set<int> placed_lakes;
 
-//	for (auto l : *lakes) for(auto ll : l) {
-//		//for each lake, find...
-//		bool flag = false;
-//		for (auto p : candidates) if (p.from==ll) {
-//			flag=true;
-//			break;
-//		}
-//		if (!flag) {
-//			std::cout << "SOMETHING IS WRONG HERE" << ll << " " << Nthbit(data[ll],10) << "\n";
-//		}
-//	}
-
-//Find duals
-	for (auto l : *lakes) for(auto ll : l) {
-		for (auto pass : *passes[ll]) {
-			if ((*((int*)lakeID.get()+pass.tolocation) - 1073741824)!=ll) std::cout << "lakeid not matching\n";
-			bool flag = true;
-			for (auto dual : *passes[pass.from]) {
-				if(dual.from==ll) flag=false;
-			}
-			if (flag) {
-//				std::cout << "no dual to " << (*((int*)lakeID.get()+pass.tolocation) - 1073741824) <<" from " << pass.from << "\n";
-//				for (auto dual : *passes[pass.from]) {
-//					std::cout << pass.from << "has pass that comes from " << dual.from << "\n";
-//				}
-			}
-		}
-	}
-
-
 	int count = 0;
 	for (auto a : *lakes) for (int lake : a) {
-		count++;
-		int d = static_cast<int>(data[lake]);
-		if (!Nthbit(d,10)) continue; // Only river mouths for now
-		count--;
-		placed_lakes.insert(lake);
-		//Add best connection, not to existing lake
-		while (!passes[lake]->empty()) {
-			pass c = *passes[lake]->begin();
-			passes[lake]->erase(c);
-			if (placed_lakes.count(c.from)>0) continue;
-			if (Nthbit(c.from,10)) continue;
-			candidates.insert(c);
-			break;
+			count++;
+			int d = static_cast<int>(data[lake]);
+			if (!Nthbit(d,10)) continue; // Only river mouths for now
+			count--;
+			placed_lakes.insert(lake);
+			//Add best connection, not to existing lake
+			while (!passes[lake]->empty()) {
+				pass c = *passes[lake]->begin();
+				passes[lake]->erase(c);
+				if (placed_lakes.count(c.from)>0) continue;
+				if (Nthbit(c.from,10)) continue;
+				candidates.insert(c);
+				break;
+			}
 		}
-	}
-
-
-	std::unordered_map<int,pass> connections; //maps location to pass
 
 	//actually make connections
 	while(!candidates.empty()) {
@@ -543,17 +466,15 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 			}
 		}
 	}
-	//Something wrong here
-	std::cout << "count: " << count << " passes " << connections.size() << "\n";
+}
 
-std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
-std::cout << "Calculating flow\n";
-c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
-
+void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unordered_map<int,pass> &connections) {
 	//reset lakeID
-	f = [this,b=lakeID.get()](std::pair<int,int> a){
+	std::function<void(std::pair<int,int>)> f = [this,b=lakeID.get()](std::pair<int,int> a){
 		for (int i=a.first; i<a.second; i++) b[i]=-1;
 	};
+	std::vector<std::pair<int,int>> jobs;
+	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
 	threadpool(f,jobs,0.9);
 
 
@@ -569,7 +490,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 		return sum;
 	};
 
-	f2 = [this,&connections,&rec](std::vector<int> a) {
+	std::function<void(std::vector<int>)> f2 = [this,&connections,&rec](std::vector<int> a) {
 		std::stack<int> stack;
 		for (int lake : a) {
 			int d = static_cast<int>(data[lake]);
@@ -599,6 +520,7 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	dispatchGPU([this,&height](Project* p){
 		height = p->get_terrain()->downloadDataRAW();
 	});
+
 
 	//Draw lakes?
 	std::function<void(int,float,float)> lakefill = [this,&connections,&lakefill,&height](int lake, float waterheight, float waterlevel) {
@@ -660,6 +582,75 @@ c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono:
 	dispatchGPU([this](Project* p){
 		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
 	});
+}
+
+void FlowFilter::run() {
+	float c1;
+	/*
+	 * Magic number meaning:
+	 * all bits zero -> not point of interest
+	 *
+	 * Bits set for neighbour, 5'th bit is self and indicates a sink/lake
+	 * 1 2 3
+	 * 4 5 6
+	 * 7 8 9
+	 *
+	 * the 10'th bit indicates that this is a border sink/lake, aka a river mouth
+	 */
+
+//Find magic numbers
+std::cout << "Finding magic numbers\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	findMagicNumbers();
+
+
+//Find points of interest
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Points of interest\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+
+	findPointsOfInterest();
+
+
+//Make list of lakes
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Indexing lakes\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	auto lakes = std::make_unique<std::vector<std::vector<int>>>();
+
+	indexLakes(lakes.get());
+
+
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Assigning lakes\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	assignLakeIds(lakes.get());
+
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Finding possible connections\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	//std::function<bool(const pass&, const pass&)> comp = [](const pass& c1, const pass& c2){return c1.h<c2.h;};
+	//std::unordered_map<int,std::set<pass,decltype(comp)>*> passes; //map lake to set of passes, sorted by height. Passes are from some other lake to key of map //TODO MUST BE DELETED MANUALLY!
+	findAllConnections(lakes.get());
+
+
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Solving connections\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	std::unordered_map<int,pass> connections; //maps location to pass
+	solvingConnections(lakes.get(),connections);
+
+std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.0)-(c1) << "\n";
+std::cout << "Calculating flow\n";
+c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
+
+	calculateflow(lakes.get(),connections);
 
 
 	//Delete stuff
@@ -675,3 +666,6 @@ std::cout << ((float) (std::chrono::duration_cast<std::chrono::milliseconds>(std
 bool FlowFilter::Nthbit(int num, int N) {
 	return num & (1 << (N-1));
 }
+
+
+
