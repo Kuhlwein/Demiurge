@@ -94,6 +94,7 @@ void Texture::bind(ShaderProgram *program, GLuint point, std::string s) {
 		glActiveTexture(GL_TEXTURE0+point);
 		glBindTexture( GL_TEXTURE_2D, id );
 		glUniform1i(loc,point);
+		//std::cout << "bound " << name << " at point " << point << " and loc " << loc << "\n";
 	}
 }
 

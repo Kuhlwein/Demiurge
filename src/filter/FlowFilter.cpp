@@ -73,6 +73,17 @@ std::vector<int> FlowFilter::neighbours(int pos, int dat) {
 }
 
 void FlowFilter::findMagicNumbers() {
+	/*
+	 * Magic number meaning:
+	 * all bits zero -> not point of interest
+	 *
+	 * Bits set for neighbour, 5'th bit is self and indicates a sink/lake
+	 * 1 2 3
+	 * 4 5 6
+	 * 7 8 9
+	 *
+	 * the 10'th bit indicates that this is a border sink/lake, aka a river mouth
+	 */
 	dispatchGPU([this](Project* p){
 		coords = p->getCoords();
 
@@ -586,17 +597,6 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 
 void FlowFilter::run() {
 	float c1;
-	/*
-	 * Magic number meaning:
-	 * all bits zero -> not point of interest
-	 *
-	 * Bits set for neighbour, 5'th bit is self and indicates a sink/lake
-	 * 1 2 3
-	 * 4 5 6
-	 * 7 8 9
-	 *
-	 * the 10'th bit indicates that this is a border sink/lake, aka a river mouth
-	 */
 
 //Find magic numbers
 std::cout << "Finding magic numbers\n";

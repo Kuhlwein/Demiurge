@@ -18,7 +18,7 @@
 // Prepare
 // Unprepare
 
-AppearanceWindow::AppearanceWindow(std::string title) : Window(title, [this](Project* p) {
+AppearanceWindow::AppearanceWindow() : Window("Appearance", [this](Project* p) {
 	static char str0[128] = "Hello, world!";
 	ImGui::InputText("Name", str0, IM_ARRAYSIZE(str0));
 
@@ -107,8 +107,6 @@ void AppearanceWindow::setShader(Project* p) {
 	}
 	auto shader = shaderbuilder.create();
 	p->set_terrain_shader(shader);
-	//std::cout << shader->getCode() << "\n";
-	//prepare(p);
 }
 
 void AppearanceWindow::add(Appearance *a, Project* p) {

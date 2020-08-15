@@ -27,6 +27,7 @@
 #include <projections/Equiretangular.h>
 #include <filter/cpufilter.h>
 #include <filter/FlowFilter.h>
+#include <menus/LayerWindow.h>
 
 #include "projections/Projections.h"
 #include "menus/BrushWindow.h"
@@ -123,9 +124,9 @@ Project::Project(GLFWwindow* window) {
 
 	std::vector<Menu*> windows_menu = {};
 	windows_menu.push_back(new BrushWindow("Brush",this));
-	appearanceWindow = new AppearanceWindow("Appearance");
+	appearanceWindow = new AppearanceWindow();
 	windows_menu.push_back(appearanceWindow);
-	windows_menu.push_back(new Window("Layers", testnamespace::layers));
+	windows_menu.push_back(new LayerWindow());
 
 	std::vector<Menu*> filter_menu = {};
 	filter_menu.push_back(new BlurMenu());

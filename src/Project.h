@@ -12,6 +12,7 @@
 #include <menus/AppearanceWindow.h>
 #include <filter/Filter.h>
 #include <memory>
+#include <unordered_set>
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"
@@ -59,6 +60,7 @@ public:
 	std::pair<std::string,Texture*> get_layer(int i);
 	int get_current_layer();
 	void remove_layer(int i);
+
 	void update_terrain_shader();
 	void set_terrain_shader(Shader* s);
 
@@ -104,14 +106,18 @@ private:
     Vbo* vbo;
     GLuint fbo;
 	GLuint pbo;
-    std::set<Texture*> textures;
+    std::unordered_set<Texture*> textures;
     void bind_textures(ShaderProgram *program, std::vector<std::pair<Texture*,std::string>> l={});
 
     int width, height;
+
+	int current_layer;
 	std::vector<std::pair<std::string,Texture*>> layers;
+
+
 	std::stack<UndoHistory*> undo_list;
 	std::stack<UndoHistory*> redo_list;
-	int current_layer;
+
 
     std::vector<std::pair<std::string,std::vector<Menu*>>> windows;
 };
