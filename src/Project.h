@@ -13,6 +13,7 @@
 #include <filter/Filter.h>
 #include <memory>
 #include <unordered_set>
+#include <menus/LayerWindow.h>
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"
@@ -46,19 +47,19 @@ public:
 
 	void add_texture(Texture* texture);
 	void remove_texture(Texture* texture);
-	int get_n_textures();
+
 	Texture* get_terrain();
 	Texture* get_selection();
 	Texture* get_scratch2();
 	Texture* get_scratch1();
 
-	void set_terrain(Texture* texture);
-
-	int get_n_layers();
-	void add_layer(std::pair<std::string,Texture*> l,int index=0);
+	void add_layer(Layer* l);
 	void set_layer(int i);
-	std::pair<std::string,Texture*> get_layer(int i);
+	Layer* get_layer(int i);
 	int get_current_layer();
+
+	std::map<int,Layer*> get_layers();
+
 	void remove_layer(int i);
 
 	void update_terrain_shader();
@@ -93,7 +94,7 @@ private:
 	float circumference;
 
     GLFWwindow* window;
-	Texture* terrain = nullptr;
+	//Texture* terrain = nullptr;
     Texture* scratchPad = nullptr;
     Texture* scratchPad2 = nullptr;
     Texture* selection = nullptr;
@@ -112,7 +113,9 @@ private:
     int width, height;
 
 	int current_layer;
-	std::vector<std::pair<std::string,Texture*>> layers;
+
+
+	std::map<int,Layer*> layers; //Map id to layer
 
 
 	std::stack<UndoHistory*> undo_list;

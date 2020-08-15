@@ -66,3 +66,24 @@ fc = texture(scratch2,st).r - texture(scratch1, st).r;
 SnapshotHistory::~SnapshotHistory() {
 	delete data;
 }
+
+
+deleteLayerHistory::deleteLayerHistory(int id) {
+	this->id = id;
+}
+
+void deleteLayerHistory::undo(Project *p) {
+	p->add_layer(layer);
+	p->set_layer(layer->id);
+	shouldDeleteLayer = false;
+}
+
+void deleteLayerHistory::redo(Project *p) {
+	shouldDeleteLayer = true;
+	layer = p->get_layer(id);
+	p->remove_layer(id);
+}
+
+deleteLayerHistory::~deleteLayerHistory() {
+	if (shouldDeleteLayer) delete layer;
+}

@@ -5,19 +5,35 @@
 #include "Project.h"
 #include <imgui/imgui.h>
 #include <UndoHistory.h>
+#include <iostream>
 #include "LayerWindow.h"
 
 LayerWindow::LayerWindow() : Window("Layers", [this](Project* project) {
+
+
 	int selected = project->get_current_layer();
+	static char path[128] = "";
+	static int lastselected = -1;
+	auto current_layer = project->get_layer(selected);
+
+	if (selected != lastselected) for (int i=0; i<128; i++) {
+		if (i<current_layer->getName().size()) path[i] = current_layer->getName()[i];
+		else path[i] = '\0';
+	}
+
+	if (ImGui::InputText("Layer name",path,IM_ARRAYSIZE(path))) {
+		current_layer->setName(std::string(path));
+	}
+
 	if (ImGui::ListBoxHeader("List")) {
-		for (int i=project->get_n_layers()-1; i>=0; i--) {
-			std::string layer_name = (project->get_layer(i)).first;
-			if (ImGui::Selectable((layer_name + "##" + std::to_string(i)).c_str(), i == selected)) {
-				int prev_layer = project->get_current_layer();
-				auto u = [prev_layer](Project *p) {
-					p->set_layer(prev_layer);
+		for (auto l : project->get_layers()) {
+			auto layer = l.second;
+			std::string layer_name =layer->getName();
+			if (ImGui::Selectable((layer_name + "##" + std::to_string(layer->id)).c_str(), layer->id == selected)) {
+				auto u = [selected](Project *p) {
+					p->set_layer(selected);
 				};
-				auto r = [i](Project *p) {
+				auto r = [i = l.first](Project *p) {
 					p->set_layer(i);
 				};
 				auto hist = new ReversibleHistory(r, u);
@@ -28,35 +44,26 @@ LayerWindow::LayerWindow() : Window("Layers", [this](Project* project) {
 		ImGui::ListBoxFooter();
 	}
 
-	static char path[128] = "New layer";
-	std::string test;
-	bool exec = ImGui::InputText("Layer name",path,IM_ARRAYSIZE(path),ImGuiInputTextFlags_EnterReturnsTrue);
-	exec = exec | ImGui::Button("Create");
-	std::string name = std::string(path);
-	if (exec) {
 
-		auto u = [selected](Project* p){
-			p->remove_layer(p->get_n_layers()-1);
-			p->set_layer(selected);
+	if (ImGui::Button("Create new layer")) {
+		auto u = [](Project* p){
+			std::pair<int,Layer*> maxl = {-1,nullptr};
+			for(auto l : p->get_layers()) if(l.first>maxl.first) maxl=l;
+			p->remove_layer(maxl.first);
+			std::cout << "deleting " << maxl.first << "\n";
+			delete maxl.second;
 		};
-		auto r = [name](Project* p) {
-			p->add_layer({name, new Texture(p->getWidth(), p->getHeight(), GL_R32F, "img")});
+		auto r = [](Project* p) {
+			p->add_layer(new Layer(p->getWidth(),p->getHeight()));
 		};
 		auto hist = new ReversibleHistory(r,u);
 		hist->redo(project);
 		project->add_history(hist);
 	}
+
 	ImGui::SameLine();
-	if (ImGui::Button("Remove") && selected != 0) {
-		auto layer = project->get_layer(selected);
-		auto u = [layer,selected](Project* p){
-			p->add_layer(layer,selected);
-			p->set_layer(selected);
-		};
-		auto r = [selected](Project* p) {
-			p->remove_layer(selected);
-		};
-		auto hist = new ReversibleHistory(r,u);
+	if (ImGui::Button("Remove") && project->get_layers().size()>1) {
+		auto hist = new deleteLayerHistory(selected);
 		hist->redo(project);
 		project->add_history(hist);
 	}
@@ -68,10 +75,28 @@ LayerWindow::LayerWindow() : Window("Layers", [this](Project* project) {
 
 int Layer::id_counter=0;
 
-Layer::Layer(int w, int h) {
-	id = id_counter;
+Layer::Layer(int w, int h) : id(id_counter) {
 	id_counter++;
+	name = "New Layer";
 
 	texture = new Texture(w,h,GL_R32F,"img");
 
+}
+
+Texture *Layer::getTexture() {
+	return texture;
+}
+
+std::string Layer::getName() {
+	return name;
+}
+
+void Layer::setName(std::string s) {
+	name = s;
+}
+
+Layer::~Layer() {
+	std::cout << "layer deleted: " << id << "\n";
+	id_counter--;
+	delete texture;
 }

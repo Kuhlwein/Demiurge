@@ -49,9 +49,9 @@ void Project::file_new(int w, int h) {
 	height = h;
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	remove_texture(terrain);
-	delete terrain;
-	terrain = new Texture(w,h,GL_R32F,"img");
+	//remove_texture(terrain);
+	//delete terrain;
+	//terrain = new Texture(w,h,GL_R32F,"img");
 	remove_texture(scratchPad2);
 	delete scratchPad2;
 	scratchPad2 = new Texture(w,h,GL_R32F,"scratch2");
@@ -62,9 +62,12 @@ void Project::file_new(int w, int h) {
 	delete selection;
 	selection = new Texture(w,h,GL_R32F,"sel");
 
-	for (auto t : {terrain,scratchPad, scratchPad2, selection}) add_texture(t);
-	layers = {{"Default",terrain}};
-	current_layer = 0;
+	//for (auto t : {terrain,scratchPad, scratchPad2, selection}) add_texture(t);
+	for (auto t : {scratchPad, scratchPad2, selection}) add_texture(t);
+	auto l = new Layer(w,h);
+	add_texture(l->getTexture());
+	layers = {{l->id,l}};
+	current_layer = l->id;
 
 	ShaderProgram *program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -272,14 +275,14 @@ void Project::remove_texture(Texture *texture) {
 }
 
 Texture *Project::get_terrain() {
-	return terrain;
+	return get_layer(get_current_layer())->getTexture();
 }
 
-void Project::set_terrain(Texture *texture) {
-	remove_texture(terrain);
-	terrain = texture;
-	add_texture(texture);
-}
+//void Project::set_terrain(Texture *texture) {
+//	remove_texture(terrain);
+//	terrain = texture;
+//	add_texture(texture);
+//}
 
 int Project::getWidth() {
 	return width;
@@ -289,16 +292,15 @@ int Project::getHeight() {
 	return height;
 }
 
-int Project::get_n_layers() {
-	return layers.size();
+//int Project::get_n_layers() {
+//	return layers.size();
+//}
+
+void Project::add_layer(Layer* l) {
+	layers.insert({l->id,l});
 }
 
-void Project::add_layer(std::pair<std::string,Texture*> l,int index) {
-	if (index>0) layers.insert(layers.begin()+index,l);
-	else layers.push_back(l);
-}
-
-std::pair<std::string,Texture*> Project::get_layer(int i) {
+Layer* Project::get_layer(int i) {
 	return layers[i];
 }
 
@@ -307,16 +309,19 @@ int Project::get_current_layer() {
 }
 
 void Project::set_layer(int i) {
+	remove_texture(layers[current_layer]->getTexture());
 	current_layer = i;
-	set_terrain(layers[i].second);
-}
+	add_texture(layers[current_layer]->getTexture());
 
-void Project::remove_layer(int i) {
-	if (i>0) {
-		layers.erase(layers.begin()+i);
-		if (get_current_layer()>get_n_layers()-1) set_layer(get_n_layers()-1);
-	}
+	//set_terrain(layers[i]->getTexture());
 }
+//
+//void Project::remove_layer(int i) {
+//	if (i>0) {
+//		layers.erase(layers.begin()+i);
+//		if (get_current_layer()>get_n_layers()-1) set_layer(get_n_layers()-1);
+//	}
+//}
 
 void Project::update_terrain_shader() {
 	Shader::builder builder = Shader::builder()
@@ -347,7 +352,9 @@ Texture *Project::get_selection() {
 void Project::add_history(UndoHistory* h) {
 	undo_list.push(h);
 	while(!redo_list.empty()) {
+		auto r = redo_list.top();
 		redo_list.pop();
+		delete r;
 	}
 }
 
@@ -366,10 +373,6 @@ void Project::redo() {
 	redo_list.pop();
 	h->redo(this);
 	undo_list.push(h);
-}
-
-int Project::get_n_textures() {
-	return textures.size();
 }
 
 Texture *Project::get_scratch2() {
@@ -431,6 +434,22 @@ void Project::setCanvasUniforms(ShaderProgram *p) {
 	int id = glGetUniformLocation(p->getId(),"cornerCoords");
 	glUniform1fv(id, 4, coords.data());
 }
+
+std::map<int, Layer *> Project::get_layers() {
+	return layers;
+}
+
+void Project::remove_layer(int i) {
+	for (auto l : layers) {
+		if (l.first==i) continue;
+		set_layer(l.first);
+		break;
+	}
+
+	layers.erase(i);
+}
+
+
 
 
 

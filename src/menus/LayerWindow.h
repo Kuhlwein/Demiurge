@@ -12,11 +12,15 @@ class Project;
 class Layer {
 public:
 	Layer(int w, int h);
+	~Layer();
+	Texture* getTexture();
+	std::string getName();
+	void setName(std::string s);
+	const int id;
 
 private:
 	static int id_counter;
 	Texture* texture;
-	int id;
 	std::string name = "New layer";
 };
 

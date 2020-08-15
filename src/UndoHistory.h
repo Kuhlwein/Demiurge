@@ -13,6 +13,7 @@ class Project;
 
 class UndoHistory {
 public:
+	virtual ~UndoHistory() = default;
 	virtual void undo(Project* p) = 0;
 	virtual void redo(Project* p) = 0;
 
@@ -44,6 +45,18 @@ private:
 // snapshot before, quick filter
 // long filter, snapshot diff
 // reversible filter
+
+class deleteLayerHistory : public UndoHistory {
+public:
+	deleteLayerHistory(int id);
+	~deleteLayerHistory();
+	void undo(Project* p) override;
+	void redo(Project* p) override;
+private:
+	int id;
+	bool shouldDeleteLayer=true;
+	Layer* layer;
+};
 
 
 #endif //DEMIURGE_UNDOHISTORY_H
