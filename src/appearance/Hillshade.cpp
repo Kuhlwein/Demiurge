@@ -62,6 +62,7 @@ bool Hillshade::update_self(Project *p) {
 				break;
 		}
 	}
+	gradient->toTexture(hillshade_texture);
 
 	if (ImGui::Button("Apply")) {
 		first = true;
@@ -84,7 +85,6 @@ void Hillshade::unprepare(Project *p) {
 }
 
 void Hillshade::prepare(Project *p) {
-	gradient->toTexture(hillshade_texture);
 	p->add_texture(hillshade_texture);
 	int id = glGetUniformLocation(p->program->getId(),replaceSID("z_factor_SID").c_str());
 	glUniform1f(id,zfactor);

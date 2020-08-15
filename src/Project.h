@@ -94,7 +94,6 @@ private:
 	float circumference;
 
     GLFWwindow* window;
-	//Texture* terrain = nullptr;
     Texture* scratchPad = nullptr;
     Texture* scratchPad2 = nullptr;
     Texture* selection = nullptr;

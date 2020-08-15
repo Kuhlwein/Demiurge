@@ -32,7 +32,6 @@ fc = fc*(1-kk.a) + kk*(kk.a);
 }
 
 void SlopeMap::prepare(Project *p) {
-	gradient->toTexture(slope_texture);
 	p->add_texture(slope_texture);
 	int id = glGetUniformLocation(p->program->getId(),replaceSID("z_factor_SID").c_str());
 	glUniform1f(id,zfactor);
@@ -70,6 +69,7 @@ bool SlopeMap::update_self(Project *p) {
 				break;
 		}
 	}
+	gradient->toTexture(slope_texture);
 
 	if (ImGui::Button("Apply")) {
 		first = true;

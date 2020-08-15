@@ -45,13 +45,15 @@ void Project::file_load(const std::string& filename) {
 }
 
 void Project::file_new(int w, int h) {
+	for (auto l : layers) {
+		remove_texture(l.second->getTexture());
+		delete l.second;
+	}
+
 	width=w;
 	height = h;
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	//remove_texture(terrain);
-	//delete terrain;
-	//terrain = new Texture(w,h,GL_R32F,"img");
 	remove_texture(scratchPad2);
 	delete scratchPad2;
 	scratchPad2 = new Texture(w,h,GL_R32F,"scratch2");
@@ -62,7 +64,6 @@ void Project::file_new(int w, int h) {
 	delete selection;
 	selection = new Texture(w,h,GL_R32F,"sel");
 
-	//for (auto t : {terrain,scratchPad, scratchPad2, selection}) add_texture(t);
 	for (auto t : {scratchPad, scratchPad2, selection}) add_texture(t);
 	auto l = new Layer(w,h);
 	add_texture(l->getTexture());
@@ -73,7 +74,9 @@ void Project::file_new(int w, int h) {
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
 			.link();
+	std::cout << "before apply\n";
 	apply(program,get_terrain());
+	std::cout << "after apply\n";
 	int id = glGetUniformLocation(program->getId(),"value");
 	glUniform1f(id,1.0f);
 	apply(program,get_selection());
@@ -229,6 +232,8 @@ void Project::render() {
     program->bind();
     bind_textures(program);
 
+    //appearanceWindow->prepare(this);
+
     canvas->render();
 }
 
@@ -255,14 +260,15 @@ void Project::apply(ShaderProgram *program, Texture *texture, std::vector<std::p
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,texture->getId(),0);
     program->bind();
     bind_textures(program, l);
-
     vbo->render();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Project::bind_textures(ShaderProgram *program,std::vector<std::pair<Texture*,std::string>> l) {
 	int i=0;
-	for (auto t : textures) t->bind(program,i++);
+	for (auto t : textures) {
+		t->bind(program,i++);
+	}
 	for (auto p : l) p.first->bind(program,i++,p.second);
 }
 
@@ -278,12 +284,6 @@ Texture *Project::get_terrain() {
 	return get_layer(get_current_layer())->getTexture();
 }
 
-//void Project::set_terrain(Texture *texture) {
-//	remove_texture(terrain);
-//	terrain = texture;
-//	add_texture(texture);
-//}
-
 int Project::getWidth() {
 	return width;
 }
@@ -291,10 +291,6 @@ int Project::getWidth() {
 int Project::getHeight() {
 	return height;
 }
-
-//int Project::get_n_layers() {
-//	return layers.size();
-//}
 
 void Project::add_layer(Layer* l) {
 	layers.insert({l->id,l});
@@ -312,16 +308,7 @@ void Project::set_layer(int i) {
 	remove_texture(layers[current_layer]->getTexture());
 	current_layer = i;
 	add_texture(layers[current_layer]->getTexture());
-
-	//set_terrain(layers[i]->getTexture());
 }
-//
-//void Project::remove_layer(int i) {
-//	if (i>0) {
-//		layers.erase(layers.begin()+i);
-//		if (get_current_layer()>get_n_layers()-1) set_layer(get_n_layers()-1);
-//	}
-//}
 
 void Project::update_terrain_shader() {
 	Shader::builder builder = Shader::builder()

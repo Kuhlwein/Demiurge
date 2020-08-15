@@ -5,6 +5,7 @@
 #include "Project.h"
 #include <Texture.h>
 #include <algorithm>
+#include <iostream>
 #include "ElevationMap.h"
 
 ElevationMap::ElevationMap() : Appearance("Elevation map") {
@@ -43,6 +44,30 @@ if (h_SID>0) {
 bool ElevationMap::update_self(Project *p) {
 	if (first) first = false;
 
+
+//	int N_layers = p->get_layers().size()+1;
+//	std::string layer_items = "Current layer"; layer_items+='\0';
+//	int current_layer = 0;
+//	static int layerID = -1;
+//	int i = 1;
+//	for (auto l : p->get_layers()) {
+//		layer_items += l.second->getName() + '\0';
+//		if (layerID==l.first) current_layer=i;
+//		i++;
+//	}
+//	if(ImGui::Combo("Source layer",&current_layer,layer_items.c_str(),N_layers)) {
+//		std::cout << "current" << current_layer << "\n";
+//		if (current_layer==0) layerID = -1;
+//		else {
+//			int i = 1;
+//			for (auto l : p->get_layers()) {
+//				if (i==current_layer) layerID = l.first;
+//				i++;
+//			}
+//		}
+//	}
+
+
 	ImGui::InputFloat("Scale",&scale);
 	ImGui::Spacing();
 	ImGui::Separator();
@@ -73,6 +98,7 @@ bool ElevationMap::update_self(Project *p) {
 				break;
 		}
 	}
+	gradient_land->toTexture(texture_land);
 	ImGui::Spacing();
 	ImGui::Separator();
 	ImGui::Spacing();
@@ -101,6 +127,7 @@ bool ElevationMap::update_self(Project *p) {
 				break;
 		}
 	}
+	gradient_ocean->toTexture(texture_ocean);
 	ImGui::Spacing();
 	ImGui::Separator();
 	ImGui::Spacing();
@@ -118,8 +145,6 @@ bool ElevationMap::update_self(Project *p) {
 }
 
 void ElevationMap::prepare(Project *p) {
-	gradient_land->toTexture(texture_land);
-	gradient_ocean->toTexture(texture_ocean);
 	p->add_texture(texture_land);
 	p->add_texture(texture_ocean);
 	int id = glGetUniformLocation(p->program->getId(),replaceSID("scale_SID").c_str());

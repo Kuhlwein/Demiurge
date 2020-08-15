@@ -30,9 +30,7 @@ fc = fc*(1-kk.a) + kk*(kk.a);
 }
 
 void AspectMap::prepare(Project *p) {
-	gradient->toTexture(aspect_texture);
 	p->add_texture(aspect_texture);
-
 }
 
 void AspectMap::unprepare(Project *p) {
@@ -62,6 +60,7 @@ bool AspectMap::update_self(Project *p) {
 				break;
 		}
 	}
+	gradient->toTexture(aspect_texture);
 
 	if (ImGui::Button("Apply")) {
 		first = true;

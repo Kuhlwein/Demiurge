@@ -23,7 +23,11 @@ Texture::Texture(int width, int height, GLenum format, std::string name, GLint i
     this->height = height;
 
     glGenTextures(1,&id);
-    glActiveTexture( GL_TEXTURE0+0 );
+    std::cout << "creating " << id << "\n";
+
+
+
+	glActiveTexture( GL_TEXTURE0+0 );
     glBindTexture( GL_TEXTURE_2D, id );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );

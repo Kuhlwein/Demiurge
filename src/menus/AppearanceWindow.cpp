@@ -43,8 +43,10 @@ AppearanceWindow::AppearanceWindow() : Window("Appearance", [this](Project* p) {
 	if (ImGui::BeginPopup("my_remove_popup"))
 	{
 		for (int i = appearances.size()-1; i>=0; i--)
-			if (ImGui::Selectable(appearances[i]->getTitle().c_str()))
+			if (ImGui::Selectable(appearances[i]->getTitle().c_str())) {
 				appearances.erase(appearances.begin()+i);
+				setShader(p);
+			}
 		ImGui::EndPopup();
 	}
 
