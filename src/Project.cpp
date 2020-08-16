@@ -28,6 +28,7 @@
 #include <filter/cpufilter.h>
 #include <filter/FlowFilter.h>
 #include <menus/LayerWindow.h>
+#include <filter/ThermalErosion.h>
 
 #include "projections/Projections.h"
 #include "menus/BrushWindow.h"
@@ -138,6 +139,7 @@ Project::Project(GLFWwindow* window) {
 	filter_menu.push_back(new BlurMenu());
 	filter_menu.push_back(new cpufilterMenu());
 	filter_menu.push_back(new FlowfilterMenu());
+	filter_menu.push_back(new ThermalErosionMenu());
 	auto math = new SubMenu("Mathematical");
 	math->addMenu(new OffsetMenu());
 	math->addMenu(new ScaleMenu());
@@ -231,8 +233,7 @@ void Project::update() {
 void Project::render() {
     program->bind();
     bind_textures(program);
-
-    //appearanceWindow->prepare(this);
+    appearanceWindow->prepare(this); //TODO could be more efficient, only update when changes! Full update should be reserved for setting new shaderprogram
 
     canvas->render();
 }
@@ -268,7 +269,16 @@ void Project::bind_textures(ShaderProgram *program,std::vector<std::pair<Texture
 	int i=0;
 	for (auto t : textures) {
 		t->bind(program,i++);
+//		if (aliasmap.count(t)>0) {
+//			//Texture has alias!
+//			t->bind(program,i-1,aliasmap[t]);
+//			aliasmap.erase(t);
+//		}
 	}
+//	for(auto t : aliasmap) {
+//		t.first->bind(program,i++,t.second);
+//	}
+//	aliasmap.clear();
 	for (auto p : l) p.first->bind(program,i++,p.second);
 }
 
@@ -420,6 +430,8 @@ void Project::addAsyncTex(Texture *tex) {
 void Project::setCanvasUniforms(ShaderProgram *p) {
 	int id = glGetUniformLocation(p->getId(),"cornerCoords");
 	glUniform1fv(id, 4, coords.data());
+	id = glGetUniformLocation(p->getId(),"circumference");
+	glUniform1f(id, circumference);
 }
 
 std::map<int, Layer *> Project::get_layers() {
@@ -434,6 +446,10 @@ void Project::remove_layer(int i) {
 	}
 
 	layers.erase(i);
+}
+
+void Project::add_alias(Texture *t, std::string alias) {
+	aliasmap[t] = alias;
 }
 
 

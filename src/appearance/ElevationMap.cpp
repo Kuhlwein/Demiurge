@@ -24,6 +24,7 @@ ElevationMap::ElevationMap() : Appearance("Elevation map") {
 			.create(replaceSID(R"(
 uniform sampler2D gradient_land_SID;
 uniform sampler2D gradient_ocean_SID;
+uniform sampler2D testsampler_SID;
 uniform float scale_SID;
 )"),replaceSID(R"(
 
@@ -45,27 +46,26 @@ bool ElevationMap::update_self(Project *p) {
 	if (first) first = false;
 
 
-//	int N_layers = p->get_layers().size()+1;
-//	std::string layer_items = "Current layer"; layer_items+='\0';
-//	int current_layer = 0;
-//	static int layerID = -1;
-//	int i = 1;
-//	for (auto l : p->get_layers()) {
-//		layer_items += l.second->getName() + '\0';
-//		if (layerID==l.first) current_layer=i;
-//		i++;
-//	}
-//	if(ImGui::Combo("Source layer",&current_layer,layer_items.c_str(),N_layers)) {
-//		std::cout << "current" << current_layer << "\n";
-//		if (current_layer==0) layerID = -1;
-//		else {
-//			int i = 1;
-//			for (auto l : p->get_layers()) {
-//				if (i==current_layer) layerID = l.first;
-//				i++;
-//			}
-//		}
-//	}
+	int N_layers = p->get_layers().size()+1;
+	std::string layer_items = "Current layer"; layer_items+='\0';
+	int current_layer = 0;
+	int i = 1;
+	for (auto l : p->get_layers()) {
+		layer_items += l.second->getName() + '\0';
+		if (layerID==l.first) current_layer=i;
+		i++;
+	}
+	if(ImGui::Combo("Source layer",&current_layer,layer_items.c_str(),N_layers)) {
+		std::cout << "current" << current_layer << "\n";
+		if (current_layer==0) layerID = -1;
+		else {
+			int i = 1;
+			for (auto l : p->get_layers()) {
+				if (i==current_layer) layerID = l.first;
+				i++;
+			}
+		}
+	}
 
 
 	ImGui::InputFloat("Scale",&scale);
@@ -149,6 +149,15 @@ void ElevationMap::prepare(Project *p) {
 	p->add_texture(texture_ocean);
 	int id = glGetUniformLocation(p->program->getId(),replaceSID("scale_SID").c_str());
 	glUniform1f(id,scale);
+	if(layerID!=-1) {
+		//std::cout << layerID << "\n";
+		//p->add_alias(p->get_layer(layerID)->getTexture(),replaceSID("testsampler_SID"));
+	} else {
+		//std::cout << (*p->get_layers().begin()).second->getTexture() << "\n";
+		//std::cout << p->get_layer(0)->id << "\n";
+		//p->add_alias((*p->get_layers().begin()).second->getTexture(),replaceSID("testsampler_SID"));
+		//p->add_alias(p->get_layer(p->get_current_layer())->getTexture(),"testsampler");
+	}
 }
 
 void ElevationMap::unprepare(Project *p) {

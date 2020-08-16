@@ -14,6 +14,7 @@
 #include <memory>
 #include <unordered_set>
 #include <menus/LayerWindow.h>
+#include <unordered_map>
 
 #include "menus/edit.h"
 #include "ShaderProgram.h"
@@ -47,6 +48,7 @@ public:
 
 	void add_texture(Texture* texture);
 	void remove_texture(Texture* texture);
+	void add_alias(Texture* t, std::string alias);
 
 	Texture* get_terrain();
 	Texture* get_selection();
@@ -82,6 +84,7 @@ public:
 
 	void setCanvasUniforms(ShaderProgram* p);
 
+	float circumference = 420000;
 private:
 	Texture* asyncTex;
 	bool downloadingTex = false;
@@ -91,9 +94,8 @@ private:
 	std::shared_ptr<Filter> filter;
 
 	std::vector<float> coords = {-M_PI/2, M_PI/2, -M_PI,M_PI};
-	float circumference;
 
-    GLFWwindow* window;
+	GLFWwindow* window;
     Texture* scratchPad = nullptr;
     Texture* scratchPad2 = nullptr;
     Texture* selection = nullptr;
@@ -107,6 +109,7 @@ private:
     GLuint fbo;
 	GLuint pbo;
     std::unordered_set<Texture*> textures;
+    std::unordered_map<Texture*,std::string> aliasmap; //TODO multiple strings?
     void bind_textures(ShaderProgram *program, std::vector<std::pair<Texture*,std::string>> l={});
 
     int width, height;

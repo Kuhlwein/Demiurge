@@ -236,23 +236,27 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
 static Shader* texturespace_gradient = Shader::builder()
 		.include(cornerCoords)
 		.create(R"(
+uniform float circumference;
 void get_texture_gradient(inout float delta_x, inout float delta_y) {
 	vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
 
-	float a = texture(img, projection(st)-texture_stepsize*vec2(1,1)).r;
-	float b = texture(img, projection(st)-texture_stepsize*vec2(0,1)).r;
-	float c = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
-	float d = texture(img, projection(st)-texture_stepsize*vec2(1,0)).r;
-	float f = texture(img, projection(st)-texture_stepsize*vec2(-1,0)).r;
-	float g = texture(img, projection(st)-texture_stepsize*vec2(1,-1)).r;
-	float h = texture(img, projection(st)-texture_stepsize*vec2(0,-1)).r;
-	float i = texture(img, projection(st)-texture_stepsize*vec2(-1,-1)).r;
+	float a = texture(img, (st)-texture_stepsize*vec2(1,1)).r;
+	float b = texture(img, (st)-texture_stepsize*vec2(0,1)).r;
+	float c = texture(img, (st)-texture_stepsize*vec2(-1,0)).r;
+	float d = texture(img, (st)-texture_stepsize*vec2(1,0)).r;
+	float f = texture(img, (st)-texture_stepsize*vec2(-1,0)).r;
+	float g = texture(img, (st)-texture_stepsize*vec2(1,-1)).r;
+	float h = texture(img, (st)-texture_stepsize*vec2(0,-1)).r;
+	float i = texture(img, (st)-texture_stepsize*vec2(-1,-1)).r;
 
 
-	vec2 geo = tex_to_spheric(projection(st));
+	vec2 geo = tex_to_spheric((st));
 
-	delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*cos(geo.y));
-	delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8);
+	float pixelwidthx = circumference*(cornerCoords[3]-cornerCoords[2])/(2*M_PI) / textureSize(img,0).x;
+	float pixelwidthy = circumference*(cornerCoords[1]-cornerCoords[0])/(M_PI) / textureSize(img,0).y;
+
+	delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidthx*cos(geo.y));
+	delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidthy);
 }
 float delta_x;
 float delta_y;

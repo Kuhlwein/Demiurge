@@ -29,6 +29,8 @@ private:
 	GradientMenu* gradient_ocean;
 
 	Shader* shader;
+
+	int layerID = -1;
 };
 
 

@@ -84,6 +84,7 @@ void FlowFilter::findMagicNumbers() {
 	 *
 	 * the 10'th bit indicates that this is a border sink/lake, aka a river mouth
 	 */
+	//TODO USE ASPECT TO CALCULATE DIRECTION, spherical distortion
 	dispatchGPU([this](Project* p){
 		coords = p->getCoords();
 
@@ -534,43 +535,39 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 
 
 	//Draw lakes?
-	std::function<void(int,float,float)> lakefill = [this,&connections,&lakefill,&height](int lake, float waterheight, float waterlevel) {
-		std::stack<int> stack;
-		std::vector<pass> new_connections;
-		stack.push(lake);
-		while (!stack.empty()) {
-			auto p = stack.top();
-			stack.pop();
-			if (height[p] <= waterheight) lakeID[p] = std::max(lakeID[p], waterlevel);
-
-			for (auto n : neighbours(p,data[p])) {
-				stack.push(n);
-			}
-			if (connections.count(p) > 0) {
-				new_connections.emplace_back(connections[p]);
-			}
-		}
-		for (auto c : new_connections) {
-			if (waterheight>c.h) {
-				lakefill(c.from,waterheight,waterlevel);
-			} else {
-				lakefill(c.from,c.h,lakeID[c.from]);
-			}
-
-		}
-	};
-
-	//for (auto ll : *lakes) for (auto l : ll) {
-	//	if (!Nthbit(data[l],10)) continue;
-	//	lakefill(l,0.0f,lakeID[l]);
-	//}
-	f2 = [this,&connections,&rec,&lakefill](std::vector<int> a) {
-		for (int lake : a) {
-			if (!Nthbit(data[lake],10)) continue;
-			lakefill(lake,0.0f,lakeID[lake]);
-		}
-	};
-	threadpool(f2,*lakes,0.98);
+//	std::function<void(int,float,float)> lakefill = [this,&connections,&lakefill,&height](int lake, float waterheight, float waterlevel) {
+//		std::stack<int> stack;
+//		std::vector<pass> new_connections;
+//		stack.push(lake);
+//		while (!stack.empty()) {
+//			auto p = stack.top();
+//			stack.pop();
+//			if (height[p] <= waterheight) lakeID[p] = std::max(lakeID[p], waterlevel);
+//
+//			for (auto n : neighbours(p,data[p])) {
+//				stack.push(n);
+//			}
+//			if (connections.count(p) > 0) {
+//				new_connections.emplace_back(connections[p]);
+//			}
+//		}
+//		for (auto c : new_connections) {
+//			if (waterheight>c.h) {
+//				lakefill(c.from,waterheight,waterlevel);
+//			} else {
+//				lakefill(c.from,c.h,lakeID[c.from]);
+//			}
+//
+//		}
+//	};
+//
+//	f2 = [this,&connections,&rec,&lakefill](std::vector<int> a) {
+//		for (int lake : a) {
+//			if (!Nthbit(data[lake],10)) continue;
+//			lakefill(lake,0.0f,lakeID[lake]);
+//		}
+//	};
+//	threadpool(f2,*lakes,0.98);
 
 
 
