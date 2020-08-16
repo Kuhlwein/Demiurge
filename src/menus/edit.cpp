@@ -35,8 +35,8 @@ bool edit::preferences(Project* p) {
 	if (updated) p->setCoords({-end,-begin,begin2,end2});
 
 	static float circumference = 42000;
-	if (ImGui::DragFloat("Planet circumference",&circumference,10,1,MAXFLOAT,"%.1f m")) {
-		p->circumference = circumference;
+	if (ImGui::DragFloat("Planet circumference",&circumference,10,1,MAXFLOAT,"%.1f km")) {
+		p->circumference = circumference*1000;
 	}
 
 	if (ImGui::Button("Apply")) {

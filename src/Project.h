@@ -84,7 +84,7 @@ public:
 
 	void setCanvasUniforms(ShaderProgram* p);
 
-	float circumference = 420000;
+	float circumference = 42000000.0f;
 private:
 	Texture* asyncTex;
 	bool downloadingTex = false;

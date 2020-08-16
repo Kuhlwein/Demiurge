@@ -24,8 +24,8 @@ uniform float azimuth_SID;
 uniform sampler2D gradient_hillshade_SID;
 )"),replaceSID(R"(
 {
-float slope =  get_slope(z_factor_SID);
-float aspect = get_aspect();
+float slope =  get_slope(z_factor_SID,projection(st));
+float aspect = get_aspect(projection(st));
 
 float hillshade = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-azimuth_SID + M_PI/2 - aspect)));
 

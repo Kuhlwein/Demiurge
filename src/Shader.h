@@ -237,7 +237,7 @@ static Shader* texturespace_gradient = Shader::builder()
 		.include(cornerCoords)
 		.create(R"(
 uniform float circumference;
-void get_texture_gradient(inout float delta_x, inout float delta_y) {
+vec2 get_texture_gradient(in vec2 st) {
 	vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
 
 	float a = texture(img, (st)-texture_stepsize*vec2(1,1)).r;
@@ -255,19 +255,19 @@ void get_texture_gradient(inout float delta_x, inout float delta_y) {
 	float pixelwidthx = circumference*(cornerCoords[3]-cornerCoords[2])/(2*M_PI) / textureSize(img,0).x;
 	float pixelwidthy = circumference*(cornerCoords[1]-cornerCoords[0])/(M_PI) / textureSize(img,0).y;
 
-	delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidthx*cos(geo.y));
-	delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidthy);
+	float delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidthx*cos(geo.y));
+	float delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidthy);
+	return vec2(delta_x,delta_y);
 }
-float delta_x;
-float delta_y;
-)","get_texture_gradient(delta_x,delta_y);");
+)","");
 
 static Shader* get_aspect = Shader::builder()
 		.include(def_pi)
 		.include(texturespace_gradient)
 		.create(R"(
-float get_aspect() {
-	return M_PI-atan(delta_y, -(delta_x));
+float get_aspect(in vec2 st) {
+	vec2 g = get_texture_gradient(st);
+	return M_PI-atan(g.y, -g.x);
 }
 )","");
 
@@ -276,8 +276,9 @@ static Shader* get_slope = Shader::builder()
 		.include(def_pi)
 		.include(texturespace_gradient)
 		.create(R"(
-float get_slope(float z_factor) {
-	return atan(z_factor * sqrt(pow(delta_x,2) + pow(delta_y,2)));
+float get_slope(float z_factor, in vec2 st) {
+	vec2 g = get_texture_gradient(st);
+	return atan(z_factor * sqrt(pow(g.x,2) + pow(g.y,2)));
 }
 )","");
 

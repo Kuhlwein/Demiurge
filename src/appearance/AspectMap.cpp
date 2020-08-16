@@ -19,7 +19,7 @@ AspectMap::AspectMap() : Appearance("Aspect map") {
 uniform sampler2D gradient_aspect_SID;
 )"),replaceSID(R"(
 
-float aspect = get_aspect()/2/M_PI;
+float aspect = get_aspect(projection(st))/2/M_PI;
 
 
 vec4 kk =  texture( gradient_aspect_SID ,vec2(aspect,0));
