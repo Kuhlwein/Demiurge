@@ -31,7 +31,7 @@ public:
 	void update_self(Project* p) override;
 	std::shared_ptr<BackupFilter> makeFilter(Project* p);
 private:
-	NoiseParams params = {1.0,2,0.5,-1,1,8,0,0.0f,DEFAULT};
+	NoiseParams params = {1.0,2,0.5,-10,10,8,0,0.0f,DEFAULT};
 };
 
 class GradientNoiseFilter : public SubFilter {

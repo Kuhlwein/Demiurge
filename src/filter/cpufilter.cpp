@@ -98,7 +98,7 @@ void cpufilter::run() {
 					.include(p->canvas->projection_shader())
 					.include(get_slope)
 					.create("", R"(
-	fc = max(texture2D(scratch1,st).r - 0.001*max(texture2D(img,st).r,0)*get_slope(0.001),0);
+	fc = max(texture2D(scratch1,st).r - 0.005*max(texture2D(img,st).r,0)*get_slope(1,st),0);
 )");
 			ShaderProgram *program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)

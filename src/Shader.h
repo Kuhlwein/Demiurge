@@ -253,7 +253,7 @@ vec2 get_texture_gradient(in vec2 st) {
 	vec2 geo = tex_to_spheric((st));
 
 	float pixelwidthx = circumference*(cornerCoords[3]-cornerCoords[2])/(2*M_PI) / textureSize(img,0).x;
-	float pixelwidthy = circumference*(cornerCoords[1]-cornerCoords[0])/(M_PI) / textureSize(img,0).y;
+	float pixelwidthy = circumference*(cornerCoords[1]-cornerCoords[0])/(2*M_PI) / textureSize(img,0).y;
 
 	float delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidthx*cos(geo.y));
 	float delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidthy);

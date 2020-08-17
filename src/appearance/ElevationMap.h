@@ -20,7 +20,7 @@ private:
 	bool update_self(Project* p) override;
 
 	bool first = true;
-	float scale=1.0f;
+	float scale=10.0f;
 
 	Texture* texture_land;
 	Texture* texture_ocean;

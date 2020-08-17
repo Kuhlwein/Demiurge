@@ -68,7 +68,7 @@ bool ElevationMap::update_self(Project *p) {
 	}
 
 
-	ImGui::InputFloat("Scale",&scale);
+	ImGui::InputFloat("Scale",&scale,0.0f,0.0f,"%.3f km");
 	ImGui::Spacing();
 	ImGui::Separator();
 	ImGui::Spacing();

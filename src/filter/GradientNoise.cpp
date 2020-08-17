@@ -16,7 +16,7 @@ GradientNoiseMenu::GradientNoiseMenu() : FilterModal("Gradient noise") {
 
 void GradientNoiseMenu::update_self(Project *p) {
 	//operation
-	ImGui::DragFloatRange2("Limits",&params.min,&params.max,0.01);
+	ImGui::DragFloatRange2("Limits",&params.min,&params.max,0.01f,0.0f,0.0f,"%.3f km");
 	static int current;
 	const char* items[] = {"Default","Ridged","Billowy","Gradient supressed","Mountains","Hills","Plateaus"};
 	if(ImGui::Combo("Mode",&current,items,IM_ARRAYSIZE(items))) {

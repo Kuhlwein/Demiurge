@@ -285,19 +285,30 @@ void FlowFilter::assignLakeIds(std::vector<std::vector<int>> *lakes) {
 
 	std::function<void(std::vector<int>)> f2 = [this](std::vector<int> a) {
 		for (int lake : a) {
-			std::stack<int> stack;
-			stack.push(lake);
-			while (!stack.empty()) {
-				int s = stack.top();
-				stack.pop();
-				int* a;
+			std::function<void(int)> f = [this,&f,&lake](int s){
+				int a[0];
 				a[0] = 1073741824+lake; //The offset is important because the integer is read as a floating point number when uploaded to a texture. //TODO make something better... probably number each lake from 1 to N
 				float* b = (float*)a;
 				lakeID[s] = *b;
 				for (auto n : neighbours(s,data[s])) {
-					stack.push(n);
+					f(n);
 				}
-			}
+			};
+			f(lake);
+
+//			std::stack<int> stack;
+//			stack.push(lake);
+//			while (!stack.empty()) {
+//				int s = stack.top();
+//				stack.pop();
+//				int* a;
+//				a[0] = 1073741824+lake; //The offset is important because the integer is read as a floating point number when uploaded to a texture. //TODO make something better... probably number each lake from 1 to N
+//				float* b = (float*)a;
+//				lakeID[s] = *b;
+//				for (auto n : neighbours(s,data[s])) {
+//					stack.push(n);
+//				}
+//			}
 		}
 	};
 	threadpool(f2,*lakes,0.02);
@@ -383,7 +394,7 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 					int nlake = -1;
 					int d = data[s];
 					for (auto n : neighbours(s,((int)pow(2,15)-1))) { //Fishy must check not part of same lake!
-						//for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
+					// for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
 						float bd = passheights[n];
 						int lid = *((int*)lakeID.get()+n) - 1073741824;
 						if (lid!=lake && bd>0 && bd<minpass) {
@@ -391,9 +402,10 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 							nlake = n;
 						}
 					}
-					if (minpass<MAXFLOAT) {
+					int lid = *((int*)lakeID.get()+nlake) - 1073741824;
+					if (minpass<MAXFLOAT && !Nthbit(data[lid],10)) {
 						float nheight = std::max(minpass,passheights[s]);
-						int lid = *((int*)lakeID.get()+nlake) - 1073741824;
+
 						if(newpasses.count(lid)==0) {
 							newpasses[lid] = {nheight,lid,s};
 						} else if (nheight<newpasses[lid].h) {
@@ -419,6 +431,15 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 		mtx.unlock();
 	};
 	threadpool(f2,*lakes,0.82);
+
+	int totalpasses=0;
+	int rivermouth=0;
+	for(auto a : passes) for(auto b : *a.second) {
+		int from = b.from;
+		totalpasses++;
+		if (Nthbit(data[from],10)) rivermouth++;
+	}
+	std::cout << "total: " << totalpasses << ", rivermouth: " << rivermouth << "\n";
 }
 
 void FlowFilter::solvingConnections(std::vector<std::vector<int>> *lakes, std::unordered_map<int,pass> &connections) {
