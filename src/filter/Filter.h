@@ -66,6 +66,7 @@ public:
 
 protected:
 	virtual void run() = 0;
+	std::pair<bool,float> getProgress();
 	void setProgress(std::pair<bool, float> p);
 	void dispatchGPU(std::function<void(Project* p)> f);
 	template<typename T> void threadpool(std::function<void(T a)> f,std::vector<T> arg, float progress) {
@@ -98,7 +99,6 @@ protected:
 	}
 
 private:
-	std::pair<bool,float> getProgress();
 	bool first=true;
 	std::pair<bool,float> progress;
 	std::mutex progress_mtx;

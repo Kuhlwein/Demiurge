@@ -81,12 +81,13 @@ void cpufilter::run() {
 
 	for (int i=0; i<10; i++) {
 
-		auto flowfilter = new FlowFilter();
+		auto flowfilter = new FlowFilter(0.5);
 		std::pair<bool, float> progress;
 		do {
 			dispatchGPU([&flowfilter, &progress](Project *p) {
 				progress = flowfilter->step(p);
 			});
+			setProgress({false,((float) i) /10+ progress.second/10});
 		} while (!progress.first);
 
 		dispatchGPU([&heightdata, &updrift](Project *p) {

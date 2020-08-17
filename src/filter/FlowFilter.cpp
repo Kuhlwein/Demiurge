@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "FlowFilter.h"
+#include "BlurMenu.h"
 
 FlowfilterMenu::FlowfilterMenu() : FilterModal("Flowfilter") {
 
@@ -22,12 +23,12 @@ void FlowfilterMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> FlowfilterMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<FlowFilter>();
+	auto morph = std::make_unique<FlowFilter>(0.5);
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(morph));
 }
 
-FlowFilter::FlowFilter() {
-
+FlowFilter::FlowFilter(float preblur) {
+	this->preblur = preblur;
 }
 
 FlowFilter::~FlowFilter() {
@@ -84,8 +85,23 @@ void FlowFilter::findMagicNumbers() {
 	 *
 	 * the 10'th bit indicates that this is a border sink/lake, aka a river mouth
 	 */
-	//TODO USE ASPECT TO CALCULATE DIRECTION, spherical distortion
-	dispatchGPU([this](Project* p){
+	Blur* blur;
+	std::unique_ptr<float[]> hdata;
+	dispatchGPU([this,&blur,&hdata](Project* p) {
+		hdata = p->get_terrain()->downloadDataRAW(); //TODO downloaded twice? Optimize
+		blur = new Blur(p, preblur, p->get_terrain());
+	});
+	std::pair<bool, float> progress;
+	do {
+		dispatchGPU([this,&blur,&progress](Project* p) {
+			progress = blur->step(p);
+		});
+	} while (!progress.first);
+	dispatchGPU([this,&blur,&progress](Project* p) {
+		delete blur;
+	});
+
+	dispatchGPU([this,&hdata](Project* p){
 		coords = p->getCoords();
 
 		Shader* shader = Shader::builder()
@@ -233,7 +249,11 @@ void FlowFilter::findMagicNumbers() {
 		data = p->get_scratch2()->downloadDataRAW();
 		width = p->getWidth();
 		height = p->getHeight();
+
+		p->get_terrain()->uploadData(GL_RED,GL_FLOAT,hdata.get());
 	});
+
+	setProgress({false,0.02});
 }
 
 void FlowFilter::findPointsOfInterest() {
@@ -255,7 +275,7 @@ void FlowFilter::findPointsOfInterest() {
 	};
 	std::vector<std::pair<int,int>> jobs;
 	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
-	threadpool(f,jobs,0.005);
+	threadpool(f,jobs,0.031);
 }
 
 void FlowFilter::indexLakes(std::vector<std::vector<int>> *lakes) {
@@ -271,7 +291,7 @@ void FlowFilter::indexLakes(std::vector<std::vector<int>> *lakes) {
 		lakes->emplace_back(new_lakes);
 		mtx.unlock();
 	};
-	threadpool(f,ofInterest,0.01);
+	threadpool(f,ofInterest,0.04);
 }
 
 void FlowFilter::assignLakeIds(std::vector<std::vector<int>> *lakes) {
@@ -281,7 +301,7 @@ void FlowFilter::assignLakeIds(std::vector<std::vector<int>> *lakes) {
 	};
 	std::vector<std::pair<int,int>> jobs;
 	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
-	threadpool(f,jobs,0.015);
+	threadpool(f,jobs,0.07);
 
 	std::function<void(std::vector<int>)> f2 = [this](std::vector<int> a) {
 		for (int lake : a) {
@@ -311,7 +331,7 @@ void FlowFilter::assignLakeIds(std::vector<std::vector<int>> *lakes) {
 //			}
 		}
 	};
-	threadpool(f2,*lakes,0.02);
+	threadpool(f2,*lakes,0.151);
 }
 
 void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
@@ -435,7 +455,7 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 		}
 		mtx.unlock();
 	};
-	threadpool(f2,*lakes,0.82);
+	threadpool(f2,*lakes,0.44);
 
 	int totalpasses=0;
 	int rivermouth=0;
@@ -451,12 +471,14 @@ void FlowFilter::solvingConnections(std::vector<std::vector<int>> *lakes, std::u
 	std::set<pass,decltype(comp)> candidates(comp);
 	std::unordered_set<int> placed_lakes;
 
+	int totallakes = 0;
+	for (auto &a : *lakes) totallakes+= a.size();
+
 	int count = 0;
 	for (auto a : *lakes) for (int lake : a) {
-			count++;
 			int d = static_cast<int>(data[lake]);
 			if (!Nthbit(d,10)) continue; // Only river mouths for now
-			count--;
+			count++;
 			placed_lakes.insert(lake);
 			//Add best connection, not to existing lake
 			while (!passes[lake]->empty()) {
@@ -467,6 +489,7 @@ void FlowFilter::solvingConnections(std::vector<std::vector<int>> *lakes, std::u
 				candidates.insert(c);
 				break;
 			}
+			if (count%100==0) setProgress({false,0.44+0.22*((float)count/totallakes)});
 		}
 
 	//actually make connections
@@ -502,6 +525,8 @@ void FlowFilter::solvingConnections(std::vector<std::vector<int>> *lakes, std::u
 				candidates.insert(c);
 				break;
 			}
+			count++;
+			if (count%100==0) setProgress({false,0.44+0.22*((float)count/totallakes)});
 		}
 	}
 }
@@ -513,7 +538,7 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 	};
 	std::vector<std::pair<int,int>> jobs;
 	for (int i=0; i<height; i++) jobs.emplace_back(i*width,(i+1)*width);
-	threadpool(f,jobs,0.9);
+	threadpool(f,jobs,getProgress().second+0.01);
 
 
 	std::function<int(int)> rec = [&rec,this,&connections](int p) {
@@ -524,7 +549,7 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 		if (connections.count(p) > 0) {
 			sum+=rec(connections[p].from);
 		}
-		lakeID[p] = pow(sum,0.66);
+		lakeID[p] = pow(sum,0.80);
 		return sum;
 	};
 
@@ -552,12 +577,12 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 //			}
 		}
 	};
-	threadpool(f2,*lakes,0.97);
+	threadpool(f2,*lakes,0.98);
 
-	std::unique_ptr<float[]> height;
-	dispatchGPU([this,&height](Project* p){
-		height = p->get_terrain()->downloadDataRAW();
-	});
+//	std::unique_ptr<float[]> height;
+//	dispatchGPU([this,&height](Project* p){
+//		height = p->get_terrain()->downloadDataRAW();
+//	});
 
 
 	//Draw lakes?

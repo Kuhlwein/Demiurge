@@ -23,7 +23,7 @@ private:
 
 class FlowFilter : public AsyncSubFilter {
 public:
-	FlowFilter();
+	FlowFilter(float preblur);
 	~FlowFilter();
 	void run() override;
 private:
@@ -32,6 +32,7 @@ private:
 		int from; //Which lake is the flow from
 		int tolocation; //In self
 	};
+	float preblur;
 
 	std::vector<int> neighbours(int pos, int dat);
 	bool Nthbit(int num, int N);
