@@ -316,7 +316,8 @@ void FlowFilter::assignLakeIds(std::vector<std::vector<int>> *lakes) {
 
 void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 	std::unique_ptr<float[]> passheights;
-	dispatchGPU([this,&passheights](Project* p){
+	std::unique_ptr<float[]> height;
+	dispatchGPU([this,&passheights,&height](Project* p){
 		p->get_scratch1()->uploadData(GL_RED,GL_FLOAT,lakeID.get());
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
@@ -332,34 +333,34 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 	//(vec(1,1)-> right/down)
 
 	float a2;
-	float h = texture2D(img, st).r;
-	fc = h+1;
+	//float h = texture2D(img, st).r;
+	//fc = h+1;
 
 	a2 = texture2D(scratch1, offset(st, vec2(1,1),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 256;
 
 	a2 = texture2D(scratch1, offset(st, vec2(0,1),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 128;
 
 	a2 = texture2D(scratch1, offset(st, vec2(-1,1),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 64;
 
 	a2 = texture2D(scratch1, offset(st, vec2(1,0),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 32;
 
 	a2 = texture2D(scratch1, offset(st, vec2(-1,0),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 8;
 
 	a2 = texture2D(scratch1, offset(st, vec2(1,-1),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 4;
 
 	a2 = texture2D(scratch1, offset(st, vec2(0,-1),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 2;
 
 	a2 = texture2D(scratch1, offset(st, vec2(-1,-1),resolution)).r;
-	if (a2!=a && a2>0) fc = h;
+	if (a2!=a && a2>0) fc += 1;
 
-	if (fc!=h) fc = 0;
+	//if (fc!=h) fc = 0;
 )");
 		ShaderProgram* program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -373,15 +374,21 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 		delete shader;
 		delete program;
 		passheights = p->get_scratch2()->downloadDataRAW();
+		height = p->get_terrain()->downloadDataRAW();
+
+		//terrain is height
+		//scratch1 is lakeID
+		//scratch2 is connections //TODO
 
 		//p->get_scratch2()->swap(p->get_terrain());
 
 	});
 
-	std::function<void(std::vector<int>)> f2 = [this, &passheights](std::vector<int> a) {
+	std::function<void(std::vector<int>)> f2 = [this, &passheights, &height](std::vector<int> a) {
 		std::map<int,std::set<pass,decltype(comp)>*> passSets;
+		std::unordered_map<float,pass> newpasses; //map to location
 		for (int lake : a) {
-			std::map<float,pass> newpasses; //map to location
+			newpasses.clear();
 
 			std::stack<int> stack;
 			stack.push(lake);
@@ -392,10 +399,8 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 				if (passheights[s]>0) {
 					float minpass = MAXFLOAT;
 					int nlake = -1;
-					int d = data[s];
-					for (auto n : neighbours(s,((int)pow(2,15)-1))) { //Fishy must check not part of same lake!
-					// for (auto n : neighbours(s,((int)pow(2,15)-1) ^ d)) {
-						float bd = passheights[n];
+					for (auto n : neighbours(s,passheights[s])) {
+						float bd = height[n];
 						int lid = *((int*)lakeID.get()+n) - 1073741824;
 						if (lid!=lake && bd>0 && bd<minpass) {
 							minpass = bd;
@@ -404,7 +409,7 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 					}
 					int lid = *((int*)lakeID.get()+nlake) - 1073741824;
 					if (minpass<MAXFLOAT && !Nthbit(data[lid],10)) {
-						float nheight = std::max(minpass,passheights[s]);
+						float nheight = std::max(minpass,height[s]);
 
 						if(newpasses.count(lid)==0) {
 							newpasses[lid] = {nheight,lid,s};
