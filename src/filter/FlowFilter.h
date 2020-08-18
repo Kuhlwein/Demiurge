@@ -39,6 +39,7 @@ private:
 	int width;
 	int height;
 	std::vector<float> coords;
+	float circumference;
 	float level = 0.0;
 	std::unique_ptr<float[]> data;
 	std::unique_ptr<float[]> lakeID;

@@ -8,6 +8,7 @@
 #include <thread>
 #include "cpufilter.h"
 #include "FlowFilter.h"
+#include "ThermalErosion.h"
 
 
 cpufilterMenu::cpufilterMenu() : FilterModal("cpufilter") {
@@ -34,16 +35,17 @@ cpufilter::cpufilter(Project *p) {
 }
 
 void cpufilter::run() {
+	int N = 250;
 
 	std::unique_ptr<float[]> heightdata;
 	std::unique_ptr<float[]> updrift;
 
-	dispatchGPU([&heightdata,&updrift](Project* p){
+	dispatchGPU([&heightdata,&updrift,&N](Project* p){
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
 				.include(cornerCoords)
 				.create("",R"(
-	fc = max(texture2D(img,st).r,0)/10;
+	fc = max(texture2D(img,st).r,0)/)"+std::to_string(N)+R"(;
 )");
 		ShaderProgram* program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -63,7 +65,7 @@ void cpufilter::run() {
 				.create("",R"(
 	float val = texture2D(img,st).r;
 	if (val<=0) fc=val;
-	else fc = val/10;
+	else fc = val/)"+std::to_string(N)+R"(;
 )");
 		program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -78,8 +80,7 @@ void cpufilter::run() {
 		heightdata = p->get_scratch1()->downloadDataRAW();
 	});
 
-
-	for (int i=0; i<10; i++) {
+	for (int i=0; i<N; i++) {
 
 		auto flowfilter = new FlowFilter(0.5);
 		std::pair<bool, float> progress;
@@ -87,7 +88,7 @@ void cpufilter::run() {
 			dispatchGPU([&flowfilter, &progress](Project *p) {
 				progress = flowfilter->step(p);
 			});
-			setProgress({false,((float) i) /10+ progress.second/10});
+			setProgress({false,((float) i) /N+ progress.second/N});
 		} while (!progress.first);
 
 		dispatchGPU([&heightdata, &updrift](Project *p) {
@@ -99,7 +100,7 @@ void cpufilter::run() {
 					.include(p->canvas->projection_shader())
 					.include(get_slope)
 					.create("", R"(
-	fc = max(texture2D(scratch1,st).r - 0.001*max(texture2D(img,st).r,0)*tan(get_slope(1,st)),0);
+	fc = max(texture2D(scratch1,st).r - pow(texture2D(img,st).r,0.5)*tan(get_slope(1.5,st)),0);
 )");//TODO SLOPE SHOULD NOT BE RADIANS, BUT GRADIENT
 			ShaderProgram *program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -130,6 +131,18 @@ void cpufilter::run() {
 			p->apply(program, p->get_terrain());
 			heightdata = p->get_terrain()->downloadDataRAW();
 		});
+
+
+		auto thermal = new ThermalErosion();
+		do {
+			dispatchGPU([&thermal, &progress](Project *p) {
+				progress = thermal->step(p);
+			});
+		} while (!progress.first);
+
+
+
+
 		delete flowfilter;
 	}
 

@@ -103,6 +103,7 @@ void FlowFilter::findMagicNumbers() {
 
 	dispatchGPU([this,&hdata](Project* p){
 		coords = p->getCoords();
+		circumference = p->circumference;
 
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
@@ -541,15 +542,20 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 	threadpool(f,jobs,getProgress().second+0.01);
 
 
-	std::function<int(int)> rec = [&rec,this,&connections](int p) {
-		int sum = 1;
+	std::function<float(int)> rec = [&rec,this,&connections](int p) {
+		float y = (float)(p/width)/height;
+		float geoy = (y*(coords[1]-coords[0])+coords[0]);
+		float pixelwidthx = circumference*(coords[3]-coords[2])/(2*M_PI) / width;
+		float pixelwidthy = circumference*(coords[1]-coords[0])/(2*M_PI) / height;
+
+		float sum = pixelwidthy*pixelwidthx*cos(geoy) * 1e-5;
 		for (auto n : neighbours(p, data[p])) {
 			sum+=rec(n);
 		}
 		if (connections.count(p) > 0) {
 			sum+=rec(connections[p].from);
 		}
-		lakeID[p] = pow(sum,0.80);
+		lakeID[p] = sum;
 		return sum;
 	};
 
