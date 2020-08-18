@@ -108,6 +108,7 @@ void FlowFilter::findMagicNumbers() {
 		Shader* shader = Shader::builder()
 				.include(fragmentBase)
 				.include(cornerCoords)
+				.include(get_aspect)
 				.create("",R"(
 	vec2 resolution = textureSize(img,0);
 
@@ -120,6 +121,29 @@ void FlowFilter::findMagicNumbers() {
 	float s;
 	float s2 = 1;
 	//(vec(1,1)-> right/down)
+
+	float aspect = get_aspect(st);
+	vec2 dir = vec2(round(cos(aspect)),-round(sin(aspect)));
+	if(all(dir==vec2(1,1))) fc=9;
+	if(all(dir==vec2(0,1))) fc=8;
+	if(all(dir==vec2(-1,1))) fc=7;
+	if(all(dir==vec2(1,0))) fc=6;
+	if(all(dir==vec2(-1,0))) fc=4;
+	if(all(dir==vec2(1,-1))) fc=3;
+	if(all(dir==vec2(0,-1))) fc=2;
+	if(all(dir==vec2(-1,-1))) fc=1;
+
+	a2 = texture2D(img, offset(st, dir,resolution)).r;
+	s2 = texture2D(sel, offset(st, dir,resolution)).r;
+	if(a2<=0.0) {
+		fc = 5;
+	}
+	if(s2==0) fc=5;
+
+	if (a2<a) return;
+
+	fc = 5;
+
 
 	a2 = texture2D(img, offset(st, vec2(1,1),resolution)).r;
 	s2 = texture2D(sel, offset(st, vec2(1,1),resolution)).r;
@@ -200,6 +224,11 @@ void FlowFilter::findMagicNumbers() {
 
 
 		p->apply(program,p->get_scratch1());
+
+
+		//p->get_terrain()->swap(p->get_scratch1());
+		//return;
+
 		delete shader;
 		delete program;
 
@@ -657,6 +686,8 @@ std::cout << "Finding magic numbers\n";
 c1 = (float) (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000;
 
 	findMagicNumbers();
+	//setProgress({true,1});
+	//return;
 
 
 //Find points of interest

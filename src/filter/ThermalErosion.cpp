@@ -84,6 +84,7 @@ std::pair<bool, float> ThermalErosion::step(Project *p) {
 		shader = Shader::builder()
 				.include(fragmentBase)
 				.include(cornerCoords)
+				.include(get_slope)
 				.create("", R"(
 	vec2 resolution = textureSize(img,0);
 	float h = texture(img,st).r;
@@ -117,7 +118,12 @@ std::pair<bool, float> ThermalErosion::step(Project *p) {
 	if (h2>h) gain+=texture2D(scratch1,offset(st,vec2(1,-1),resolution)).r;
 	if (h2<h) count+=1;
 
-	fc = texture(img,st).r - texture(scratch1,st).r*count;// + gain;
+	float slope = get_slope(1,st);
+	if (slope>M_PI/6/10 && h>0) {
+		fc = texture(img,st).r;
+	} else {
+		fc = texture(img,st).r + gain;
+}
 )");
 		program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)

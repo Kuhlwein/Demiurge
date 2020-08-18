@@ -100,7 +100,7 @@ void cpufilter::run() {
 					.include(p->canvas->projection_shader())
 					.include(get_slope)
 					.create("", R"(
-	fc = max(texture2D(scratch1,st).r - pow(texture2D(img,st).r,0.5)*tan(get_slope(1.5,st)),0);
+	fc = max(texture2D(scratch1,st).r - 1/250*pow(texture2D(img,st).r,0.5)*tan(get_slope(1,st)),0);
 )");//TODO SLOPE SHOULD NOT BE RADIANS, BUT GRADIENT
 			ShaderProgram *program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -118,8 +118,15 @@ void cpufilter::run() {
 			shader = Shader::builder()
 					.include(fragmentBase)
 					.include(cornerCoords)
+					.include(get_slope)
 					.create("", R"(
-	fc = texture2D(scratch1,st).r + texture2D(scratch2,st).r;
+	float slope = get_slope(1,st);
+	if (slope>M_PI/6/100) {
+		fc = texture2D(scratch2,st).r;
+	} else {
+		fc = texture2D(scratch1,st).r + texture2D(scratch2,st).r;
+	}
+	//fc = texture2D(scratch1,st).r + texture2D(scratch2,st).r;
 )");
 			program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -133,12 +140,12 @@ void cpufilter::run() {
 		});
 
 
-		auto thermal = new ThermalErosion();
-		do {
-			dispatchGPU([&thermal, &progress](Project *p) {
-				progress = thermal->step(p);
-			});
-		} while (!progress.first);
+//		auto thermal = new ThermalErosion();
+//		do {
+//			dispatchGPU([&thermal, &progress](Project *p) {
+//				progress = thermal->step(p);
+//			});
+//		} while (!progress.first);
 
 
 
