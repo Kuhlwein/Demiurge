@@ -109,7 +109,27 @@ void FlowFilter::findMagicNumbers() {
 				.include(fragmentBase)
 				.include(cornerCoords)
 				.include(get_aspect)
-				.create("",R"(
+				.create(R"(
+	float hash(vec2 p)  // replace this by something better
+{
+    p  = 50.0*fract( p*0.3183099 + vec2(0.71,0.113));
+    return -1.0+2.0*fract( p.x*p.y*(p.x+p.y) );
+}
+
+float noise( in vec2 p )
+{
+    vec2 i = floor( p );
+    vec2 f = fract( p );
+
+	vec2 u = f*f*(3.0-2.0*f);
+
+    return mix( mix( hash( i + vec2(0.0,0.0) ),
+                     hash( i + vec2(1.0,0.0) ), u.x),
+                mix( hash( i + vec2(0.0,1.0) ),
+                     hash( i + vec2(1.0,1.0) ), u.x), u.y);
+}
+)",R"(
+
 	vec2 resolution = textureSize(img,0);
 
 	float a = texture2D(img, st).r;
@@ -123,7 +143,18 @@ void FlowFilter::findMagicNumbers() {
 	//(vec(1,1)-> right/down)
 
 	float aspect = get_aspect(st);
+	float lower_aspect = floor(aspect/(2*M_PI)*8)/8*2*M_PI;
+	float upper_aspect = ceil(aspect/(2*M_PI)*8)/8*2*M_PI;
+	float prob = abs(aspect-lower_aspect)/M_PI*4; // prob for upper_aspect
+
+	float q = noise(st*resolution*2)*0.5+0.5;
+	if (q<prob) aspect=upper_aspect; else aspect = lower_aspect;
+	//if (0.5<prob) aspect=upper_aspect; else aspect = lower_aspect;
+
+
 	vec2 dir = vec2(round(cos(aspect)),-round(sin(aspect)));
+
+
 	if(all(dir==vec2(1,1))) fc=9;
 	if(all(dir==vec2(0,1))) fc=8;
 	if(all(dir==vec2(-1,1))) fc=7;
@@ -132,6 +163,7 @@ void FlowFilter::findMagicNumbers() {
 	if(all(dir==vec2(1,-1))) fc=3;
 	if(all(dir==vec2(0,-1))) fc=2;
 	if(all(dir==vec2(-1,-1))) fc=1;
+
 
 	a2 = texture2D(img, offset(st, dir,resolution)).r;
 	s2 = texture2D(sel, offset(st, dir,resolution)).r;
