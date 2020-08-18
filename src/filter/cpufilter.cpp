@@ -35,7 +35,7 @@ cpufilter::cpufilter(Project *p) {
 }
 
 void cpufilter::run() {
-	int N = 250;
+	int N = 50;
 
 	std::unique_ptr<float[]> heightdata;
 	std::unique_ptr<float[]> updrift;
@@ -91,8 +91,13 @@ void cpufilter::run() {
 			setProgress({false,((float) i) /N+ progress.second/N});
 		} while (!progress.first);
 
+
+
 		dispatchGPU([&heightdata, &updrift](Project *p) {
-			p->get_scratch1()->uploadData(GL_RED, GL_FLOAT, updrift.get());
+			p->get_scratch2()->uploadData(GL_RED, GL_FLOAT, heightdata.get());
+			p->get_terrain()->swap(p->get_scratch2());
+			//Terrain is now heightdata
+			//scratch2 is now flow
 
 			Shader *shader = Shader::builder()
 					.include(fragmentBase)
@@ -100,7 +105,7 @@ void cpufilter::run() {
 					.include(p->canvas->projection_shader())
 					.include(get_slope)
 					.create("", R"(
-	fc = max(texture2D(scratch1,st).r - 1/250*pow(texture2D(img,st).r,0.5)*tan(get_slope(1,st)),0);
+	fc = max(texture2D(img,st).r - 10*pow(texture2D(scratch2,st).r,0.5)*tan(get_slope(1,st)),0);
 )");//TODO SLOPE SHOULD NOT BE RADIANS, BUT GRADIENT
 			ShaderProgram *program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -109,24 +114,39 @@ void cpufilter::run() {
 
 			program->bind();
 			p->setCanvasUniforms(program);
-			p->apply(program, p->get_scratch2());
+			p->apply(program, p->get_scratch1());
+			//terrain is heightdata - flow
+			//scratch1 is updrift
 
 			delete shader;
 			delete program;
 
-			p->get_scratch1()->uploadData(GL_RED, GL_FLOAT, heightdata.get());
+
+			p->get_terrain()->uploadData(GL_RED, GL_FLOAT, updrift.get());
+			p->get_terrain()->swap(p->get_scratch1());
 			shader = Shader::builder()
 					.include(fragmentBase)
+					.include(def_pi)
 					.include(cornerCoords)
 					.include(get_slope)
 					.create("", R"(
-	float slope = get_slope(1,st);
-	if (slope>M_PI/6/100) {
-		fc = texture2D(scratch2,st).r;
-	} else {
-		fc = texture2D(scratch1,st).r + texture2D(scratch2,st).r;
-	}
-	//fc = texture2D(scratch1,st).r + texture2D(scratch2,st).r;
+	float h = texture2D(img,st).r;
+	float h2;
+
+vec2 resolution = textureSize(img,0);
+
+	h2 = texture2D(img, offset(st, vec2(1,1),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(0,1),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(-1,1),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(1,0),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(-1,0),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(1,-1),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(0,-1),resolution)).r; if (h2<h) h = h2;
+	h2 = texture2D(img, offset(st, vec2(-1,-1),resolution)).r; if (h2<h) h = h2;
+	float width = (circumference*(cornerCoords[1]-cornerCoords[0])/(2*M_PI) / textureSize(img,0).y);
+	float slopef = max( ( 0.2 - (texture2D(img,st).r - h)/width )*width ,0);
+
+	fc = texture2D(img,st).r + min(slopef,texture2D(scratch1,st).r);
 )");
 			program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -138,17 +158,6 @@ void cpufilter::run() {
 			p->apply(program, p->get_terrain());
 			heightdata = p->get_terrain()->downloadDataRAW();
 		});
-
-
-//		auto thermal = new ThermalErosion();
-//		do {
-//			dispatchGPU([&thermal, &progress](Project *p) {
-//				progress = thermal->step(p);
-//			});
-//		} while (!progress.first);
-
-
-
 
 		delete flowfilter;
 	}
