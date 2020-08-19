@@ -82,7 +82,7 @@ void cpufilter::run() {
 
 	for (int i=0; i<N; i++) {
 
-		auto flowfilter = new FlowFilter(0.5);
+		auto flowfilter = new FlowFilter(0.5,1);
 		std::pair<bool, float> progress;
 		do {
 			dispatchGPU([&flowfilter, &progress](Project *p) {
@@ -105,7 +105,7 @@ void cpufilter::run() {
 					.include(p->canvas->projection_shader())
 					.include(get_slope)
 					.create("", R"(
-	fc = max(texture2D(img,st).r - 10*pow(texture2D(scratch2,st).r,0.5)*tan(get_slope(1,st)),0);
+	fc = max(texture2D(img,st).r - 4*pow(texture2D(scratch2,st).r,0.5)*tan(get_slope(1,st)),0);
 )");//TODO SLOPE SHOULD NOT BE RADIANS, BUT GRADIENT
 			ShaderProgram *program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -133,20 +133,77 @@ void cpufilter::run() {
 	float h = texture2D(img,st).r;
 	float h2;
 
+vec2 psize = pixelsize(st);
+	float maxslope=0;
+	float dist = length(psize);
+	float ndist;
+
 vec2 resolution = textureSize(img,0);
 
-	h2 = texture2D(img, offset(st, vec2(1,1),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(0,1),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(-1,1),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(1,0),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(-1,0),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(1,-1),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(0,-1),resolution)).r; if (h2<h) h = h2;
-	h2 = texture2D(img, offset(st, vec2(-1,-1),resolution)).r; if (h2<h) h = h2;
-	float width = (circumference*(cornerCoords[1]-cornerCoords[0])/(2*M_PI) / textureSize(img,0).y);
-	float slopef = max( ( 0.2 - (texture2D(img,st).r - h)/width )*width ,0);
 
-	fc = texture2D(img,st).r + min(slopef,texture2D(scratch1,st).r);
+	h2 = texture2D(img, offset(st, vec2(1,1),resolution)).r;
+	ndist = length(psize*vec2(1,1));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(0,1),resolution)).r;
+	ndist = length(psize*vec2(0,1));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(-1,1),resolution)).r;
+	ndist = length(psize*vec2(-1,1));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(1,0),resolution)).r;
+	ndist = length(psize*vec2(1,0));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(-1,0),resolution)).r;
+	ndist = length(psize*vec2(-1,0));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(1,-1),resolution)).r;
+	ndist = length(psize*vec2(1,-1));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(0,-1),resolution)).r;
+	ndist = length(psize*vec2(0,-1));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+	h2 = texture2D(img, offset(st, vec2(-1,-1),resolution)).r;
+	ndist = length(psize*vec2(-1,-1));
+	h2 = (h-h2)/ndist;
+	if (h2>maxslope) {
+		maxslope = h2;
+		dist = ndist;
+	}
+
+	float SLOPE = 0.05;
+	float hdiff = SLOPE*dist-maxslope*dist;
+	//float width = (circumference*(cornerCoords[1]-cornerCoords[0])/(2*M_PI) / textureSize(img,0).y);
+	//float slopef = max( ( 0.05 - (texture2D(img,st).r - h)/width )*width ,0);
+
+	fc = texture2D(img,st).r + min(hdiff,texture2D(scratch1,st).r);
 )");
 			program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)

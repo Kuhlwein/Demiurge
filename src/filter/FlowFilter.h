@@ -18,12 +18,13 @@ public:
 	void update_self(Project* p) override;
 	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
-
+	float exponent=1;
+	float preblur=0.5;
 };
 
 class FlowFilter : public AsyncSubFilter {
 public:
-	FlowFilter(float preblur);
+	FlowFilter(float preblur,float exponent, bool lakeflag=false);
 	~FlowFilter();
 	void run() override;
 private:
@@ -33,6 +34,8 @@ private:
 		int tolocation; //In self
 	};
 	float preblur;
+	float exponent;
+	bool lakeflag;
 
 	std::vector<int> neighbours(int pos, int dat);
 	bool Nthbit(int num, int N);

@@ -17,18 +17,19 @@ FlowfilterMenu::FlowfilterMenu() : FilterModal("Flowfilter") {
 void FlowfilterMenu::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
-	const char* items[] = { "Erode","Dilate"};
-	static int current = 0;
-	ImGui::Combo("Operation",&current, items,IM_ARRAYSIZE(items));
+	ImGui::DragFloat("Pre-blur", &preblur, 0.01f, 0.0f, 100.0f, "%.2f", 1.0f);
+	ImGui::DragFloat("Exponent", &exponent, 0.01f, 0.0f, 100.0f, "%.2f", 1.0f);
 }
 
 std::shared_ptr<BackupFilter> FlowfilterMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<FlowFilter>(0.5);
+	auto morph = std::make_unique<FlowFilter>(preblur,exponent,true);
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(morph));
 }
 
-FlowFilter::FlowFilter(float preblur) {
+FlowFilter::FlowFilter(float preblur, float exponent, bool lakeflag) {
 	this->preblur = preblur;
+	this->exponent = exponent;
+	this->lakeflag = lakeflag;
 }
 
 FlowFilter::~FlowFilter() {
@@ -616,7 +617,7 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 		if (connections.count(p) > 0) {
 			sum+=rec(connections[p].from);
 		}
-		lakeID[p] = sum;
+		lakeID[p] = pow(sum,exponent);
 		return sum;
 	};
 
@@ -646,47 +647,52 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 	};
 	threadpool(f2,*lakes,0.98);
 
-//	std::unique_ptr<float[]> height;
-//	dispatchGPU([this,&height](Project* p){
-//		height = p->get_terrain()->downloadDataRAW();
-//	});
+
+	if (lakeflag) {
+		std::unique_ptr<float[]> height;
+		dispatchGPU([this, &height](Project *p) {
+			height = p->get_terrain()->downloadDataRAW();
+		});
 
 
-	//Draw lakes?
-//	std::function<void(int,float,float)> lakefill = [this,&connections,&lakefill,&height](int lake, float waterheight, float waterlevel) {
-//		std::stack<int> stack;
-//		std::vector<pass> new_connections;
-//		stack.push(lake);
-//		while (!stack.empty()) {
-//			auto p = stack.top();
-//			stack.pop();
-//			if (height[p] <= waterheight) lakeID[p] = std::max(lakeID[p], waterlevel);
-//
-//			for (auto n : neighbours(p,data[p])) {
-//				stack.push(n);
-//			}
-//			if (connections.count(p) > 0) {
-//				new_connections.emplace_back(connections[p]);
-//			}
-//		}
-//		for (auto c : new_connections) {
-//			if (waterheight>c.h) {
-//				lakefill(c.from,waterheight,waterlevel);
-//			} else {
-//				lakefill(c.from,c.h,lakeID[c.from]);
-//			}
-//
-//		}
-//	};
-//
-//	f2 = [this,&connections,&rec,&lakefill](std::vector<int> a) {
-//		for (int lake : a) {
-//			if (!Nthbit(data[lake],10)) continue;
-//			lakefill(lake,0.0f,lakeID[lake]);
-//		}
-//	};
-//	threadpool(f2,*lakes,0.98);
+		//Draw lakes?
 
+		std::function<void(int, float, float)> lakefill = [this, &connections, &lakefill, &height](int lake,
+																								   float waterheight,
+																								   float waterlevel) {
+			std::stack<int> stack;
+			std::vector<pass> new_connections;
+			stack.push(lake);
+			while (!stack.empty()) {
+				auto p = stack.top();
+				stack.pop();
+				if (height[p] <= waterheight) lakeID[p] = std::max(lakeID[p], waterlevel);
+
+				for (auto n : neighbours(p, data[p])) {
+					stack.push(n);
+				}
+				if (connections.count(p) > 0) {
+					new_connections.emplace_back(connections[p]);
+				}
+			}
+			for (auto c : new_connections) {
+				if (waterheight > c.h) {
+					lakefill(c.from, waterheight, waterlevel);
+				} else {
+					lakefill(c.from, c.h, lakeID[c.from]);
+				}
+
+			}
+		};
+
+		f2 = [this, &connections, &rec, &lakefill](std::vector<int> a) {
+			for (int lake : a) {
+				if (!Nthbit(data[lake], 10)) continue;
+				lakefill(lake, 0.0f, lakeID[lake]);
+			}
+		};
+		threadpool(f2, *lakes, 0.98);
+	}
 
 
 

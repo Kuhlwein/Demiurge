@@ -34,6 +34,7 @@ static Shader* cornerCoords = Shader::builder()
 		.include(def_pi)
 		.create(R"(
 uniform float cornerCoords[4];
+uniform float circumference;
 
 vec2 tex_to_spheric(vec2 p) {
 	p.x = (p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2]);
@@ -53,6 +54,11 @@ vec4 spheric_to_cartesian(vec2 p) {
 
 vec2 cartesian_to_spheric(vec4 p) {
 	return vec2(atan(p.y,p.x),asin(p.z));
+}
+
+vec2 pixelsize(vec2 st) {
+	vec2 geo = tex_to_spheric(st);
+	return vec2((cornerCoords[3]-cornerCoords[2])*cos(geo.y),cornerCoords[1]-cornerCoords[0])*circumference/(2*M_PI) / textureSize(img,0);
 }
 
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
@@ -236,7 +242,6 @@ void draw_selection_outline(inout vec4 fc, in vec2 st) {
 static Shader* texturespace_gradient = Shader::builder()
 		.include(cornerCoords)
 		.create(R"(
-uniform float circumference;
 vec2 get_texture_gradient(in vec2 st) {
 	vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
 
@@ -249,14 +254,9 @@ vec2 get_texture_gradient(in vec2 st) {
 	float h = texture(img, (st)-texture_stepsize*vec2(0,-1)).r;
 	float i = texture(img, (st)-texture_stepsize*vec2(-1,-1)).r;
 
-
-	vec2 geo = tex_to_spheric((st));
-
-	float pixelwidthx = circumference*(cornerCoords[3]-cornerCoords[2])/(2*M_PI) / textureSize(img,0).x;
-	float pixelwidthy = circumference*(cornerCoords[1]-cornerCoords[0])/(2*M_PI) / textureSize(img,0).y;
-
-	float delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidthx*cos(geo.y));
-	float delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidthy);
+	vec2 pixelwidth = pixelsize(st);
+	float delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidth.x);
+	float delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidth.y);
 	return vec2(delta_x,delta_y);
 }
 )","");
