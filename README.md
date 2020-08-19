@@ -1,6 +1,6 @@
 # Demiurge
 
-A heightfield editor based on spherical geometry.
+A heightfield editor based on spherical geometry, written in C++ and glsl.
 Includes typical raster editing tools such as brushes, selections and filters like blur and different fractal noise generators.
 Also includes more advanced simulation based tools to perform erosion and generate realistic terrain.
 The terrain can be shown using various map projections, allowing for drawing directly onto the projection and adjusting for any distortion.
