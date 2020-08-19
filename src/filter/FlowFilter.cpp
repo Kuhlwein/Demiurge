@@ -22,7 +22,7 @@ void FlowfilterMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> FlowfilterMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<FlowFilter>(preblur,exponent,true);
+	auto morph = std::make_unique<FlowFilter>(preblur,exponent);
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(morph));
 }
 
@@ -666,7 +666,7 @@ void FlowFilter::calculateflow(std::vector<std::vector<int>> *lakes, std::unorde
 			while (!stack.empty()) {
 				auto p = stack.top();
 				stack.pop();
-				if (height[p] <= waterheight) lakeID[p] = std::max(lakeID[p], waterlevel);
+				if (height[p] <= waterheight) lakeID[p] = 0;//TODO std::max(lakeID[p], waterlevel);
 
 				for (auto n : neighbours(p, data[p])) {
 					stack.push(n);

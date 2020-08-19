@@ -16,12 +16,15 @@ public:
 	void update_self(Project* p) override;
 	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
-
+	float exponent = 0.5;
+	float factor = 1;
+	float sexponent = 1;
+	int dolakes;
 };
 
 class cpufilter : public AsyncSubFilter {
 public:
-	cpufilter(Project *p);
+	cpufilter(Project *p, float exponent, float slope_exponent, float factor, int dolakes);
 	~cpufilter();
 	void run() override;
 private:
@@ -30,6 +33,11 @@ private:
 	int width;
 	int height;
 	float level = 0.0;
+
+	float exponent = 0.5;
+	float factor = 1;
+	float sexponent = 1;
+	int dolakes;
 };
 
 

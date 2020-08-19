@@ -18,20 +18,24 @@ cpufilterMenu::cpufilterMenu() : FilterModal("cpufilter") {
 void cpufilterMenu::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
-	const char* items[] = { "Erode","Dilate"};
-	static int current = 0;
-	ImGui::Combo("Operation",&current, items,IM_ARRAYSIZE(items));
+	ImGui::DragFloat("Exponent", &exponent, 0.01f, 0.0f, 100.0f, "%.2f", 1.0f);
+	ImGui::DragFloat("slope exponent", &sexponent, 0.01f, 0.0f, 100.0f, "%.2f", 1.0f);
+	ImGui::DragFloat("factor", &factor, 0.01f, 0.0f, 100.0f, "%.2f", 1.0f);
+	ImGui::DragInt("toggle",&dolakes);
 }
 
 std::shared_ptr<BackupFilter> cpufilterMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<cpufilter>(p);
+	auto morph = std::make_unique<cpufilter>(p,exponent, sexponent, factor,dolakes);
 	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(morph));
 }
 
 
 
-cpufilter::cpufilter(Project *p) {
-
+cpufilter::cpufilter(Project *p, float exponent, float slope_exponent, float factor, int dolakes) {
+	this->exponent = exponent;
+	this->sexponent = slope_exponent;
+	this->factor = factor;
+	this->dolakes = dolakes;
 }
 
 void cpufilter::run() {
@@ -80,9 +84,15 @@ void cpufilter::run() {
 		heightdata = p->get_scratch1()->downloadDataRAW();
 	});
 
+	Texture* updrifttex;
+	dispatchGPU([&updrifttex, &updrift](Project *p) {
+		updrifttex = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"updrift",GL_NEAREST);
+		updrifttex->uploadData(GL_RED, GL_FLOAT, updrift.get());
+	});
+
 	for (int i=0; i<N; i++) {
 
-		auto flowfilter = new FlowFilter(0.5,1);
+		auto flowfilter = new FlowFilter(0.5,exponent,dolakes>0);
 		std::pair<bool, float> progress;
 		do {
 			dispatchGPU([&flowfilter, &progress](Project *p) {
@@ -93,7 +103,7 @@ void cpufilter::run() {
 
 
 
-		dispatchGPU([&heightdata, &updrift](Project *p) {
+		dispatchGPU([this,&heightdata, &updrift, &updrifttex](Project *p) {
 			p->get_scratch2()->uploadData(GL_RED, GL_FLOAT, heightdata.get());
 			p->get_terrain()->swap(p->get_scratch2());
 			//Terrain is now heightdata
@@ -104,17 +114,17 @@ void cpufilter::run() {
 					.include(cornerCoords)
 					.include(p->canvas->projection_shader())
 					.include(get_slope)
-					.create("", R"(
-	fc = max(texture2D(img,st).r - 4*pow(texture2D(scratch2,st).r,0.5)*tan(get_slope(1,st)),0);
+					.create("uniform float factor; uniform float slope_exponent;", R"(
+	fc = max(texture2D(img,st).r - factor*4*pow(texture2D(scratch2,st).r,0.5)* pow(tan(get_slope(1,st)),slope_exponent) ,0);
 )");//TODO SLOPE SHOULD NOT BE RADIANS, BUT GRADIENT
 			ShaderProgram *program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 					.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 					.link();
 
-			program->bind();
-			p->setCanvasUniforms(program);
-			p->apply(program, p->get_scratch1());
+			//program->bind();
+			//p->setCanvasUniforms(program);
+			//p->apply(program, p->get_scratch1());
 			//terrain is heightdata - flow
 			//scratch1 is updrift
 
@@ -122,23 +132,26 @@ void cpufilter::run() {
 			delete program;
 
 
-			p->get_terrain()->uploadData(GL_RED, GL_FLOAT, updrift.get());
-			p->get_terrain()->swap(p->get_scratch1());
+			//p->get_terrain()->swap(p->get_scratch1());
 			shader = Shader::builder()
 					.include(fragmentBase)
 					.include(def_pi)
 					.include(cornerCoords)
 					.include(get_slope)
-					.create("", R"(
+					.create(R"(
+	uniform sampler2D updrift;
+	uniform float factor;
+	uniform float slope_exponent;
+)", R"(
 	float h = texture2D(img,st).r;
 	float h2;
 
-vec2 psize = pixelsize(st);
+	vec2 psize = pixelsize(st);
 	float maxslope=0;
 	float dist = length(psize);
 	float ndist;
 
-vec2 resolution = textureSize(img,0);
+	vec2 resolution = textureSize(img,0);
 
 
 	h2 = texture2D(img, offset(st, vec2(1,1),resolution)).r;
@@ -200,25 +213,33 @@ vec2 resolution = textureSize(img,0);
 
 	float SLOPE = 0.05;
 	float hdiff = SLOPE*dist-maxslope*dist;
-	//float width = (circumference*(cornerCoords[1]-cornerCoords[0])/(2*M_PI) / textureSize(img,0).y);
-	//float slopef = max( ( 0.05 - (texture2D(img,st).r - h)/width )*width ,0);
 
-	fc = texture2D(img,st).r + min(hdiff,texture2D(scratch1,st).r);
+
+	float flow = factor*4*pow(texture2D(scratch2,st).r,0.5)* pow(tan(get_slope(1,st)),slope_exponent);
+	float up = texture2D(updrift,st).r;
+	float terrain = texture2D(img,st).r;
+	fc = terrain + min(hdiff, max(0,up-flow) );
 )");
 			program = ShaderProgram::builder()
 					.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 					.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 					.link();
-
+			p->add_texture(updrifttex);
 			program->bind();
+
+			int id = glGetUniformLocation(program->getId(),"slope_exponent");
+			glUniform1f(id, sexponent);
+			id = glGetUniformLocation(program->getId(),"factor");
+			glUniform1f(id, factor);
+
 			p->setCanvasUniforms(program);
 			p->apply(program, p->get_terrain());
 			heightdata = p->get_terrain()->downloadDataRAW();
+			p->remove_texture(updrifttex);
 		});
 
 		delete flowfilter;
 	}
-
 
 	setProgress({true,1.0f});
 }
