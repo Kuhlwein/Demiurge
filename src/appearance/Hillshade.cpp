@@ -17,17 +17,51 @@ Hillshade::Hillshade() : Appearance("Hillshade") {
 			.include(def_pi)
 			.include(get_slope)
 			.include(get_aspect)
-			.create(replaceSID(R"(
+//			.create(replaceSID(R"(
+//uniform float z_factor_SID;
+//uniform float zenith_SID;
+//uniform float azimuth_SID;
+//uniform sampler2D gradient_hillshade_SID;
+//)"),replaceSID(R"(
+//{
+//float slope =  get_slope(z_factor_SID,projection(st));
+//float aspect = get_aspect(projection(st));
+//
+//float hillshade = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-azimuth_SID + M_PI/2 - aspect)));
+//
+//
+//vec4 k = texture(gradient_hillshade_SID,vec2(hillshade,0));
+//fc = fc*(1-k.a) + k*(k.a);
+//}
+//)"));
+	.create(replaceSID(R"(
 uniform float z_factor_SID;
 uniform float zenith_SID;
 uniform float azimuth_SID;
 uniform sampler2D gradient_hillshade_SID;
+uniform bool multidirectional_SID=false;
 )"),replaceSID(R"(
 {
 float slope =  get_slope(z_factor_SID,projection(st));
 float aspect = get_aspect(projection(st));
+float hillshade;
 
-float hillshade = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-azimuth_SID + M_PI/2 - aspect)));
+if (multidirectional_SID) {
+	float hillshade1 = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-(azimuth_SID-67.5*M_PI/180.0) + M_PI/2 - aspect)));
+	float hillshade2 = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-(azimuth_SID-22.5*M_PI/180.0) + M_PI/2 - aspect)));
+	float hillshade3 = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-(azimuth_SID+22.5*M_PI/180.0) + M_PI/2 - aspect)));
+	float hillshade4 = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-(azimuth_SID+67.5*M_PI/180.0) + M_PI/2 - aspect)));
+
+	float w1 = sin(azimuth_SID-67.5*M_PI/180.0); w1=w1*w1;
+	float w2 = sin(azimuth_SID-22.5*M_PI/180.0); w2=w2*w2;
+	float w3 = sin(azimuth_SID+22.5*M_PI/180.0); w3=w3*w3;
+	float w4 = sin(azimuth_SID+67.5*M_PI/180.0); w4=w4*w4;
+	hillshade = (hillshade1*w1 + hillshade2*w2 + hillshade3*w3 + hillshade4*w4)*0.5;
+} else {
+	hillshade = ((cos(zenith_SID) * cos(slope)) + (sin(zenith_SID) * sin(slope) * cos(-azimuth_SID + M_PI/2 - aspect)));
+}
+
+
 
 
 vec4 k = texture(gradient_hillshade_SID,vec2(hillshade,0));
@@ -42,6 +76,7 @@ bool Hillshade::update_self(Project *p) {
 	ImGui::DragFloat("Z-factor",&zfactor);
 	ImGui::DragFloat("Altitude",&altitude,1.0,0,90);
 	ImGui::DragFloat("Azimuth",&azimuth,1.0,0,360);
+	ImGui::Checkbox("Multidirectional",&multidirectional);
 	ImGui::Spacing();
 	ImGui::Separator();
 	ImGui::Spacing();
@@ -92,4 +127,6 @@ void Hillshade::prepare(Project *p) {
 	glUniform1f(id,azimuth/180*M_PI);
 	id = glGetUniformLocation(p->program->getId(),replaceSID("zenith_SID").c_str());
 	glUniform1f(id,(90-altitude)/180*M_PI);
+	id = glGetUniformLocation(p->program->getId(),replaceSID("multidirectional_SID").c_str());
+	glUniform1f(id,multidirectional ? 1.0 : 0.0);
 }

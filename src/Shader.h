@@ -243,16 +243,16 @@ static Shader* texturespace_gradient = Shader::builder()
 		.include(cornerCoords)
 		.create(R"(
 vec2 get_texture_gradient(in vec2 st) {
-	vec2 texture_stepsize = vec2(1,1)/textureSize(img,0);
+	vec2 resolution = textureSize(img,0);
 
-	float a = texture(img, (st)-texture_stepsize*vec2(1,1)).r;
-	float b = texture(img, (st)-texture_stepsize*vec2(0,1)).r;
-	float c = texture(img, (st)-texture_stepsize*vec2(-1,0)).r;
-	float d = texture(img, (st)-texture_stepsize*vec2(1,0)).r;
-	float f = texture(img, (st)-texture_stepsize*vec2(-1,0)).r;
-	float g = texture(img, (st)-texture_stepsize*vec2(1,-1)).r;
-	float h = texture(img, (st)-texture_stepsize*vec2(0,-1)).r;
-	float i = texture(img, (st)-texture_stepsize*vec2(-1,-1)).r;
+	float a = texture(img, offset(st,-vec2(1,1),resolution)).r;
+	float b = texture(img, offset(st,-vec2(0,1),resolution)).r;
+	float c = texture(img, offset(st,-vec2(-1,0),resolution)).r;
+	float d = texture(img, offset(st,-vec2(1,0),resolution)).r;
+	float f = texture(img, offset(st,-vec2(-1,0),resolution)).r;
+	float g = texture(img, offset(st,-vec2(1,-1),resolution)).r;
+	float h = texture(img, offset(st,-vec2(0,-1),resolution)).r;
+	float i = texture(img, offset(st,-vec2(-1,-1),resolution)).r;
 
 	vec2 pixelwidth = pixelsize(st);
 	float delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidth.x);

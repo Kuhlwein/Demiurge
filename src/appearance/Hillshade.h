@@ -25,6 +25,7 @@ private:
 
 	Texture* hillshade_texture;
 	GradientMenu* gradient;
+	bool multidirectional=false;
 };
 
 

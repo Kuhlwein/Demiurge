@@ -36,7 +36,7 @@ private:
 
 	float exponent = 0.5;
 	float factor = 1;
-	float sexponent = 1;
+	float slope_exponent = 1;
 	int dolakes;
 };
 
