@@ -2,20 +2,20 @@
 // Created by kuhlwein on 7/25/20.
 //
 
-#ifndef DEMIURGE_INVERSESELECT_H
-#define DEMIURGE_INVERSESELECT_H
+#ifndef DEMIURGE_INVERSESELECTION_H
+#define DEMIURGE_INVERSESELECTION_H
 
 #include <Menu.h>
 #include <filter/Filter.h>
 #include <filter/FilterModal.h>
 
-class InverseSelect : public FilterMenu {
+class InverseSelection : public FilterMenu {
 public:
-	InverseSelect();
+	InverseSelection();
 	void filter(Project* p) override;
 	std::function<Texture *(Project *p)> targetGetter() override;
 };
 
 
 
-#endif //DEMIURGE_INVERSESELECT_H
+#endif //DEMIURGE_INVERSESELECTION_H

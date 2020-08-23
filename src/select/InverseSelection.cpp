@@ -3,14 +3,14 @@
 //
 
 #include "Project.h"
-#include "InverseSelect.h"
+#include "InverseSelection.h"
 #include "Shader.h"
 
-std::function<Texture *(Project *p)> InverseSelect::targetGetter() {
+std::function<Texture *(Project *p)> InverseSelection::targetGetter() {
 	return [](Project* p){return p->get_selection();};
 }
 
-void InverseSelect::filter(Project *p) {
+void InverseSelection::filter(Project *p) {
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.create(R"(
@@ -30,6 +30,6 @@ fc = 1-texture(sel,st).r;
 	p->get_scratch1()->swap(p->get_selection());
 }
 
-InverseSelect::InverseSelect() : FilterMenu("Inverse") {
+InverseSelection::InverseSelection() : FilterMenu("Inverse") {
 
 }

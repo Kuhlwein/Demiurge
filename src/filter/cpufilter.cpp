@@ -90,7 +90,7 @@ void cpufilter::run() {
 		updrifttex->uploadData(GL_RED, GL_FLOAT, updrift.get());
 	});
 
-	for (int i=0; i<N; i++) {
+	for (int i=0; i<N*3; i++) {
 
 		auto flowfilter = new FlowFilter(0.5,exponent,dolakes>0);
 		std::pair<bool, float> progress;
@@ -188,11 +188,11 @@ void cpufilter::run() {
 		dist = ndist;
 	}
 
-	float SLOPE = 0.05;
+	float SLOPE = tan(M_PI/2/3); //30 degrees
 	float hdiff = SLOPE*dist-maxslope*dist;
 
 	vec2 gradient = get_texture_gradient(st);
-	float flow = factor*4* texture2D(scratch2,st).r * pow(maxslope,slope_exponent);
+	float flow = factor*4* texture2D(scratch2,st).r * pow(maxslope,slope_exponent) / pow(0.1,slope_exponent)*0.1;
 	float up = texture2D(updrift,st).r;
 	float terrain = texture2D(img,st).r;
 	fc = terrain + min(hdiff, max(0,up-flow) );

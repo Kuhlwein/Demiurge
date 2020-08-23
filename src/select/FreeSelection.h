@@ -2,8 +2,8 @@
 // Created by kuhlwein on 7/18/20.
 //
 
-#ifndef DEMIURGE_FREESELECT_H
-#define DEMIURGE_FREESELECT_H
+#ifndef DEMIURGE_FREESELECTION_H
+#define DEMIURGE_FREESELECTION_H
 
 
 
@@ -11,9 +11,9 @@
 #include <Menu.h>
 #include <filter/Filter.h>
 
-class FreeSelect : public Modal {
+class FreeSelection : public Modal {
 public:
-	FreeSelect();
+	FreeSelection();
 	bool update_self(Project* p);
 private:
 	std::shared_ptr<Filter> filter;
@@ -34,4 +34,4 @@ private:
 };
 
 
-#endif //DEMIURGE_FREESELECT_H
+#endif //DEMIURGE_FREESELECTION_H

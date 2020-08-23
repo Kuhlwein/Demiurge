@@ -3,15 +3,16 @@
 //
 
 #include "Project.h"
-#include <iostream>
 #include <imgui/imgui.h>
 #include <algorithm>
-#include <filter/Morphological.h>
-#include <filter/BlurMenu.h>
 #include "selection.h"
 #include "AllSelect.h"
-#include "InverseSelect.h"
-#include "FreeSelect.h"
+#include "InverseSelection.h"
+#include "FreeSelection.h"
+#include "BlurSelection.h"
+#include "BorderSelection.h"
+#include "GrowShringSelection.h"
+#include "HeightSelection.h"
 
 
 /*
@@ -33,17 +34,17 @@ std::vector<Menu*> selection::get_selection_menu() {
 	std::vector<Menu*> selection_menu = {};
 
 	selection_menu.push_back(new AllSelect());
-	selection_menu.push_back(new InverseSelect());
-	selection_menu.push_back(new FreeSelect());
+	selection_menu.push_back(new InverseSelection());
+	selection_menu.push_back(new FreeSelection());
 	selection_menu.push_back(new GrowShrinkMenu());
 	selection_menu.push_back(new BorderMenu());
 	selection_menu.push_back(new BlurSelection());
-	//	auto fromterrain = new SubMenu("From...");
-		//height
+		auto fromterrain = new SubMenu("From...");
+		fromterrain->addMenu(new HeightSelection());
 		//direction
 		//slope
 		//layer
-	//	selection_menu.push_back(fromterrain);
+		selection_menu.push_back(fromterrain);
 	return selection_menu;
 }
 
@@ -98,51 +99,6 @@ float selection_mode(float old, float new) {
 	}
 }
 
-
-GrowShrinkMenu::GrowShrinkMenu() : FilterModal("Grow/Shrink") {
-
-}
-
-void GrowShrinkMenu::update_self(Project *p) {
-	ImGuiIO io = ImGui::GetIO();
-	const char* items[] = { "Shrink","Grow"};
-	ImGui::Combo("Operation",&current, items,IM_ARRAYSIZE(items));
-	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
-}
-
-std::shared_ptr<BackupFilter> GrowShrinkMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<Morphological>(p, radius, p->get_selection(),(current==0) ? "min" : "max");
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},std::move(morph));
-}
-
-void BorderMenu::update_self(Project *p) {
-	ImGuiIO io = ImGui::GetIO();
-	ImGui::DragFloat("Width", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
-}
-
-std::shared_ptr<BackupFilter> BorderMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<MorphologicalGradient>(p, radius, p->get_selection());
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_selection();},std::move(morph));
-}
-
-BorderMenu::BorderMenu() : FilterModal("Border") {
-
-}
-
-
-BlurSelection::BlurSelection() : FilterModal("Blur##Selection") {
-
-}
-
-void BlurSelection::update_self(Project *p) {
-	ImGuiIO io = ImGui::GetIO();
-
-	ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
-}
-
-std::shared_ptr<BackupFilter> BlurSelection::makeFilter(Project* p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_selection();},std::move(std::make_unique<Blur>(p, radius, p->get_selection())));
-}
 
 
 //

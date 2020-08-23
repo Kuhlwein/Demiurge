@@ -6,17 +6,17 @@
 #include <Shader.h>
 #include <iostream>
 #include <glm/glm/ext.hpp>
-#include "FreeSelect.h"
+#include "FreeSelection.h"
 #include "selection.h"
 
 
-FreeSelect::FreeSelect() : Modal("Free select", [this](Project* p) {
+FreeSelection::FreeSelection() : Modal("Free select", [this](Project* p) {
 	return this->update_self(p);
 }) {
 	filter = std::make_shared<NoneFilter>();
 }
 
-bool FreeSelect::update_self(Project *p) {
+bool FreeSelection::update_self(Project *p) {
 	ImGuiIO io = ImGui::GetIO();
 
 	Shader* mode = selection::selection_mode();
