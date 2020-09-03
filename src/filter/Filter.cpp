@@ -165,3 +165,54 @@ void AsyncSubFilter::dispatchGPU(std::function<void(Project *)> f) {
 	cv.wait(lk); //wait for function to finish
 }
 
+
+
+Shader *filter::blendMode() {
+	ImGuiIO io = ImGui::GetIO();
+
+	static Shader* replace = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return old*(1-selection) + new*selection;
+}
+)","");
+	static Shader* add = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return old + selection*new;
+}
+)","");
+	static Shader* subtract = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return max(old-new,0);
+}
+)","");
+	static Shader* intersect = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return old*new;
+}
+)","");
+
+	static int current = 0;
+	static bool pressed = false;
+
+	if (io.KeyShift || io.KeyCtrl) pressed = true;
+	if (io.KeyShift && io.KeyCtrl) current = 3;
+	else if (io.KeyShift) current = 1;
+	else if (io.KeyCtrl) current = 2;
+	else if (pressed) {
+		current = 0;
+		pressed = false;
+	}
+
+	const char* items[] = { "Replace","Add", "Subtract","Multiply","Divide","Max","Min"};
+	ImGui::Combo("Blend mode",&current,items,IM_ARRAYSIZE(items));
+	switch (current) {
+		case 0:
+			return replace;
+		case 1:
+			return add;
+		case 2:
+			return subtract;
+		default:
+			return intersect;
+	}
+}

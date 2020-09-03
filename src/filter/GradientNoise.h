@@ -32,16 +32,18 @@ public:
 	std::shared_ptr<BackupFilter> makeFilter(Project* p);
 private:
 	NoiseParams params = {1.0,2,0.5,-10,10,8,0,0.0f,DEFAULT};
+	Shader* blendmode;
 };
 
 class GradientNoiseFilter : public SubFilter {
 public:
-	GradientNoiseFilter(Project *p, Texture* target, NoiseParams params);
+	GradientNoiseFilter(NoiseParams params, Shader* blendmode);
 	~GradientNoiseFilter();
 	std::pair<bool,float> step(Project* p) override;
 private:
 	ShaderProgram* program;
 	NoiseParams params;
+	Shader* blendmode;
 };
 
 

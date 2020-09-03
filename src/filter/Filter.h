@@ -13,6 +13,10 @@
 #include <thread>
 #include <condition_variable>
 
+namespace filter {
+	Shader* blendMode();
+}
+
 class Project;
 class Texture;
 

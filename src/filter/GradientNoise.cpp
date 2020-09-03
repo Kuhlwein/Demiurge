@@ -16,6 +16,8 @@ GradientNoiseMenu::GradientNoiseMenu() : FilterModal("Gradient noise") {
 
 void GradientNoiseMenu::update_self(Project *p) {
 	//operation
+	blendmode = filter::blendMode();
+
 	ImGui::DragFloatRange2("Limits",&params.min,&params.max,0.01f,0.0f,0.0f,"%.3f km");
 	static int current;
 	const char* items[] = {"Default","Ridged","Billowy","Gradient supressed","Mountains","Hills","Plateaus"};
@@ -43,11 +45,12 @@ void GradientNoiseMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> GradientNoiseMenu::makeFilter(Project *p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},std::move(std::make_unique<GradientNoiseFilter>(p,p->get_terrain(),params)));
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();},std::move(std::make_unique<GradientNoiseFilter>(params,blendmode)));
 }
 
-GradientNoiseFilter::GradientNoiseFilter(Project *p, Texture* target, NoiseParams params) : SubFilter() {
+GradientNoiseFilter::GradientNoiseFilter(NoiseParams params, Shader* blendmode) : SubFilter() {
 	this->params = params;
+	this->blendmode = blendmode;
 }
 
 
@@ -436,6 +439,7 @@ float snoise(vec3 v, out vec3 gradient)
 
 	Shader* shader = Shader::builder()
 			.include(noise)
+			.include(blendmode)
 			.create(R"(
 	uniform float scale;
 	uniform float persistence = 0.5;
@@ -452,7 +456,9 @@ float snoise(vec3 v, out vec3 gradient)
 		vec3(u.x*u.y*(1-cos(theta))-u.z*sin(theta),cos(theta)+u.y*u.y*(1-cos(theta)),u.z*u.y*(1-cos(theta))+u.x*sin(theta)),
 		vec3(u.x*u.z*(1-cos(theta))+u.y*sin(theta),u.y*u.z*(1-cos(theta))-u.x*sin(theta),cos(theta)+u.z*u.z*(1-cos(theta))));
 	}
-)",code);
+)",code + R"(
+	fc = blend_mode(texture2D(img,st).r, fc, texture2D(sel,st).r);
+)");
 
 
 
@@ -481,6 +487,7 @@ float snoise(vec3 v, out vec3 gradient)
 
 	id = glGetUniformLocation(program->getId(), "lower_limit");
 	glUniform1f(id,params.min);
+
 	id = glGetUniformLocation(program->getId(), "higher_limit");
 	glUniform1f(id,params.max);
 

@@ -24,8 +24,8 @@ private:
 	ShaderProgram* program;
 	Shader* mode;
 	bool finished = false;
-	float lower=0;
-	float upper=10;
+	float lower;
+	float upper;
 };
 
 class HeightSelection : public Modal {
