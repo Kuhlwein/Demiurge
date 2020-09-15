@@ -176,7 +176,7 @@ glm::vec2 AbstractCanvas::mousePos(ImVec2 pos) {
 	}
 
 	glm::vec4 coord2 = rotation*glm::vec4(sin(M_PI/2-coord.y)*cos(coord.x),sin(M_PI/2-coord.y)*sin(coord.x),sin(coord.y),1);
-	coord.y = acos(-coord2.z)-0.5*M_PI; //0 to pi
+	coord.y = -asin(-coord2.z); //0 to pi
 	coord.x = atan2(coord2.y,coord2.x); // -pi to pi
 
 	auto v = project->getCoords();
@@ -261,7 +261,7 @@ if (phi<-M_PI/2) discard;
 if (phi>M_PI/2) discard;
 
 vec4 coord2 = globeRotation*vec4(cos(phi)*cos(theta),cos(phi)*sin(theta),sin(phi),1);
-phi = acos(-coord2.z)-0.5*M_PI; //0 to pi
+phi = -asin(-coord2.z); //0 to pi
 theta = atan(coord2.y,coord2.x); // -pi to pi
 
 phi = (phi-cornerCoords[0])/(cornerCoords[1]-cornerCoords[0]);

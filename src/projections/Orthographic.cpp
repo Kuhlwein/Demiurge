@@ -142,7 +142,7 @@ float r2 = sqrt(coord.x*coord.x+coord.y*coord.y);
 
 if (r>1) discard;
 
-float phi = acos(-coord.z)-0.5*M_PI; //0 to pi
+float phi = -asin(-coord.z); //0 to pi
 float theta = atan(coord.y,coord.x); // -pi to pi
 
 

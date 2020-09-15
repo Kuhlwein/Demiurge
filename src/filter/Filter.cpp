@@ -185,9 +185,24 @@ float blend_mode(float old, float new, float selection) {
 	return max(old-new,0);
 }
 )","");
-	static Shader* intersect = Shader::builder().create(R"(
+	static Shader* multiply = Shader::builder().create(R"(
 float blend_mode(float old, float new, float selection) {
 	return old*new;
+}
+)","");
+	static Shader* divide = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return old/new;
+}
+)","");
+	static Shader* max = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return max(old,new);
+}
+)","");
+	static Shader* min = Shader::builder().create(R"(
+float blend_mode(float old, float new, float selection) {
+	return min(old,new);
 }
 )","");
 
@@ -212,7 +227,13 @@ float blend_mode(float old, float new, float selection) {
 			return add;
 		case 2:
 			return subtract;
-		default:
-			return intersect;
+		case 3:
+			return multiply;
+		case 4:
+			return divide;
+		case 5:
+			return max;
+		case 6:
+			return min;
 	}
 }
