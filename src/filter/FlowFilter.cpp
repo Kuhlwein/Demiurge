@@ -156,14 +156,14 @@ float noise( in vec2 p )
 	vec2 dir = vec2(round(cos(aspect)),-round(sin(aspect)));
 
 
-	if(all(dir==vec2(1,1))) fc=9;
-	if(all(dir==vec2(0,1))) fc=8;
-	if(all(dir==vec2(-1,1))) fc=7;
-	if(all(dir==vec2(1,0))) fc=6;
-	if(all(dir==vec2(-1,0))) fc=4;
-	if(all(dir==vec2(1,-1))) fc=3;
-	if(all(dir==vec2(0,-1))) fc=2;
-	if(all(dir==vec2(-1,-1))) fc=1;
+	if(all(equal(dir,vec2(1,1)))) fc=9;
+	if(all(equal(dir,vec2(0,1)))) fc=8;
+	if(all(equal(dir,vec2(-1,1)))) fc=7;
+	if(all(equal(dir,vec2(1,0)))) fc=6;
+	if(all(equal(dir,vec2(-1,0)))) fc=4;
+	if(all(equal(dir,vec2(1,-1)))) fc=3;
+	if(all(equal(dir,vec2(0,-1)))) fc=2;
+	if(all(equal(dir,vec2(-1,-1)))) fc=1;
 
 
 	a2 = texture2D(img, offset(st, dir,resolution)).r;
