@@ -22,8 +22,8 @@ void FlowfilterMenu::update_self(Project *p) {
 }
 
 std::shared_ptr<BackupFilter> FlowfilterMenu::makeFilter(Project *p) {
-	auto morph = std::make_unique<FlowFilter>(preblur,exponent);
-	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(morph));
+	auto flow = std::make_unique<FlowFilter>(preblur, exponent);
+	return std::make_shared<ProgressFilter>(p,[](Project* p){return p->get_terrain();},std::move(flow));
 }
 
 FlowFilter::FlowFilter(float preblur, float exponent, bool lakeflag) {

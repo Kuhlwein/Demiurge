@@ -75,10 +75,10 @@ vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 		p.x = mod((p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])+2*M_PI,2*M_PI)-M_PI;
 		p.x = (p.x-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
 	}
-//	p.x = mod(p.x,1);
+	p.x = mod(p.x+1,1); //Double check this line???
 	return p;
 }
-)");//TODO what about comment
+)");//TODO what about comment IMPORTANT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 /*
  *  Vertex shaders

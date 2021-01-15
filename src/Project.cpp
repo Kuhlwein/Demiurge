@@ -29,6 +29,7 @@
 #include <filter/FlowFilter.h>
 #include <menus/LayerWindow.h>
 #include <filter/ThermalErosion.h>
+#include <filter/DeTerrace.h>
 
 #include "projections/Projections.h"
 #include "menus/BrushWindow.h"
@@ -143,6 +144,7 @@ Project::Project(GLFWwindow* window) {
 	auto math = new SubMenu("Mathematical");
 	math->addMenu(new OffsetMenu());
 	math->addMenu(new ScaleMenu());
+	math->addMenu(new DeTerraceMenu());
 	filter_menu.push_back(math);
 	filter_menu.push_back(new MorphologicalMenu());
 	filter_menu.push_back(new GradientNoiseMenu());
