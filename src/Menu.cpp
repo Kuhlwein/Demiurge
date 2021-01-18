@@ -96,6 +96,11 @@ bool testnamespace::file_load(Project* project) {
 	return false;
 }
 
+bool testnamespace::file_write(Project* project) {
+	project->file_write();
+	return true;
+}
+
 bool testnamespace::file_new(Project *project) {
 	static int width=100, height=100;
 	ImGui::InputInt("width",&width,1,100);

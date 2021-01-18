@@ -22,68 +22,86 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	this->p = p;
 	this->target = target;
 
-	//ShaderProgram* copyProgram = ShaderProgram::builder()
-//			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-//			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
-//			.link();
-//	p->apply(copyProgram, p->get_scratch1(), {{target, "to_be_copied"}});
-}
+	dim = 512;
 
-std::pair<bool, float> DeTerrace::step(Project *p) {
-	//if (i>1000) return {true,1.0f};
-	//i++;
+	tex = new Texture(dim,dim,GL_R32F,"mini_tmp",GL_NEAREST);
 
-	//Blur* blur = new Blur(p, 0.3, target);erg
-	//while (!blur->step(p).first);
+
+	Shader* offset_shader = Shader::builder()
+			.create(R"(
+uniform float tmp_dim;
+uniform vec2 tmp_offset;
+)","");
 
 
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.include(cornerCoords)
+			.include(offset_shader)
 			.create(R"(
-	void find_contour_edges(vec2 p, vec2 dp, vec2 resolution, out vec3 p1, out vec3 p2) {
+	void find_contour_edges(vec2 p, float phi_offset, vec2 resolution, out vec3 p1, out vec3 p2) {
 		int N = 100;
 
-		p1 = vec3(0,0,texture2D(img, st).r);
-		for (int i=1; i<N; i++) {
-			float h = texture2D(img, offset(st, i*dp,resolution)).r;
-			if(abs(h-p1.z) > 1e-6 && p1.xy==vec2(0)) {
-				p1=vec3((i-0.5)*dp.x,(i-0.5)*dp.y,max(h,p1.z));
-			}
-		}
-		for (int i=1; i<N; i++) {
-			float ii = (N+pow(i,1.5));
-			float h = texture2D(img, offset(st, ii*dp,resolution)).r;
-			if(abs(h-p1.z) > 1e-6 && p1.xy==vec2(0)) {
-				p1=vec3(ii*dp.x,ii*dp.y,max(h,p1.z));
-			}
-		}
-		if(p1.xy==vec2(0)) p1.xy=(N+pow(N,1.5))*dp;
+		float epsilon = 1e-4;
 
+		p1 = vec3(0,0,texture2D(img, p).r);
+		for (int i=1; i<N; i++) {
+			for(int phi=0; phi<16; phi++) {
+				float a = 3.141592/2/2*phi/15 + phi_offset;
+				vec2 dp = vec2(i*cos(a)+cos(phi_offset),i*sin(a)+sin(phi_offset));
+				float h = texture2D(img, offset(p,dp,resolution)).r;
+				if(abs(h-p1.z) > epsilon && p1.xy==vec2(0)) {
+					p1=vec3(dp.x,dp.y,max(h,p1.z));
+				}
+			}
+		}
+		for (int i=0; i<N; i++) {
+			float ii = (N*pow(i,1.5));
+			for(int phi=0; phi<16; phi++) {
+				float a = 3.141592/2/2*phi/15 + phi_offset;
+				vec2 dp = vec2(ii*cos(a)+cos(phi_offset),ii*sin(a)+sin(phi_offset));
+				float h = texture2D(img, offset(p, dp,resolution)).r;
+				if(abs(h-p1.z) > epsilon && p1.xy==vec2(0)) {
+					p1=vec3(dp.x,dp.y,max(h,p1.z));
+				}
+			}
+		}
+		if(p1.xy==vec2(0)) p1.xy=(N+pow(N,1.5))*vec2(cos(phi_offset),sin(phi_offset));
+
+		vec2 dp = normalize(p1.xy);
 		p2 = vec3(0,0,p1.z);
 		for (int i=1; i<N; i++) {
-			float h = texture2D(img, offset(st, i*dp+p1.xy,resolution)).r;
-			if(abs(h-p2.z) > 1e-6 && p2.xy==vec2(0)) {
+			float h = texture2D(img, offset(p, i*dp+p1.xy,resolution)).r;
+			if(abs(h-p2.z) > epsilon && p2.xy==vec2(0)) {
 				p2=vec3((i-0.5)*dp.x+p1.x,(i-0.5)*dp.y+p1.y,max(h,p2.z));
 			}
 		}
 		for (int i=1; i<N; i++) {
 			float ii = (N+pow(i,1.5));
-			float h = texture2D(img, offset(st, ii*dp,resolution)).r;
-			if(abs(h-p2.z) > 1e-6 && p2.xy==vec2(0)) {
+			float h = texture2D(img, offset(p, ii*dp,resolution)).r;
+			if(abs(h-p2.z) > epsilon && p2.xy==vec2(0)) {
 				p2=vec3(ii*dp.x+p1.x,ii*dp.y+p1.y,max(h,p2.z));
 			}
 		}
 		if(p2.xy==vec2(0)) p2.xy=(N+pow(N,1.5))*dp;
 
-		if(abs(p1.z-p2.z)<1e-6) {
-			p2.xy = (p1.xy+p2.xy)*0.5;
-			p2.z = p2.z + p1.z-texture2D(img, st).r;
+		//fix local hills
+		if(abs(p1.z-p2.z)<epsilon) {
+			p2.xy = (p1.xy+p2.xy);
+			p2.z = p2.z + p1.z-texture2D(img, p).r;
 		}
+
+		//Fix too strong extrapolation
+//		float slope = (p2.z-p1.z)/length(p2.xy-p1.xy);
+//		float prediction = p1.z-slope*length(p1.xy);
+//		if(prediction<texture2D(img, p).r) p2.xy = p2.xy*(p2.z-p1.z)/(p1.z/2-texture2D(img,p).r/2)*length(p1.xy)+length(p1.xy);
+
 	}
 
 )",R"(
 	vec2 resolution = textureSize(img,0);
+
+	vec2 st_ = (st*tmp_dim+tmp_offset)/resolution;
 
 	vec3 p1;
 	vec3 p2;
@@ -91,7 +109,7 @@ std::pair<bool, float> DeTerrace::step(Project *p) {
 	int counter = 0;
 	for(int dx=-1; dx<=1; dx++) for(int dy=-1; dy<=1; dy++) {
 		if(dx==0 && dy==0) continue;
-		find_contour_edges(st,vec2(dx,dy),resolution,p1,p2);
+		find_contour_edges(st_,atan(dx,dy),resolution,p1,p2);
 		p[counter]=p1; p[counter+1]=p2;
 		counter+=2;
 	}
@@ -177,17 +195,98 @@ std::pair<bool, float> DeTerrace::step(Project *p) {
 	float DD = 0;
 	for (int i=0; i<16; i++) DD+= abs(p[i].x)+abs(p[i].y);
 
-	fc = max(val,texture2D(img, st).r);
+	float oldval = texture2D(img, st_).r;
+//	val = max(val,oldval);
+//	for(int i=0; i<16; i++) {
+//		if(p[i].z>oldval+epsilon) val = min(val,p[i].z);
+//	}
+
+	for(int i=0; i<16; i++) {
+		if(p[i].z>oldval+epsilon && val>p[i].z) val = 2;
+	}
+
+	if(val<oldval) val=-2;
+
 	fc = val;
 )");
 
-	ShaderProgram* Program = ShaderProgram::builder()
+	program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-	p->setCanvasUniforms(Program);
-	p->apply(Program, p->get_scratch2());
-	p->get_scratch2()->swap(target);
+
+
+
+	Shader* copy_shader = Shader::builder()
+			.include(fragmentBase)
+			.include(offset_shader)
+			.create("uniform sampler2D mini_tmp;",R"(
+fc = texture(scratch1,st).r;
+
+vec2 resolution = textureSize(img,0);
+
+vec2 st_ = (st*resolution-tmp_offset)/tmp_dim;
+
+if(all(lessThan(st_,vec2(1.0))) && all(greaterThan(st_,vec2(0.0)))) {
+	fc = texture(mini_tmp, st_).r;
+}
+)");
+	copy = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(copy_shader->getCode(),GL_FRAGMENT_SHADER)
+			.link();
+}
+
+std::pair<bool, float> DeTerrace::step(Project *p) {
+	int xi = ceil((double)(p->getWidth())/dim);
+	int yi = ceil((double)(p->getHeight())/dim);
+
+	if (i<=xi*yi) {
+		int xoffset, yoffset;
+		xoffset = dim*(i%xi);
+		yoffset = dim*(i/xi);
+
+		program->bind();
+		int id = glGetUniformLocation(program->getId(), "tmp_offset");
+		glUniform2f(id,xoffset, yoffset);
+		id = glGetUniformLocation(program->getId(), "tmp_dim");
+		glUniform1f(id,dim);
+		p->setCanvasUniforms(program);
+
+		p->apply(program, tex);
+
+
+
+
+
+		p->add_texture(tex);
+
+
+		copy->bind();
+		id = glGetUniformLocation(copy->getId(), "tmp_offset");
+		glUniform2f(id,xoffset, yoffset);
+		id = glGetUniformLocation(copy->getId(), "tmp_dim");
+		glUniform1f(id,dim);
+		p->setCanvasUniforms(copy);
+		p->apply(copy,p->get_scratch2());
+
+		p->remove_texture(tex);
+
+		p->get_scratch2()->swap(p->get_scratch1());
+
+		i++;
+		return {false, (float)(i)/xi/yi};
+	}
+
+
+
+	program = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	program->bind();
+	p->setCanvasUniforms(program);
+	p->apply(copy,target,{{p->get_scratch1(),"to_be_copied"}});
 
 
 

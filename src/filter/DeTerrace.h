@@ -17,7 +17,12 @@ public:
 private:
 	Project* p;
 	Texture* target;
+	Texture* tex;
+	int dim;
 	int i = 0;
+
+	ShaderProgram* program;
+	ShaderProgram* copy;
 };
 
 class DeTerraceMenu : public FilterModal {

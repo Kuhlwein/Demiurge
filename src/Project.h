@@ -45,6 +45,7 @@ public:
 
     void file_load(const std::string& file_name);
 	void file_new(int w, int h);
+	void file_write();
 
 	void add_texture(Texture* texture);
 	void remove_texture(Texture* texture);

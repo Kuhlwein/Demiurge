@@ -10,6 +10,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #include "Texture.h"
 #include "Shader.h"
 
@@ -44,6 +46,19 @@ void Project::file_load(const std::string& filename) {
 
 	get_terrain()->uploadData(GL_RGB,GL_UNSIGNED_BYTE,image);
 	delete image;
+}
+
+void Project::file_write() {
+	auto image = get_terrain()->downloadDataRAW();
+	char data[getWidth()*getHeight()];
+	for (int i=0; i<getWidth()*getHeight(); i++) {
+		int a = 255.0f*image[i];
+		data[i] = a;
+	}
+	std::cout << image[0] << " <-- data[0]\n";
+
+	stbi_write_png("output.png",getWidth(),getHeight(),1,data,getWidth()*1);
+
 }
 
 void Project::file_new(int w, int h) {
@@ -123,6 +138,7 @@ Project::Project(GLFWwindow* window) {
 	std::vector<Menu*> file_menu = {};
 	file_menu.push_back(new Modal("New...", testnamespace::file_new));
 	file_menu.push_back(new Modal("Load...", testnamespace::file_load));
+	file_menu.push_back(new Menu("Write...",testnamespace::file_write));
 
 	std::vector<Menu*> edit_menu = {};
 	edit_menu.push_back(new Menu("Undo",edit::undo));
