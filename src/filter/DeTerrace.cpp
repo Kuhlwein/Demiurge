@@ -22,7 +22,7 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	this->p = p;
 	this->target = target;
 
-	dim = 512;
+	dim = 128;
 
 	tex = new Texture(dim,dim,GL_R32F,"mini_tmp",GL_NEAREST);
 
@@ -201,11 +201,12 @@ uniform vec2 tmp_offset;
 //		if(p[i].z>oldval+epsilon) val = min(val,p[i].z);
 //	}
 
-	for(int i=0; i<16; i++) {
-		if(p[i].z>oldval+epsilon && val>p[i].z) val = 2;
-	}
+	if(oldval<=0 && val>0) val=-epsilon;
 
-	if(val<oldval) val=-2;
+	for(int i=0; i<16; i++) {
+		if(p[i].z>oldval+epsilon && val>p[i].z) val = uintBitsToFloat(0x7F800000);//inf
+	}
+	if(val<oldval) val=uintBitsToFloat(0xFF800000);//-inf
 
 	fc = val;
 )");
@@ -221,15 +222,15 @@ uniform vec2 tmp_offset;
 			.include(fragmentBase)
 			.include(offset_shader)
 			.create("uniform sampler2D mini_tmp;",R"(
-fc = texture(scratch1,st).r;
+	fc = texture(scratch1,st).r;
 
-vec2 resolution = textureSize(img,0);
+	vec2 resolution = textureSize(img,0);
 
-vec2 st_ = (st*resolution-tmp_offset)/tmp_dim;
+	vec2 st_ = (st*resolution-tmp_offset)/tmp_dim;
 
-if(all(lessThan(st_,vec2(1.0))) && all(greaterThan(st_,vec2(0.0)))) {
-	fc = texture(mini_tmp, st_).r;
-}
+	if(all(lessThan(st_,vec2(1.0))) && all(greaterThan(st_,vec2(0.0)))) {
+		fc = texture(mini_tmp, st_).r;
+	}
 )");
 	copy = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -278,18 +279,88 @@ std::pair<bool, float> DeTerrace::step(Project *p) {
 		return {false, (float)(i)/xi/yi};
 	}
 
+/*
+ * blur x, blur y
+ * minimum old value
+ * check ocean
+ */
+
+	Shader* pseudoblur = Shader::builder()
+			.include(fragmentBase)
+			.include(cornerCoords)
+			.create(R"(
+	uniform vec2 direction;
+)",R"(
+	vec2 resolution = textureSize(img,0);
+	float old = texture(img,st).r;
+	float new = texture(scratch1,st).r;
+
+	fc = new;
+	if(!isinf(new)) return;
+
+	float sum = 0;
+	float count = 0;
+
+	float v;
+	v = texture(scratch1,offset(st,direction,resolution)).r;
+	if(!isinf(v)) {
+		sum+=v;
+		count+=1;
+	}
+	v = texture(scratch1,offset(st,-direction,resolution)).r;
+	if(!isinf(v)) {
+		sum+=v;
+		count+=1;
+	}
 
 
+
+	fc = (sum+old)/(count+1);
+	fc = max(fc,old);
+	if(old<=0 && fc>0) fc=-1e-4;
+	if(old>0 && fc<0) fc=1e-4;
+
+	if(count==0) fc = uintBitsToFloat(0xFF800000);//-inf
+
+)");
 	program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
+			.addShader(pseudoblur->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-	program->bind();
-	p->setCanvasUniforms(program);
-	p->apply(copy,target,{{p->get_scratch1(),"to_be_copied"}});
+
+
+	for (int i=0; i<20; i++) {
+		program->bind();
+		int id = glGetUniformLocation(program->getId(), "direction");
+		glUniform2f(id,1, 0);
+		p->setCanvasUniforms(program);
+		p->apply(program, p->get_scratch2());
+		p->get_scratch2()->swap(p->get_scratch1());
+
+		program->bind();
+		id = glGetUniformLocation(program->getId(), "direction");
+		glUniform2f(id,0, 1);
+		p->setCanvasUniforms(program);
+		p->apply(program, p->get_scratch2());
+		p->get_scratch2()->swap(p->get_scratch1());
+	}
 
 
 
+
+//	program = ShaderProgram::builder()
+//			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+//			.addShader(copy_img->getCode(), GL_FRAGMENT_SHADER)
+//			.link();
+//	program->bind();
+//	p->setCanvasUniforms(program);
+//	p->apply(copy,p->get_scratch2(),{{p->get_scratch1(),"to_be_copied"}});
+
+
+	//terrain - unchanged
+	//scratch1 - filter raw
+
+	p->get_scratch1()->swap(p->get_terrain());
 
 	return {true,i};
 }
