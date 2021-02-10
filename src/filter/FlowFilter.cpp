@@ -480,7 +480,7 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 				stack.pop();
 
 				if (passheights[s]>0) {
-					float minpass = MAXFLOAT;
+					float minpass = std::numeric_limits<float>::max();
 					int nlake = -1;
 					for (auto n : neighbours(s,passheights[s])) {
 						float bd = height[n];
@@ -491,7 +491,7 @@ void FlowFilter::findAllConnections(std::vector<std::vector<int>> *lakes) {
 						}
 					}
 					int lid = *((int*)lakeID.get()+nlake) - 1073741824;
-					if (minpass<MAXFLOAT && !Nthbit(data[lid],10)) {
+					if (minpass<std::numeric_limits<float>::max() && !Nthbit(data[lid],10)) {
 						float nheight = std::max(minpass,height[s]);
 
 						if(newpasses.count(lid)==0) {

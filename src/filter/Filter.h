@@ -75,7 +75,7 @@ protected:
 	void dispatchGPU(std::function<void(Project* p)> f);
 	template<typename T> void threadpool(std::function<void(T a)> f,std::vector<T> arg, float progress) {
 		std::mutex mtx;
-		uint Nthreads = std::thread::hardware_concurrency();
+		unsigned int Nthreads = std::thread::hardware_concurrency();
 		auto it = arg.begin();
 		auto end = arg.end();
 
@@ -97,7 +97,7 @@ protected:
 			}
 		};
 		std::vector<std::unique_ptr<std::thread>> threads;
-		for (uint i=0; i<Nthreads; i++) threads.push_back(std::make_unique<std::thread>(j));
+		for (unsigned int i=0; i<Nthreads; i++) threads.push_back(std::make_unique<std::thread>(j));
 		for (auto &t : threads) t->join();
 		for (auto &t : threads) t.reset();
 	}
