@@ -70,13 +70,13 @@ uniform vec2 tmp_offset;
 
 		vec2 dp = normalize(p1.xy);
 		p2 = vec3(0,0,p1.z);
-		for (int i=1; i<N; i++) {
+		for (int i=2; i<N; i++) {
 			float h = texture2D(img, offset(p, i*dp+p1.xy,resolution)).r;
 			if(abs(h-p2.z) > epsilon && p2.xy==vec2(0)) {
 				p2=vec3((i-0.5)*dp.x+p1.x,(i-0.5)*dp.y+p1.y,max(h,p2.z));
 			}
 		}
-		for (int i=1; i<N; i++) {
+		for (int i=2; i<N; i++) {
 			float ii = (N+pow(i,1.5));
 			float h = texture2D(img, offset(p, ii*dp,resolution)).r;
 			if(abs(h-p2.z) > epsilon && p2.xy==vec2(0)) {
@@ -96,7 +96,12 @@ uniform vec2 tmp_offset;
 //		float prediction = p1.z-slope*length(p1.xy);
 //		if(prediction<texture2D(img, p).r) p2.xy = p2.xy*(p2.z-p1.z)/(p1.z/2-texture2D(img,p).r/2)*length(p1.xy)+length(p1.xy);
 
+		vec2 psize = pixelsize(p);
+		p1.xy = p1.xy*psize;
+		p2.xy = p2.xy*psize;
 	}
+
+
 
 )",R"(
 	vec2 resolution = textureSize(img,0);
@@ -107,11 +112,46 @@ uniform vec2 tmp_offset;
 	vec3 p2;
 	vec3 p[16];
 	int counter = 0;
-	for(int dx=-1; dx<=1; dx++) for(int dy=-1; dy<=1; dy++) {
+	for(int dx=-1; counter<16; dx++) for(int dy=-1; counter<16; dy++) {
 		if(dx==0 && dy==0) continue;
 		find_contour_edges(st_,atan(dx,dy),resolution,p1,p2);
 		p[counter]=p1; p[counter+1]=p2;
-		counter+=2;
+		find_contour_edges(st_,atan(-dx,-dy),resolution,p1,p2);
+		p[counter+2]=p1; p[counter+3]=p2;
+
+
+		float scaler = 1.5;
+
+		//fix with regards to discontinueties in gradient
+		vec3 center;
+		center.xy = p[counter].xy+p[counter+2].xy;
+		center.z = texture2D(img, st_).r;
+		float diff = center.z-p[counter].z + 1e-6;
+		center.z += ((abs(diff)<1e-6) ? abs(diff)*scaler : -abs(diff)*scaler);
+		float slope = (p[counter].z-center.z)/length(p[counter].xy-center.xy);
+		//y = x*slope + center.z => x = (y-center.z)/slope
+		float minx = (p[counter+1].z-center.z)/slope;
+		p[counter+1].xy -= center.xy;
+		float len = length(p[counter+1].xy);
+		p[counter+1].xy /= len;
+		p[counter+1].xy *= max(len,minx);
+		p[counter+1].xy += center.xy;
+
+
+		center.xy = p[counter].xy+p[counter+2].xy;
+		center.z = texture2D(img, st_).r;
+		diff = center.z-p[counter+2].z + 1e-6;
+		center.z += ((abs(diff)<1e-6) ? abs(diff)*scaler : -abs(diff)*scaler);
+		slope = (p[counter+2].z-center.z)/length(p[counter+2].xy-center.xy);
+		//y = x*slope + center.z => x = (y-center.z)/slope
+		minx = (p[counter+2].z-center.z)/slope;
+		p[counter+3].xy -= center.xy;
+		len = length(p[counter+3].xy);
+		p[counter+3].xy /= len;
+		p[counter+3].xy *= max(len,minx);
+		p[counter+3].xy += center.xy;
+
+		counter+=4;
 	}
 
 	float epsilon = 1e-6;
