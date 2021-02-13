@@ -34,6 +34,9 @@
 #imgui.ini
 *.ini
 
+#Images
+*.png
+
 #Clion stuff
 CMakeLists.txt
 cmake-build-debug

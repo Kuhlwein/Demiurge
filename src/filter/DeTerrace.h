@@ -23,6 +23,10 @@ private:
 
 	ShaderProgram* program;
 	ShaderProgram* copy;
+
+	int steps = 0;
+	ShaderProgram *height_program;
+	std::vector<float> r;
 };
 
 class DeTerraceMenu : public FilterModal {
