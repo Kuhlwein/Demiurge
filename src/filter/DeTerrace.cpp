@@ -23,64 +23,29 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	this->p = p;
 	this->target = target;
 
+	pidShader = Shader::builder()
+			.create(R"(
+	uint coordToPid(vec2 st, sampler2D img) {
+		vec2 coord = textureSize(img,0)*st;
+		return uint(coord.x)+uint(coord.y)*uint(textureSize(img,0).x);
+	}
+
+	vec2 pidToCoord(uint pid, sampler2D img) {
+		ivec2 size = textureSize(img,0);
+		uint a = pid - size.x*(pid/size.x);
+		uint b = (pid - a)/size.x;
+		return vec2(float(a)+0.5,float(b)+0.5)/size;
+	}
+)","");
+
+	/*
+	 * scratch 2 -> pid
+	 */
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
-			.include(cornerCoords)
-			.include(distance)
-			.create(R"(
-	void process(float self, vec2 dp, inout float fc) {
-		vec2 resolution = textureSize(img,0);
-		float epsilon = 1e-6;
-		vec2 n = offset(st,dp,resolution);
-		if (abs(self-texture2D(img,n).r)>epsilon) fc = min(fc,geodistance(st,n,resolution));
-	}
-)",R"(
-	vec2 resolution = textureSize(img,0);
-	fc = 1e9;
-	float epsilon = 1e-6;
-
-	float self = texture2D(img,st).r;
-	process(self,vec2(1,0),fc);
-	process(self,vec2(-1,0),fc);
-	process(self,vec2(0,1),fc);
-	process(self,vec2(0,-1),fc);
-)");
-	program = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
-			.link();
-
-	program->bind();
-	p->setCanvasUniforms(program);
-	p->apply(program,p->get_scratch1());
-
-
-	shader = Shader::builder()
-			.include(fragmentBase)
-			.include(cornerCoords)
-			.include(distance)
-			.create(R"(
-	void process(float self, vec2 dp, inout float fc, inout float d) {
-		vec2 resolution = textureSize(img,0);
-		float epsilon = 1e-6;
-		vec2 n = offset(st,dp,resolution);
-		float nd = geodistance(st,n,resolution);
-		if (abs(self-texture2D(img,n).r)>epsilon && nd<d) {
-			fc = texture2D(img,n).r;
-			d = nd;
-		}
-	}
-)",R"(
-	vec2 resolution = textureSize(img,0);
-	fc = 0;
-	float d = 1e9;
-	float epsilon = 1e-6;
-
-	float self = texture2D(img,st).r;
-	process(self,vec2(1,0),fc,d);
-	process(self,vec2(-1,0),fc,d);
-	process(self,vec2(0,1),fc,d);
-	process(self,vec2(0,-1),fc,d);
+			.include(pidShader)
+			.create("",R"(
+	fc =  uintBitsToFloat(coordToPid(st,img));
 )");
 	program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -91,10 +56,33 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	p->setCanvasUniforms(program);
 	p->apply(program,p->get_scratch2());
 
+	/*
+	 * scratch 2 -> if neightbour: neighbour else self
+	 */
 
-
-	p->get_terrain()->swap(p->get_scratch1());
-
+	shader = Shader::builder()
+			.include(fragmentBase)
+			.include(cornerCoords)
+			.include(pidShader)
+			.create("",R"(
+	vec2 resolution = textureSize(img,0);
+	vec2 o = vec2(1,1);
+	float a;
+	if (texture(img,offset(st,o,resolution)).r == texture(img,st).r) {
+		a = texture(scratch2,st).r;
+	} else {
+		a = texture(scratch2,offset(st,o,resolution)).r;
+	}
+	fc = a;
+)");
+	program = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+			.link();
+	program->bind();
+	p->setCanvasUniforms(program);
+	p->apply(program,p->get_scratch1());
+	p->get_scratch1()->swap(p->get_scratch2());
 
 
 
@@ -114,77 +102,125 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	}
 	std::sort(r.begin(),r.end());
 
+
+	/*
+	 * if same height:
+	 * 		check distance, but only if not self.
+	 * if different height (Dont do this, do a pre-scan)
+	 * 		check distance
+	 */
+
 	Shader* fragment_set = Shader::builder()
 			.include(fragmentBase)
 			.include(cornerCoords)
 			.include(distance)
-			.create("uniform float radius; uniform sampler2D target;",R"(
+			.include(pidShader)
+			.create("uniform float radius;",R"(
 	vec2 resolution = textureSize(img,0);
-	float a = texture(img,st).r;
 
-	int N = 64;
-	for (int i=0; i<N; i++) {
-		vec2 c = offset(st, round(vec2(cos(2*3.14159*i/N)*radius,sin(2*3.14159*i/N)*radius)), resolution);
-		a = min(a,texture(img, c).r + geodistance(st,c,resolution));
+	float min_d = -1.0;
+	uint pid = floatBitsToUint(texture(scratch2,st).r);
+
+	if (coordToPid(st,scratch2) != pid) {
+		min_d = geodistance(st,pidToCoord(pid,img),resolution);
 	}
-	fc = a;
+
+	float d;
+	uint newPid;
+	vec2 o;
+
+	o = vec2(radius,0);
+	newPid = floatBitsToUint(texture(scratch2,offset(st,o,resolution)).r);
+	d = texture(img,pidToCoord(newPid,img)).r;
+
+	if (d != texture(img,st).r && (min_d<0 || geodistance(st,pidToCoord(newPid,img),resolution)<min_d)) {
+		min_d = geodistance(st,pidToCoord(newPid,img),resolution);
+		pid = newPid;
+	}
+
+	//o = vec2(radius,radius);
+	//d = max(d,texture(img,offset(st,o,resolution)).r);
+	o = vec2(radius,radius);
+	newPid = floatBitsToUint(texture(scratch2,offset(st,o,resolution)).r);
+	d = texture(img,pidToCoord(newPid,img)).r;
+
+	if (d != texture(img,st).r && (min_d<0 || geodistance(st,pidToCoord(newPid,img),resolution)<min_d)) {
+		min_d = geodistance(st,pidToCoord(newPid,img),resolution);
+		pid = newPid;
+	}
+
+	fc = uintBitsToFloat(pid);
 )");
 	program = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-
-
-
-	Shader* nearest_height = Shader::builder()
-			.include(fragmentBase)
-			.include(cornerCoords)
-			.include(distance)
-			.create("uniform float radius; uniform sampler2D target;",R"(
-	vec2 resolution = textureSize(img,0);
-	float a = texture(img,st).r;
-	fc = texture(scratch2,st).r;
-
-	int N = 64;
-	for (int i=0; i<N; i++) {
-		vec2 c = offset(st, round(vec2(cos(2*3.14159*i/N)*radius,sin(2*3.14159*i/N)*radius)), resolution);
-
-		if (texture(img, c).r + geodistance(st,c,resolution)<a) {
-			a = texture(img, c).r + geodistance(st,c,resolution);
-			fc = texture(scratch2,c).r;
-		}
-	}
-)");
-	height_program = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(nearest_height->getCode(), GL_FRAGMENT_SHADER)
-			.link();
-
-
 }
 
 std::pair<bool, float> DeTerrace::step(Project *p) {
-	height_program->bind();
-	int id = glGetUniformLocation(height_program->getId(), "radius");
-	glUniform1f(id,r[steps]);
-	p->setCanvasUniforms(height_program);
-	p->apply(height_program, p->get_scratch1(),{{target,"target"}});
-	p->get_scratch1()->swap(p->get_scratch2());
+	auto aa = (target->downloadDataRAW()); //TODO better solution than casting
+	std::cout << ((int*)aa.get())[0] << " <<<\n";
 
 
+
+
+	int a = std::ceil(log2(std::max(p->getHeight(),p->getWidth())));
+	for (int i=0; i<=a-3; i++) {
+		program->bind();
+		int id = glGetUniformLocation(program->getId(), "radius");
+		glUniform1f(id,pow(2,i));
+		std::cout << "radius: " << pow(2,i) << "\n";
+		p->setCanvasUniforms(program);
+
+		p->apply(program, p->get_scratch1());
+		p->get_scratch1()->swap(p->get_scratch2());
+
+	}
+	for (int i=a-3; i>=0; i--) {
+		program->bind();
+		int id = glGetUniformLocation(program->getId(), "radius");
+		glUniform1f(id,pow(2,i));
+		p->setCanvasUniforms(program);
+
+		p->apply(program, p->get_scratch1());
+		p->get_scratch1()->swap(p->get_scratch2());
+	}
+
+
+
+
+
+	Shader* fragment_set = Shader::builder()
+			.include(fragmentBase)
+			.include(cornerCoords)
+			.include(distance)
+			.include(pidShader)
+			.create("uniform float radius;",R"(
+	vec2 resolution = textureSize(img,0);
+
+	uint pid = floatBitsToUint(texture(scratch2,st).r);
+
+	fc = float(pid);
+	//if (pid == coordToPid(st,img)) fc = -1;
+	//fc = geodistance(st,pidToCoord(pid,img),resolution);
+)");
+	program = ShaderProgram::builder()
+			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
+			.link();
 	program->bind();
-	id = glGetUniformLocation(program->getId(), "radius");
-	glUniform1f(id,r[steps]);
+	int id = glGetUniformLocation(program->getId(), "radius");
+	glUniform1f(id,pow(2,i));
 	p->setCanvasUniforms(program);
-	p->apply(program, p->get_scratch1(),{{target,"target"}});
-	p->get_scratch1()->swap(target);
-
+	p->apply(program, p->get_scratch1());
+	p->get_scratch1()->swap(p->get_scratch2());
 
 
 
 	steps++;
 
-
+	target->swap(p->get_scratch2());
+	return {true,1};
 
 	return {steps>=r.size(),(float(steps))/r.size()};
 }

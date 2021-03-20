@@ -23,9 +23,9 @@ private:
 
 	ShaderProgram* program;
 	ShaderProgram* copy;
+	Shader* pidShader;
 
 	int steps = 0;
-	ShaderProgram *height_program;
 	std::vector<float> r;
 };
 

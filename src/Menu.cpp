@@ -86,7 +86,7 @@ void SeparatorMenu::menu() {
 }
 
 bool testnamespace::file_load(Project* project) {
-	static char path[128] = "/home/kuhlwein/Desktop/world.jpg";
+	static char path[128] = "/home/kuhlwein/Desktop/worldcontour.png";
     bool exec = ImGui::InputText("path",path,IM_ARRAYSIZE(path),ImGuiInputTextFlags_EnterReturnsTrue);
     exec = exec | ImGui::Button("test button");
 	if (exec) {
