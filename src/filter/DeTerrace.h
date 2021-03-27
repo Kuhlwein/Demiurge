@@ -10,10 +10,11 @@
 
 class Project;
 
-class DeTerrace : public SubFilter {
+class DeTerrace : public AsyncSubFilter {
 public:
 	DeTerrace(Project* p, Texture *target);
-	std::pair<bool,float> step(Project* p) override;
+	//std::pair<bool,float> step(Project* p) override;
+	void run() override;
 private:
 	Project* p;
 	Texture* target;
@@ -21,12 +22,17 @@ private:
 	int dim;
 	int i = 0;
 
+	ShaderProgram* init1;
+	ShaderProgram* init2;
 	ShaderProgram* program;
-	ShaderProgram* copy;
-	Shader* pidShader;
+
+	std::unique_ptr<float[]> data;
 
 	int steps = 0;
 	std::vector<float> r;
+	std::unique_ptr<float[]> get(glm::vec2 primary, glm::vec2 secondary);
+
+	float calc();
 };
 
 class DeTerraceMenu : public FilterModal {

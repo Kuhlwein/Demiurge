@@ -53,7 +53,7 @@ ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
 	LIBS = -lGL `pkg-config --static --libs glfw3` -L$(zfp)/lib -lzfp
 
-	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib -I$(zfp)/array -I$(zfp)/include
+	CXXFLAGS += -I$(IMGUI) -I$(GL3W) -I$(glfw)  `pkg-config --cflags glfw3` -I$(glm) -Ilib -I$(zfp)/array -I$(zfp)/include -O3
 	CXXFLAGS += -Wall -Wformat
 	CFLAGS = $(CXXFLAGS)
 endif

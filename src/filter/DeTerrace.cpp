@@ -23,21 +23,6 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	this->p = p;
 	this->target = target;
 
-	pidShader = Shader::builder()
-			.create(R"(
-	uint coordToPid(vec2 st, sampler2D img) {
-		vec2 coord = textureSize(img,0)*st;
-		return uint(coord.x)+uint(coord.y)*uint(textureSize(img,0).x);
-	}
-
-	vec2 pidToCoord(uint pid, sampler2D img) {
-		ivec2 size = textureSize(img,0);
-		uint a = pid - size.x*(pid/size.x);
-		uint b = (pid - a)/size.x;
-		return vec2(float(a)+0.5,float(b)+0.5)/size;
-	}
-)","");
-
 	/*
 	 * scratch 2 -> pid
 	 */
@@ -47,14 +32,11 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 			.create("",R"(
 	fc =  uintBitsToFloat(coordToPid(st,img));
 )");
-	program = ShaderProgram::builder()
+	init1 = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 
-	program->bind();
-	p->setCanvasUniforms(program);
-	p->apply(program,p->get_scratch2());
 
 	/*
 	 * scratch 2 -> if neightbour: neighbour else self
@@ -64,9 +46,11 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 			.include(fragmentBase)
 			.include(cornerCoords)
 			.include(pidShader)
-			.create("",R"(
+			.create(R"(
+uniform vec2 primary_offset;
+)",R"(
 	vec2 resolution = textureSize(img,0);
-	vec2 o = vec2(1,1);
+	vec2 o = primary_offset;
 	float a;
 	if (texture(img,offset(st,o,resolution)).r == texture(img,st).r) {
 		a = texture(scratch2,st).r;
@@ -75,32 +59,13 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	}
 	fc = a;
 )");
-	program = ShaderProgram::builder()
+	init2 = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-	program->bind();
-	p->setCanvasUniforms(program);
-	p->apply(program,p->get_scratch1());
-	p->get_scratch1()->swap(p->get_scratch2());
 
 
 
-
-	float radius = std::min(p->getWidth(),p->getHeight());
-	r = {};
-	int x = 1;
-	while (radius>=0) {
-		if (x<radius) {
-			radius-=x;
-			r.push_back(x);
-			x*=2;
-		} else {
-			r.push_back(radius);
-			break;
-		}
-	}
-	std::sort(r.begin(),r.end());
 
 
 	/*
@@ -115,7 +80,10 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 			.include(cornerCoords)
 			.include(distance)
 			.include(pidShader)
-			.create("uniform float radius;",R"(
+			.create(R"(
+uniform vec2 primary_offset;
+uniform vec2 secondary_offset;
+)",R"(
 	vec2 resolution = textureSize(img,0);
 
 	float min_d = -1.0;
@@ -129,22 +97,20 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 	uint newPid;
 	vec2 o;
 
-	o = vec2(radius,0);
+	o = secondary_offset;
 	newPid = floatBitsToUint(texture(scratch2,offset(st,o,resolution)).r);
 	d = texture(img,pidToCoord(newPid,img)).r;
 
-	if (d != texture(img,st).r && (min_d<0 || geodistance(st,pidToCoord(newPid,img),resolution)<min_d)) {
+	if (d != texture(img,st).r && floatBitsToUint(texture(scratch2,offset(st,o,resolution)).r)!=coordToPid(offset(st,o,resolution),img) && (min_d<0 || geodistance(st,pidToCoord(newPid,img),resolution)<min_d)) {
 		min_d = geodistance(st,pidToCoord(newPid,img),resolution);
 		pid = newPid;
 	}
 
-	//o = vec2(radius,radius);
-	//d = max(d,texture(img,offset(st,o,resolution)).r);
-	o = vec2(radius,radius);
+	o = primary_offset;
 	newPid = floatBitsToUint(texture(scratch2,offset(st,o,resolution)).r);
 	d = texture(img,pidToCoord(newPid,img)).r;
 
-	if (d != texture(img,st).r && (min_d<0 || geodistance(st,pidToCoord(newPid,img),resolution)<min_d)) {
+	if (d != texture(img,st).r && floatBitsToUint(texture(scratch2,offset(st,o,resolution)).r)!=coordToPid(offset(st,o,resolution),img) && (min_d<0 || geodistance(st,pidToCoord(newPid,img),resolution)<min_d)) {
 		min_d = geodistance(st,pidToCoord(newPid,img),resolution);
 		pid = newPid;
 	}
@@ -157,70 +123,257 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 			.link();
 }
 
-std::pair<bool, float> DeTerrace::step(Project *p) {
-	auto aa = (target->downloadDataRAW()); //TODO better solution than casting
-	std::cout << ((int*)aa.get())[0] << " <<<\n";
+int intFromFloat(float* f, int index) {
+	int* i = (int*) f;
+	return i[index];
+}
+
+float DeTerrace::calc() {
+
+}
+
+void DeTerrace::run() {
+	std::unique_ptr<float[]> rightdown = get(glm::vec2(1,1),glm::vec2(1,0));
+	std::unique_ptr<float[]> downright = get(glm::vec2(0,1),glm::vec2(1,1));
+	std::unique_ptr<float[]> downleft = get(glm::vec2(-1,1),glm::vec2(0,1));
+	std::unique_ptr<float[]> leftdown = get(glm::vec2(-1,0),glm::vec2(-1,1));
+	std::unique_ptr<float[]> leftup = get(glm::vec2(-1,-1),glm::vec2(-1,0));
+	std::unique_ptr<float[]> upleft = get(glm::vec2(0,-1),glm::vec2(-1,-1));
+	std::unique_ptr<float[]> upright = get(glm::vec2(1,-1),glm::vec2(0,-1));
+	std::unique_ptr<float[]> rightup = get(glm::vec2(1,0),glm::vec2(1,-1));
+
+	std::unique_ptr<float[]> height;
+	dispatchGPU([this,&height](Project* p) {
+		height = p->get_terrain()->downloadDataRAW();
+	});
+
+	auto pidToCoord = [this](int pid) {
+		uint a = pid - p->getWidth()*(pid/p->getWidth());
+		uint b = (pid - a)/p->getWidth();
+		return glm::ivec2(a,b);
+	};
+
+	//TODO wrapping?
+	auto tovec = [this,&height,&pidToCoord](int i, int id, float minheight) {
+		auto xy = pidToCoord(i)-pidToCoord(id);
+		return glm::vec3(xy.x,xy.y,std::max(height[id],minheight));
+	};
 
 
 
+	data = std::make_unique<float[]>(p->getHeight()*p->getWidth());
 
-	int a = std::ceil(log2(std::max(p->getHeight(),p->getWidth())));
-	for (int i=0; i<=a-3; i++) {
-		program->bind();
-		int id = glGetUniformLocation(program->getId(), "radius");
-		glUniform1f(id,pow(2,i));
-		std::cout << "radius: " << pow(2,i) << "\n";
-		p->setCanvasUniforms(program);
+//	for (int i=0; i<p->getHeight()*p->getWidth(); i++) {
+//		data[i] = float(((int*)leftup.get())[i]);
+//	};
+//	dispatchGPU([this](Project* p) {
+//		p->get_terrain()->uploadData(GL_RED, GL_FLOAT, data.get());
+//	});
+//	setProgress({true,1});
+//	return;
 
-		p->apply(program, p->get_scratch1());
-		p->get_scratch1()->swap(p->get_scratch2());
+	for (int i=0; i<p->getHeight()*p->getWidth(); i++) {
+		glm::vec3 p[16];
+		int index=0;
+		for (auto d : {rightdown.get(), downright.get(), downleft.get(), leftdown.get(), leftup.get(), upleft.get(), upright.get(), rightup.get()}) {
+			int lu = intFromFloat(d,i);
+			int lu2 = intFromFloat(d,lu);
+			p[index++] = tovec(i,lu,height[i]);
+			p[index++] = tovec(i,lu2,height[lu]);
+		}
 
+		//START
+		float epsilon = 1e-6;
+
+		float A[19*19];
+		for (int x=0; x<19; x++) for (int y=0; y<19; y++) {
+				float val = 0;
+				if (x<16 && y<16) val=(pow(p[x].x-p[y].x,2)+pow(p[x].y-p[y].y,2))*log(pow(p[x].x-p[y].x,2)+pow(p[x].y-p[y].y,2)+epsilon);
+				if (x==16 || y==16) val=1.0;
+				if (x==17) val=p[y].x;
+				if (y==17) val=p[x].x;
+				if (x==18) val=p[y].y;
+				if (y==18) val=p[x].y;
+				if (x==y) val=0;
+				if (y>=16 && x>=16) val=0;
+				A[x*19+y] = val;
+			}
+
+//		std::cout << "vec: \n";
+//		for (int i=0; i<16; i++) std::cout << p[i].x << " " << p[i].y << " " << p[i].z << "\n";
+//		for (int i=0; i<19; i++) {
+//			std::cout << "[";
+//			for(int j=0; j<18; j++) std::cout << A[i*19+j] << ",";
+//			std::cout << A[i*19+18] << "],";
+//		}
+//		std::cout << "\n";
+
+		//invert A
+		const int N = 19;
+		int P[N+1];
+		for (int i=0; i<=N; i++) P[i] = i;
+
+		for (int i=0; i<N; i++) {
+			float maxA = 0.0;
+			int imax = i;
+
+			for (int k=i; k<N; k++) {
+				if (abs(A[k*19+i]) > maxA) {
+					maxA = abs(A[k*19+i]);
+					imax = k;
+				}
+			}
+
+			if (imax != i) {
+				int j = P[i];
+				P[i] = P[imax];
+				P[imax] = j;
+
+				for(int k=0; k<N; k++) {
+					float tmp = A[i*19+k];
+					A[i*19+k] = A[imax*19+k];
+					A[imax*19+k] = tmp;
+				}
+
+				P[N]++;
+			}
+
+			for (int j=i+1; j<N; j++) {
+				A[j*19+i] /= A[i*19+i];
+
+				for (int k=i+1; k<N; k++)
+					A[j*19+k] -= A[j*19+i]*A[i*19+k];
+			}
+		}
+
+		float b[19];
+		for(int i=0; i<N; i++) {
+			b[i]=0;
+			if(i<16) b[i] = p[i].z;
+		}
+
+		float x[19];
+		for (int i=0; i<N; i++) {
+			x[i] = b[P[i]];
+
+			for (int k = 0; k < i; k++)
+				x[i] -= A[i*19+k] * x[k];
+		}
+
+		for (int i=N-1; i>=0; i--) {
+			for (int k=i+1; k<N; k++)
+				x[i] -= A[i*19+k] * x[k];
+
+			x[i] /= A[i*19+i];
+		}
+
+		float val = x[16];
+		for (int i=0; i<16; i++) val+= x[i]*(pow(p[i].x,2)+pow(p[i].y,2))*log(pow(p[i].x,2)+pow(p[i].y,2)+epsilon);
+
+		float DD = 0;
+		for (int i=0; i<16; i++) DD+= abs(p[i].x)+abs(p[i].y);
+
+//		if (std::isnan(val)) {
+//			std::cout << i  << " " << val << "\n";
+//			for(auto pp : p) {std::cout << pp.x << " " << pp.y << " " << pp.z << ", ";}
+//			std::cout << "\n";
+//			for (int i=0; i<16; i++) std::cout <<  x[i]<< " "; std::cout << "\n";
+//			std::cout << "\n";
+//			for (int i=0; i<19; i++) {
+//				for(int j=0; j<19; j++) std::cout << A[i*19+j] << " "; std::cout << "\n";
+//			}
+//			std::cout << "\n";
+//		}
+
+
+		data[i] = val;
 	}
-	for (int i=a-3; i>=0; i--) {
-		program->bind();
-		int id = glGetUniformLocation(program->getId(), "radius");
-		glUniform1f(id,pow(2,i));
-		p->setCanvasUniforms(program);
 
-		p->apply(program, p->get_scratch1());
-		p->get_scratch1()->swap(p->get_scratch2());
-	}
-
-
-
-
-
-	Shader* fragment_set = Shader::builder()
-			.include(fragmentBase)
-			.include(cornerCoords)
-			.include(distance)
-			.include(pidShader)
-			.create("uniform float radius;",R"(
+	dispatchGPU([this](Project* p) {
+		p->get_terrain()->uploadData(GL_RED, GL_FLOAT, data.get());
+	});
+	dispatchGPU([this](Project* p) {
+		Shader* fragment_set = Shader::builder()
+				.include(fragmentBase)
+				.include(cornerCoords)
+				.include(distance)
+				.include(pidShader)
+				.create("",R"(
 	vec2 resolution = textureSize(img,0);
 
 	uint pid = floatBitsToUint(texture(scratch2,st).r);
 
 	fc = float(pid);
-	//if (pid == coordToPid(st,img)) fc = -1;
-	//fc = geodistance(st,pidToCoord(pid,img),resolution);
-)");
-	program = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
-			.link();
-	program->bind();
-	int id = glGetUniformLocation(program->getId(), "radius");
-	glUniform1f(id,pow(2,i));
-	p->setCanvasUniforms(program);
-	p->apply(program, p->get_scratch1());
-	p->get_scratch1()->swap(p->get_scratch2());
+	if (pid == coordToPid(st,img)) fc = -1;
+	fc = geodistance(st,pidToCoord(pid,img),resolution);
+	)");
+		program = ShaderProgram::builder()
+				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+				.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
+				.link();
+		program->bind();
+		p->setCanvasUniforms(program);
+		p->apply(program, p->get_scratch1());
+		p->get_scratch1()->swap(p->get_scratch2());
 
 
+		//target->swap(p->get_scratch2());
 
-	steps++;
+	});
+	setProgress({true,1});
+}
 
-	target->swap(p->get_scratch2());
-	return {true,1};
 
-	return {steps>=r.size(),(float(steps))/r.size()};
+std::unique_ptr<float[]> DeTerrace::get(glm::vec2 primary, glm::vec2 secondary) {
+	std::unique_ptr<float[]> data;
+
+	dispatchGPU([this, primary, secondary, &data](Project* p) {
+		init1->bind();
+		p->setCanvasUniforms(init1);
+
+		p->apply(init1,p->get_scratch2());
+
+		init2->bind();
+		p->setCanvasUniforms(init2);
+		int id = glGetUniformLocation(program->getId(), "primary_offset");
+		glUniform2f(id,primary.x,primary.y);
+		id = glGetUniformLocation(program->getId(), "offset_no_globe_wrap");
+		glUniform1i(id,true);
+		p->apply(init2,p->get_scratch1());
+		p->get_scratch1()->swap(p->get_scratch2());
+
+		int a = std::ceil(log2(std::max(p->getHeight(),p->getWidth())))-3;
+
+		for (int i=0; i<=a; i++) {
+			program->bind();
+			float r = pow(2,i);
+			id = glGetUniformLocation(program->getId(), "primary_offset");
+			glUniform2f(id,r*primary.x,r*primary.y);
+			id = glGetUniformLocation(program->getId(), "secondary_offset");
+			glUniform2f(id,r*secondary.x,r*secondary.y);
+			id = glGetUniformLocation(program->getId(), "offset_no_globe_wrap");
+			glUniform1i(id,true);
+
+			p->setCanvasUniforms(program);
+			p->apply(program, p->get_scratch1());
+			p->get_scratch1()->swap(p->get_scratch2());
+
+		}
+		for (int i=a; i>=0; i--) {
+			program->bind();
+			float r = pow(2,i);
+			id = glGetUniformLocation(program->getId(), "primary_offset");
+			glUniform2f(id,r*primary.x,r*primary.y);
+			id = glGetUniformLocation(program->getId(), "secondary_offset");
+			glUniform2f(id,r*secondary.x,r*secondary.y);
+			id = glGetUniformLocation(program->getId(), "offset_no_globe_wrap");
+			glUniform1i(id,true);
+
+			p->apply(program, p->get_scratch1());
+			p->get_scratch1()->swap(p->get_scratch2());
+		}
+
+		data = (p->get_scratch2()->downloadDataRAW()); //TODO better solution than casting
+	});
+	return std::move(data);
 }

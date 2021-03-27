@@ -61,21 +61,22 @@ vec2 pixelsize(vec2 st) {
 	return vec2((cornerCoords[3]-cornerCoords[2])*cos(geo.y),cornerCoords[1]-cornerCoords[0])*circumference/(2*M_PI) / textureSize(img,0);
 }
 
+uniform bool offset_no_globe_wrap = false;
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 	p = p + dp/resolution;
 
 	if (cornerCoords[2]<-M_PI+1e-4 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x+1,1);
-	if (cornerCoords[0]<-M_PI/2+1e-4 && p.y<0) {
+	if (cornerCoords[0]<-M_PI/2+1e-4 && p.y<0 && !offset_no_globe_wrap) {
 		p.y=-p.y;
 		p.x = mod((p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])+2*M_PI,2*M_PI)-M_PI;
 		p.x = (p.x-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
 	}
-	if (cornerCoords[1]>M_PI/2-1e-4 && p.y>1) {
+	if (cornerCoords[1]>M_PI/2-1e-4 && p.y>1 && !offset_no_globe_wrap) {
 		p.y=2-p.y;
 		p.x = mod((p.x*(cornerCoords[3]-cornerCoords[2])+cornerCoords[2])+2*M_PI,2*M_PI)-M_PI;
 		p.x = (p.x-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
 	}
-	p.x = mod(p.x+1,1); //Double check this line???
+	if (cornerCoords[2]<-M_PI+1e-4 && cornerCoords[3]>M_PI-1e-3) p.x = mod(p.x+1,1); //Double check this line???
 	return p;
 }
 )");//TODO what about comment IMPORTANT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -293,6 +294,21 @@ float geodistance(vec2 p1, vec2 p2, vec2 size) {
 	float delta_sigma = 2*asin(sqrt( pow(sin(abs(p2.y-p1.y)/2) , 2) + cos(p1.y)*cos(p2.y)*pow(sin((p1.x-p2.x)/2),2)));
 	return delta_sigma/(cornerCoords[3]-cornerCoords[2])*size.x;
 }
+)","");
+
+static Shader* pidShader = Shader::builder()
+		.create(R"(
+uint coordToPid(vec2 st, sampler2D img) {
+		vec2 coord = textureSize(img,0)*st;
+		return uint(coord.x)+uint(coord.y)*uint(textureSize(img,0).x);
+	}
+
+	vec2 pidToCoord(uint pid, sampler2D img) {
+		ivec2 size = textureSize(img,0);
+		uint a = pid - size.x*(pid/size.x);
+		uint b = (pid - a)/size.x;
+		return vec2(float(a)+0.5,float(b)+0.5)/size;
+	}
 )","");
 
 //static Shader* offset_shader = Shader::builder() //vec(1,0) is left, vec(0,1) is up
