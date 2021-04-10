@@ -303,12 +303,12 @@ uint coordToPid(vec2 st, sampler2D img) {
 		return uint(coord.x)+uint(coord.y)*uint(textureSize(img,0).x);
 	}
 
-	vec2 pidToCoord(uint pid, sampler2D img) {
-		ivec2 size = textureSize(img,0);
-		uint a = pid - size.x*(pid/size.x);
-		uint b = (pid - a)/size.x;
-		return vec2(float(a)+0.5,float(b)+0.5)/size;
-	}
+vec2 pidToCoord(uint pid, sampler2D img) {
+	ivec2 size = textureSize(img,0);
+	uint a = pid - size.x*(pid/size.x);
+	uint b = (pid - a)/size.x;
+	return vec2(float(a)+0.5,float(b)+0.5)/size;
+}
 )","");
 
 //static Shader* offset_shader = Shader::builder() //vec(1,0) is left, vec(0,1) is up

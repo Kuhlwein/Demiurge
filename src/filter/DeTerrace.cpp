@@ -37,7 +37,6 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 
-
 	/*
 	 * scratch 2 -> if neightbour: neighbour else self
 	 */
@@ -49,10 +48,11 @@ DeTerrace::DeTerrace(Project *p, Texture *target) {
 			.create(R"(
 uniform vec2 primary_offset;
 )",R"(
+	float epsilon = 1e-5;
 	vec2 resolution = textureSize(img,0);
 	vec2 o = primary_offset;
 	float a;
-	if (texture(img,offset(st,o,resolution)).r == texture(img,st).r) {
+	if (abs(texture(img,offset(st,o,resolution)).r-texture(img,st).r)<epsilon) {
 		a = texture(scratch2,st).r;
 	} else {
 		a = texture(scratch2,offset(st,o,resolution)).r;
@@ -63,10 +63,6 @@ uniform vec2 primary_offset;
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
-
-
-
-
 
 	/*
 	 * if same height:
@@ -128,10 +124,6 @@ int intFromFloat(float* f, int index) {
 	return i[index];
 }
 
-float DeTerrace::calc() {
-
-}
-
 void DeTerrace::run() {
 	std::unique_ptr<float[]> rightdown = get(glm::vec2(1,1),glm::vec2(1,0));
 	std::unique_ptr<float[]> downright = get(glm::vec2(0,1),glm::vec2(1,1));
@@ -147,79 +139,131 @@ void DeTerrace::run() {
 		height = p->get_terrain()->downloadDataRAW();
 	});
 
+	data = std::make_unique<float[]>(p->getHeight()*p->getWidth());
+
+	std::function<void(std::pair<int,int>)> f = [this,&rightdown,&downright,&downleft,&leftdown,&leftup,&upleft, &upright, &rightup, &height](std::pair<int,int> a) {
+
 	auto pidToCoord = [this](int pid) {
 		uint a = pid - p->getWidth()*(pid/p->getWidth());
 		uint b = (pid - a)/p->getWidth();
 		return glm::ivec2(a,b);
 	};
 
-	//TODO wrapping?
 	auto tovec = [this,&height,&pidToCoord](int i, int id, float minheight) {
 		auto xy = pidToCoord(i)-pidToCoord(id);
-		return glm::vec3(xy.x,xy.y,std::max(height[id],minheight));
+		if (p->getCoords()[2]<-M_PI+1e-4 && p->getCoords()[3]>M_PI-1e-3) {
+			xy.x = abs(xy.x)>p->getWidth()/2 ? -xy.x/abs(xy.x)*(p->getWidth() - abs(xy.x)) : xy.x;
+		}
+
+		float ycoord = float(pidToCoord(i).y)/p->getHeight();
+		float factor = (ycoord*(p->getCoords()[1]-p->getCoords()[0])+p->getCoords()[0]);
+		return glm::vec3(xy.x*std::cos(factor),xy.y,std::max(height[id],minheight));
 	};
 
-
-
-	data = std::make_unique<float[]>(p->getHeight()*p->getWidth());
-
-//	for (int i=0; i<p->getHeight()*p->getWidth(); i++) {
-//		data[i] = float(((int*)leftup.get())[i]);
-//	};
-//	dispatchGPU([this](Project* p) {
-//		p->get_terrain()->uploadData(GL_RED, GL_FLOAT, data.get());
-//	});
-//	setProgress({true,1});
-//	return;
-
-	for (int i=0; i<p->getHeight()*p->getWidth(); i++) {
-		glm::vec3 p[16];
-		int index=0;
-		for (auto d : {rightdown.get(), downright.get(), downleft.get(), leftdown.get(), leftup.get(), upleft.get(), upright.get(), rightup.get()}) {
-			int lu = intFromFloat(d,i);
-			int lu2 = intFromFloat(d,lu);
-			p[index++] = tovec(i,lu,height[i]);
-			p[index++] = tovec(i,lu2,height[lu]);
+	std::vector<glm::vec3> p;
+	std::vector<glm::vec3> virtualPoints;
+	for (int i=a.first; i<a.second; i++) {
+		p.clear();
+		virtualPoints.clear();
+		for (auto d : {rightdown.get(), leftup.get(), downright.get(), upleft.get(), downleft.get(), upright.get(), leftdown.get(), rightup.get()}) {
+			int lu = intFromFloat(d, i);
+			int lu2 = intFromFloat(d, lu);
+			if(i!=lu) p.push_back(tovec(i, lu, height[i]));
+			if(i!=lu2) p.push_back(tovec(i, lu2, height[lu]));
 		}
+
+		float h = height[i];
+		float stepSize = 0;
+		for (auto point : p) {
+			if (stepSize==0 || (std::abs(point.z-h)<stepSize && std::abs(point.z-h)>0)) {
+				stepSize = std::abs(point.z-h);
+			}
+		}
+
+		auto vec2d = [](glm::vec3 v, int sign) {
+			return glm::vec2(sign*sqrt(pow(v.x,2)+pow(v.y,2)),v.z);
+		};
+
+		//Find curvature
+		int curvature = 0;
+		for (int j=0; j<p.size(); j+=4) {
+			auto B = vec2d(p[j], 1);
+			auto A = vec2d(p[j + 1], 1);
+			auto C = vec2d(p[j + 2], -1);
+			auto D = vec2d(p[j + 3], -1);
+
+			if (A.y == B.y) A += A.y>h ? stepSize : -stepSize;
+			curvature += A.y>B.y ? 1 : -1;
+			if (C.y == D.y) D += D.y>h ? stepSize : -stepSize;
+			curvature += D.y>C.y ? 1 : -1;
+		}
+
+		//Make corrections
+		for (int j=0; j<p.size(); j+=4) {
+			auto B = vec2d(p[j], 1);
+			auto A = vec2d(p[j + 1], 1);
+			auto C = vec2d(p[j + 2], -1);
+			auto D = vec2d(p[j + 3], -1);
+
+			if (A.y == B.y) {
+				if (A.y > h && curvature > 0) {
+					p[j + 1].z += stepSize * std::abs(curvature) / 8 * 0.5;
+				} else if (A.y <= h && curvature < 0) {
+					p[j + 1].z -= stepSize * std::abs(curvature) / 8 * 0.5;
+				}
+			}
+			if (C.y == D.y) {
+				if (C.y > h && curvature > 0) {
+					p[j + 3].z += stepSize * std::abs(curvature) / 8 * 0.5;
+				} else if (C.y <= h && curvature < 0) {
+					p[j + 3].z -= stepSize * std::abs(curvature) / 8 * 0.5;
+				}
+			}
+		}
+
+		//Remove self-references
+		for (int i=p.size()-1; i>=0; i--) {
+			if(p[i].x==0 && p[i].y==0) p.erase(p.cbegin()+i);
+		}
+		//Remove duplicates
+		std::sort(std::begin(p),std::end(p),[](glm::vec3 const &a, glm::vec3 const &b) -> bool { return a.x!=b.x ? a.x<b.x : (a.y!=b.y ? a.y<b.y : (a.z<b.z));});
+		auto newEnd = std::unique(std::begin(p),std::end(p),[](glm::vec3 a, glm::vec3 b){ return a.x==b.x && a.y==b.y;});
+		p.resize(std::distance(p.begin(),newEnd));
+
 
 		//START
 		float epsilon = 1e-6;
 
-		float A[19*19];
-		for (int x=0; x<19; x++) for (int y=0; y<19; y++) {
+		const int N = p.size()+3;
+		float A[N * N];
+		for (int x = 0; x < N; x++)
+			for (int y = 0; y < N; y++) {
 				float val = 0;
-				if (x<16 && y<16) val=(pow(p[x].x-p[y].x,2)+pow(p[x].y-p[y].y,2))*log(pow(p[x].x-p[y].x,2)+pow(p[x].y-p[y].y,2)+epsilon);
-				if (x==16 || y==16) val=1.0;
-				if (x==17) val=p[y].x;
-				if (y==17) val=p[x].x;
-				if (x==18) val=p[y].y;
-				if (y==18) val=p[x].y;
-				if (x==y) val=0;
-				if (y>=16 && x>=16) val=0;
-				A[x*19+y] = val;
+				if (x < N - 3 && y < N - 3)
+					val = (pow(p[x].x - p[y].x, 2) + pow(p[x].y - p[y].y, 2)) *
+						  log(pow(p[x].x - p[y].x, 2) + pow(p[x].y - p[y].y, 2) + epsilon);
+				if (x == N - 3 || y == N - 3) val = 1.0;
+				if (x == N - 2) val = p[y].x;
+				if (y == N - 2) val = p[x].x;
+				if (x == N - 1) val = p[y].y;
+				if (y == N - 1) val = p[x].y;
+				if (x == y) val = 0;
+				if (y >= N - 3 && x >= N - 3) val = 0;
+				A[x * N + y] = val;
 			}
 
-//		std::cout << "vec: \n";
-//		for (int i=0; i<16; i++) std::cout << p[i].x << " " << p[i].y << " " << p[i].z << "\n";
-//		for (int i=0; i<19; i++) {
-//			std::cout << "[";
-//			for(int j=0; j<18; j++) std::cout << A[i*19+j] << ",";
-//			std::cout << A[i*19+18] << "],";
-//		}
-//		std::cout << "\n";
-
 		//invert A
-		const int N = 19;
-		int P[N+1];
-		for (int i=0; i<=N; i++) P[i] = i;
 
-		for (int i=0; i<N; i++) {
+		int P[N + 1];
+		for (int i = 0; i <= N; i++) P[i] = i;
+
+		for (int i = 0; i < N; i++) {
 			float maxA = 0.0;
 			int imax = i;
 
-			for (int k=i; k<N; k++) {
-				if (abs(A[k*19+i]) > maxA) {
-					maxA = abs(A[k*19+i]);
+			for (int k = i; k < N; k++) {
+				if (abs(A[k * N + i]) > maxA) {
+					maxA = abs(A[k * N + i]);
 					imax = k;
 				}
 			}
@@ -229,97 +273,205 @@ void DeTerrace::run() {
 				P[i] = P[imax];
 				P[imax] = j;
 
-				for(int k=0; k<N; k++) {
-					float tmp = A[i*19+k];
-					A[i*19+k] = A[imax*19+k];
-					A[imax*19+k] = tmp;
+				for (int k = 0; k < N; k++) {
+					float tmp = A[i * N + k];
+					A[i * N + k] = A[imax * N + k];
+					A[imax * N + k] = tmp;
 				}
 
 				P[N]++;
 			}
 
-			for (int j=i+1; j<N; j++) {
-				A[j*19+i] /= A[i*19+i];
+			for (int j = i + 1; j < N; j++) {
+				A[j * N + i] /= A[i * N + i];
 
-				for (int k=i+1; k<N; k++)
-					A[j*19+k] -= A[j*19+i]*A[i*19+k];
+				for (int k = i + 1; k < N; k++)
+					A[j * N + k] -= A[j * N + i] * A[i * N + k];
 			}
 		}
 
-		float b[19];
-		for(int i=0; i<N; i++) {
-			b[i]=0;
-			if(i<16) b[i] = p[i].z;
+		float b[N];
+		for (int i = 0; i < N; i++) {
+			b[i] = 0;
+			if (i < N - 3) b[i] = p[i].z;
 		}
 
-		float x[19];
-		for (int i=0; i<N; i++) {
+		float x[N];
+		for (int i = 0; i < N; i++) {
 			x[i] = b[P[i]];
 
 			for (int k = 0; k < i; k++)
-				x[i] -= A[i*19+k] * x[k];
+				x[i] -= A[i * N + k] * x[k];
 		}
 
-		for (int i=N-1; i>=0; i--) {
-			for (int k=i+1; k<N; k++)
-				x[i] -= A[i*19+k] * x[k];
+		for (int i = N - 1; i >= 0; i--) {
+			for (int k = i + 1; k < N; k++)
+				x[i] -= A[i * N + k] * x[k];
 
-			x[i] /= A[i*19+i];
+			x[i] /= A[i * N + i];
 		}
 
-		float val = x[16];
-		for (int i=0; i<16; i++) val+= x[i]*(pow(p[i].x,2)+pow(p[i].y,2))*log(pow(p[i].x,2)+pow(p[i].y,2)+epsilon);
+		float val = x[N - 3];
+		for (int i = 0; i < N - 3; i++)
+			val += x[i] * (pow(p[i].x, 2) + pow(p[i].y, 2)) * log(pow(p[i].x, 2) + pow(p[i].y, 2) + epsilon);
 
 		float DD = 0;
-		for (int i=0; i<16; i++) DD+= abs(p[i].x)+abs(p[i].y);
+		for (int i = 0; i < N - 3; i++) DD += abs(p[i].x) + abs(p[i].y);
 
-//		if (std::isnan(val)) {
-//			std::cout << i  << " " << val << "\n";
-//			for(auto pp : p) {std::cout << pp.x << " " << pp.y << " " << pp.z << ", ";}
-//			std::cout << "\n";
-//			for (int i=0; i<16; i++) std::cout <<  x[i]<< " "; std::cout << "\n";
-//			std::cout << "\n";
-//			for (int i=0; i<19; i++) {
-//				for(int j=0; j<19; j++) std::cout << A[i*19+j] << " "; std::cout << "\n";
-//			}
-//			std::cout << "\n";
-//		}
+		if (std::isnan(val)) {
+			std::cout << i  << " " << val << "\n";
+			for(auto pp : p) {std::cout << pp.x << " " << pp.y << " " << pp.z << ",\n";}
+			std::cout << "\n";
+		}
 
+		if (isnanf(val)) val = h+stepSize/2;
+		val = std::max(val,h);
+		val = std::min(val,h+stepSize);
+		if (h<0) {
+			val = std::min(val,0-epsilon);
+		} else {
+			val = std::max(val,0.0f);
+		}
 
 		data[i] = val;
 	}
+	};
+
+	std::vector<std::pair<int,int>> jobs;
+	for (int i=0; i<p->getHeight(); i++) jobs.emplace_back(i*p->getWidth(),(i+1)*p->getWidth());
+	threadpool(f,jobs,0.99);
+
+
 
 	dispatchGPU([this](Project* p) {
-		p->get_terrain()->uploadData(GL_RED, GL_FLOAT, data.get());
+		Shader* shader = Shader::builder()
+				.include(fragmentBase)
+				.create("",R"(
+
+
+	fc = 1e21;
+)");
+		auto reset = ShaderProgram::builder()
+				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+				.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+				.link();
+		reset->bind();
+		p->setCanvasUniforms(reset);
+		p->apply(reset, p->get_scratch1());
 	});
+
+	updateDistance(std::move(rightdown));
+	updateDistance(std::move(downright));
+	updateDistance(std::move(downleft));
+	updateDistance(std::move(leftdown));
+	updateDistance(std::move(leftup));
+	updateDistance(std::move(upleft));
+	updateDistance(std::move(upright));
+	updateDistance(std::move(rightup));
+
+
+	//dispatchGPU([this](Project* p) {
+	//	p->get_scratch1()->swap(p->get_terrain());
+	//});
+
+	Texture* texture;
+	dispatchGPU([this,&texture,&height](Project* p) {
+		p->get_terrain()->uploadData(GL_RED, GL_FLOAT, data.get());
+		texture = new Texture(p->getWidth(),p->getHeight(),GL_RED,"scratch3");
+		texture->uploadData(GL_RED,GL_FLOAT,height.get());
+		p->add_texture(texture);
+	});
+
+	//Terrain: new terrain
+	//texture: old terrain
+	//scratch1: distance
+	//scratch2: new calculations.
 	dispatchGPU([this](Project* p) {
-		Shader* fragment_set = Shader::builder()
+		Shader* shader = Shader::builder()
 				.include(fragmentBase)
 				.include(cornerCoords)
 				.include(distance)
 				.include(pidShader)
-				.create("",R"(
-	vec2 resolution = textureSize(img,0);
+				.create(R"(
+uniform sampler2D scratch3;
+uniform vec2 o;
 
-	uint pid = floatBitsToUint(texture(scratch2,st).r);
+float pseudogaussian(float r, float sigma) {
+	return 1.0/(sigma*sqrt(2*M_PI))*exp(-0.5*pow(r,2)/pow(sigma,2));
+}
 
-	fc = float(pid);
-	if (pid == coordToPid(st,img)) fc = -1;
-	fc = geodistance(st,pidToCoord(pid,img),resolution);
-	)");
-		program = ShaderProgram::builder()
+float oldterrain = texture(scratch3,st).r;
+float newterrain = texture(img,st).r;
+float d = pow(texture(scratch1,st).r/((cornerCoords[3]-cornerCoords[2])*circumference/(2*M_PI) / textureSize(img,0).x)*5,1.8);
+vec2 resolution = textureSize(img,0);
+
+void update(inout float weight, inout float val, vec2 o) {
+	float phifactor = cos(abs(tex_to_spheric(st).y));
+	//o.x = o.x/phifactor;
+	float oldT = texture(scratch3,offset(st,o,resolution)).r;
+	float newT = texture(img,offset(st,o,resolution)).r;
+	float w = pseudogaussian(length(o),d);
+
+
+	if(abs(oldT-oldterrain)>1e-6) {
+		weight += 5*w;
+		val += 5*w*newterrain;
+	} else {
+		val += w*newT;
+		weight += w;
+	}
+}
+)",R"(
+	//vec2 o = vec2(1,0);
+
+
+	float weight = pseudogaussian(0,d);
+	float val = newterrain*weight;
+
+	update(weight,val,o);
+	update(weight,val,-o);
+
+	update(weight,val,2*o);
+	update(weight,val,-2*o);
+
+	update(weight,val,3*o);
+	update(weight,val,-3*o);
+
+	update(weight,val,5*o);
+	update(weight,val,-5*o);
+
+	update(weight,val,8*o);
+	update(weight,val,-8*o);
+
+	fc = val/weight;
+)");
+		auto program = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-				.addShader(fragment_set->getCode(), GL_FRAGMENT_SHADER)
+				.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 				.link();
 		program->bind();
 		p->setCanvasUniforms(program);
-		p->apply(program, p->get_scratch1());
-		p->get_scratch1()->swap(p->get_scratch2());
+
+		for (int j=0; j<10; j++) {
+			int id = glGetUniformLocation(program->getId(), "o");
+			glUniform2f(id,1,0);
+			p->apply(program, p->get_scratch2());
+			p->get_scratch2()->swap(p->get_terrain());
+			glUniform2f(id,0,1);
+			p->apply(program, p->get_scratch2());
+			p->get_scratch2()->swap(p->get_terrain());
+		}
 
 
-		//target->swap(p->get_scratch2());
 
 	});
+
+
+	dispatchGPU([this,&texture,&height](Project* p) {
+		p->remove_texture(texture);
+		delete texture;
+	});
+
 	setProgress({true,1});
 }
 
@@ -376,4 +528,32 @@ std::unique_ptr<float[]> DeTerrace::get(glm::vec2 primary, glm::vec2 secondary) 
 		data = (p->get_scratch2()->downloadDataRAW()); //TODO better solution than casting
 	});
 	return std::move(data);
+}
+
+void DeTerrace::updateDistance(std::unique_ptr<float[]> data) {
+	dispatchGPU([this,&data](Project* p) {
+		p->get_scratch2()->uploadData(GL_RED,GL_FLOAT,data.get());
+
+		Shader* shader = Shader::builder()
+				.include(fragmentBase)
+				.include(cornerCoords)
+				.include(distance)
+				.include(pidShader)
+				.create("",R"(
+	vec2 resolution = textureSize(scratch2,0);
+	uint pid = floatBitsToUint(texture(scratch2,st).r);
+
+	float d = geodistance(st,pidToCoord(pid,scratch2),resolution);
+	float old = texture(scratch1,st).r;
+	fc = d>0 ? min(d,old) : old;
+)");
+		auto program = ShaderProgram::builder()
+				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+				.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+				.link();
+		program->bind();
+		p->setCanvasUniforms(program);
+		p->apply(program, p->get_terrain());
+		p->get_terrain()->swap(p->get_scratch1());
+	});
 }

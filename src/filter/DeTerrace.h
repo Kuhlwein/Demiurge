@@ -31,8 +31,7 @@ private:
 	int steps = 0;
 	std::vector<float> r;
 	std::unique_ptr<float[]> get(glm::vec2 primary, glm::vec2 secondary);
-
-	float calc();
+	void updateDistance(std::unique_ptr<float[]> data);
 };
 
 class DeTerraceMenu : public FilterModal {
