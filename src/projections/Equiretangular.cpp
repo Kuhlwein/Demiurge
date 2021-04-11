@@ -16,7 +16,7 @@ glm::vec2 Equiretangular::inverseTransform(glm::vec2 coord) {
 Shader* Equiretangular::inverseShader() {
 	return Shader::builder()
 			.include(def_pi).create(R"(
-vec2 inverseshader(vec2 coord) {
+vec2 inverseshader(vec2 coord, inout bool outOfBounds) {
 	return coord;
 }
 )");

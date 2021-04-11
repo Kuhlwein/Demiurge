@@ -12,6 +12,7 @@
 #include <appearance/Hillshade.h>
 #include <appearance/AspectMap.h>
 #include <appearance/SlopeMap.h>
+#include <appearance/VectorField.h>
 #include "AppearanceWindow.h"
 
 
@@ -35,6 +36,7 @@ AppearanceWindow::AppearanceWindow() : Window("Appearance", [this](Project* p) {
 		if (ImGui::Selectable("Hillshade")) add(new Hillshade(),p);
 		if (ImGui::Selectable("Aspect map")) add(new AspectMap(),p);
 		if (ImGui::Selectable("Slope map")) add(new SlopeMap(),p);
+		if(ImGui::Selectable("Vector field")) add (new VectorField(),p);
 		ImGui::EndPopup();
 	}
 

@@ -207,7 +207,7 @@ uniform float center_south[25];
 uniform int interruptions;
 uniform int interruptions_s;
 
-vec2 projection(in vec2 st) {
+vec2 projection(in vec2 st, inout bool outOfBounds) {
 
 
 float x = 2.0 * (st.x - 0.5 )*zoom + xyoffset.x;
@@ -247,7 +247,7 @@ offset = cond && x/scale.x<center_south[i]/180 ? 1.0f : offset;
 x=(x-start_i*scale.x)/(stop_i*scale.x-start_i*scale.x)*(scale.x)+(-scale.x*offset);
 }
 
-vec2 coord = inverseshader(vec2(x,y));
+vec2 coord = inverseshader(vec2(x,y),outOfBounds);
 float phi = coord.y;
 float theta = coord.x;
 
@@ -255,10 +255,10 @@ if (isinterrupted) {
 theta = (theta-(-M_PI*offset))/(M_PI)*(stop_i*M_PI-start_i*M_PI)+start_i*M_PI;
 }
 
-if (theta<-M_PI) discard;
-if (theta>M_PI) discard;
-if (phi<-M_PI/2) discard;
-if (phi>M_PI/2) discard;
+if (theta<-M_PI) outOfBounds=true;
+if (theta>M_PI) outOfBounds=true;
+if (phi<-M_PI/2) outOfBounds=true;
+if (phi>M_PI/2) outOfBounds=true;
 
 vec4 coord2 = globeRotation*vec4(cos(phi)*cos(theta),cos(phi)*sin(theta),sin(phi),1);
 phi = -asin(-coord2.z); //0 to pi
@@ -267,12 +267,19 @@ theta = atan(coord2.y,coord2.x); // -pi to pi
 phi = (phi-cornerCoords[0])/(cornerCoords[1]-cornerCoords[0]);
 theta = (theta-cornerCoords[2])/(cornerCoords[3]-cornerCoords[2]);
 
-if (phi<0.0f) discard;
-if (phi>1.0f) discard;
-if (theta<0.0f) discard;
-if (theta>1.0f) discard;
+if (phi<0.0f) outOfBounds=true;
+if (phi>1.0f) outOfBounds=true;
+if (theta<0.0f) outOfBounds=true;
+if (theta>1.0f) outOfBounds=true;
 
 return vec2(theta,phi);
+}
+
+vec2 projection(in vec2 st) {
+	bool a;
+	vec2 r = projection(st,a);
+	if(a) discard;
+	return r;
 }
 )","vec2 st_p = projection(st);");
 }

@@ -129,8 +129,15 @@ void img::update() {
 
 Shader *img::projection_shader() {
 	return Shader::builder().create(R"(
-vec2 projection(in vec2 st) {
+vec2 projection(in vec2 st, inout bool outOfBounds) {
     return st;
+}
+
+vec2 projection(in vec2 st) {
+	bool a;
+	vec2 r = projection(st,a);
+	if(a) discard;
+	return r;
 }
 )","vec2 st_p = projection(st);");
 }

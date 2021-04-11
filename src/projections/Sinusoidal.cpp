@@ -20,13 +20,13 @@ glm::vec2 Sinusoidal::inverseTransform(glm::vec2 coord) {
 Shader* Sinusoidal::inverseShader() {
 	return Shader::builder()
 			.include(def_pi).create(R"(
-vec2 inverseshader(vec2 coord) {
+vec2 inverseshader(vec2 coord, inout bool outOfBounds) {
 
     float phi = coord.y;
     float lambda = coord.x/cos(phi);
 
-    if (lambda<-3.14159) discard;
-    if (lambda>3.14159) discard;
+    if (lambda<-3.14159) outOfBounds=true;
+    if (lambda>3.14159) outOfBounds=true;
 
 
 	return vec2(lambda,phi);

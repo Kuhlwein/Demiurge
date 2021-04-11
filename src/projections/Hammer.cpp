@@ -20,13 +20,13 @@ glm::vec2 Hammer::inverseTransform(glm::vec2 coord) {
 Shader* Hammer::inverseShader() {
 	return Shader::builder()
 			.include(def_pi).create(R"(
-vec2 inverseshader(vec2 coord) {
+vec2 inverseshader(vec2 coord, inout bool outOfBounds) {
 	float z = sqrt(1-pow(0.25*coord.x,2)-pow(0.5*coord.y,2));
 
     float phi = asin(coord.y*z);
     float lambda = 2*atan(z*coord.x/(2*(2*z*z-1)));
 
-	if (coord.x*coord.x+4*coord.y*coord.y>8) discard;
+	if (coord.x*coord.x+4*coord.y*coord.y>8) outOfBounds=true;
 
 	return vec2(lambda,phi);
 }

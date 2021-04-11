@@ -18,11 +18,11 @@ glm::vec2 Mercator::inverseTransform(glm::vec2 coord) {
 Shader *Mercator::inverseShader() {
 	return Shader::builder()
 			.include(def_pi).create(R"(
-vec2 inverseshader(vec2 coord) {
+vec2 inverseshader(vec2 coord, inout bool outOfBounds) {
 	float theta = coord.x;
     float phi = 2*atan(exp(coord.y))-M_PI/2;
 
-	//if (abs(phi)>89.0/180*M_PI) discard;
+	//if (abs(phi)>89.0/180*M_PI) outOfBounds=true;
 
 	return vec2(theta,phi);
 }

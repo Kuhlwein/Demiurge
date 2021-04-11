@@ -402,7 +402,7 @@ float pseudogaussian(float r, float sigma) {
 
 float oldterrain = texture(scratch3,st).r;
 float newterrain = texture(img,st).r;
-float d = pow(texture(scratch1,st).r/((cornerCoords[3]-cornerCoords[2])*circumference/(2*M_PI) / textureSize(img,0).x)*5,1.8);
+float d = pow(texture(scratch1,st).r/5,1.5);
 vec2 resolution = textureSize(img,0);
 
 void update(inout float weight, inout float val, vec2 o) {

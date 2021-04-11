@@ -33,7 +33,7 @@ glm::vec2 GoodeHomolosine::inverseTransform(glm::vec2 coord) {
 Shader* GoodeHomolosine::inverseShader() {
 	return Shader::builder()
 			.include(def_pi).create(R"(
-vec2 inverseshader(vec2 coord) {
+vec2 inverseshader(vec2 coord, inout bool outOfBounds) {
 
 
     float phi = coord.y;
@@ -51,9 +51,9 @@ float theta = asin(coord.y*2/M_PI);
 
 
 
-    if (lambda<-3.14159) discard;
-    if (lambda>3.14159) discard;
-	if (abs(coord.y)>M_PI/2) discard;
+    if (lambda<-3.14159) outOfBounds=true;
+    if (lambda>3.14159) outOfBounds=true;
+	if (abs(coord.y)>M_PI/2) outOfBounds=true;
 
 
 	return vec2(lambda,phi);

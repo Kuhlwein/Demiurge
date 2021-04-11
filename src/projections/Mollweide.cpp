@@ -21,14 +21,14 @@ glm::vec2 Mollweide::inverseTransform(glm::vec2 coord) {
 Shader* Mollweide::inverseShader() {
 	return Shader::builder()
 	.include(def_pi).create(R"(
-vec2 inverseshader(vec2 coord) {
+vec2 inverseshader(vec2 coord, inout bool outOfBounds) {
 	float theta = asin(coord.y/sqrt(2));
 
     float phi = asin((2*theta+sin(2*theta))/M_PI);
     float lambda = M_PI*coord.x/(2*sqrt(2)*cos(theta));
 
-    if (abs(coord.y)>sqrt(2)) discard;
-    if (abs(lambda)>M_PI) discard;
+    if (abs(coord.y)>sqrt(2)) outOfBounds=true;
+    if (abs(lambda)>M_PI) outOfBounds=true;
 
 	return vec2(lambda,phi);
 }

@@ -129,7 +129,7 @@ uniform mat4 globeRotation;
 
 uniform float zoom = 2;
 
-vec2 projection(in vec2 st) {
+vec2 projection(in vec2 st, inout bool outOfBounds) {
 
 float x = 2.0 * (st.x - 0.5)*zoom;
 float y = 2.0 * (st.y - 0.5) / windowaspect * zoom;
@@ -140,7 +140,7 @@ float z = sqrt(1-r*r);
 vec4 coord = globeRotation*vec4(x,y,z,1);
 float r2 = sqrt(coord.x*coord.x+coord.y*coord.y);
 
-if (r>1) discard;
+if (r>1) outOfBounds=true;
 
 float phi = -asin(-coord.z); //0 to pi
 float theta = atan(coord.y,coord.x); // -pi to pi
@@ -150,13 +150,20 @@ float phi2 = (phi-cornerCoords[0])/(cornerCoords[1]-cornerCoords[0]); // 0 to 1
 float theta2 = mod(theta,2*M_PI); // 0 to 2*pi
 theta2 = (theta2-cornerCoords[2]-M_PI)/(cornerCoords[3]-cornerCoords[2]);
 
-if (phi2<0.0f) discard;
-if (phi2>1.0f) discard;
-if (theta2<0.0f) discard;
-if (theta2>1.0f) discard;
+if (phi2<0.0f) outOfBounds=true;
+if (phi2>1.0f) outOfBounds=true;
+if (theta2<0.0f) outOfBounds=true;
+if (theta2>1.0f) outOfBounds=true;
 
 
 return vec2(theta2,phi2);
+}
+
+vec2 projection(in vec2 st) {
+	bool a;
+	vec2 r = projection(st,a);
+	if(a) discard;
+	return r;
 }
 
 )","vec2 st_p = projection(st);");
