@@ -12,6 +12,7 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
 #include "Texture.h"
 #include "Shader.h"
 
@@ -32,6 +33,8 @@
 #include <menus/LayerWindow.h>
 #include <filter/ThermalErosion.h>
 #include <filter/DeTerrace.h>
+#include <filter/OceanCurrents.h>
+
 
 #include "projections/Projections.h"
 #include "menus/BrushWindow.h"
@@ -161,6 +164,7 @@ Project::Project(GLFWwindow* window) {
 	math->addMenu(new OffsetMenu());
 	math->addMenu(new ScaleMenu());
 	math->addMenu(new DeTerraceMenu());
+	math->addMenu(new OceanCurrentsMenu());
 	filter_menu.push_back(math);
 	filter_menu.push_back(new MorphologicalMenu());
 	filter_menu.push_back(new GradientNoiseMenu());

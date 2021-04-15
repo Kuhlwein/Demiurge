@@ -62,8 +62,11 @@ float x = xcoordGradient(vec2(-1,0),st_local,a);
 
 coordinate -= radius+1;
 
-float value = texture(img, st_p).r;
-float theta = 3.14159*2*value*0 + atan(y,x);
+vec2 vel = vec2(texture(scratch1,st_p).r,texture(scratch2,st_p));
+
+float value = texture(scratch2, st_p).r;
+value = atan(-vel.y,vel.x);
+float theta = value -3.141592/2 + atan(y,x);
 
 
 
@@ -73,7 +76,7 @@ coordinate = getRotatedCoordinate(coordinate, theta);
 
 
 
-vec4 kk = vec4(texture(img, st_p).r);
+vec4 kk = vec4(texture(scratch2, st_p).r);
 
 
 
@@ -84,6 +87,10 @@ float arrow = abs(coordinate.x)<1 && coordinate.y>0 || (length(coordinate)<2) ? 
 
 value = min(value,1);
 arrow = 1;
+
+//OVerwrite value
+value = 0.9;
+value = min(length(vel),2);
 
 if(inArrow(coordinate, radius, value)) arrow -= 0.2;
 
