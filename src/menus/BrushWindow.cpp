@@ -124,14 +124,16 @@ uniform mat4 rotation;
 void brush_calc(inout vec2 vstart, inout vec2 vstop) {
 	vec2 p = tex_to_spheric(st);
 //p.x - cornerCoords[2] + M_PI;
-  	vec4 pos = spheric_to_cartesian(p);
+	vec3 pos_tmp = spheric_to_cartesian(p);
+  	vec4 pos = vec4(pos_tmp.x,pos_tmp.y,pos_tmp.z,1);
   	pos = rotation * pos;
-	p = cartesian_to_spheric(pos);
+	p = cartesian_to_spheric(pos.xyz);
 
 	vec2 m = tex_to_spheric(mousePrev);
-  	pos = spheric_to_cartesian(m);
+	pos_tmp = spheric_to_cartesian(m);
+  	pos = vec4(pos_tmp.x,pos_tmp.y,pos_tmp.z,1);
   	pos = rotation * pos;
-	m = cartesian_to_spheric(pos);
+	m = cartesian_to_spheric(pos.xyz);
 
 	float texture_to_sphere_factor = textureSize(img,0).x/(cornerCoords[3]-cornerCoords[2]);
   	float d = abs(p.y)*texture_to_sphere_factor;

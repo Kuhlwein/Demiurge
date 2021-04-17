@@ -183,7 +183,7 @@ float snoise(vec3 v, out vec3 gradient)
 	switch (params.mode) {
 		case DEFAULT: {
 			code = R"(
-	vec3 p = scale*spheric_to_cartesian(tex_to_spheric(st)).xyz;
+	vec3 p = scale*spheric_to_cartesian(tex_to_spheric(st));
 
 	float current_amplitude = 1;
 	float total_amplitude = 0;
@@ -440,6 +440,7 @@ float snoise(vec3 v, out vec3 gradient)
 	Shader* shader = Shader::builder()
 			.include(noise)
 			.include(blendmode)
+			.include(rotation_matrix)
 			.create(R"(
 	uniform float scale;
 	uniform float persistence = 0.5;
@@ -449,13 +450,6 @@ float snoise(vec3 v, out vec3 gradient)
 	uniform float lower_limit;
 	uniform float higher_limit;
 	uniform float warp_factor;
-
-	mat3 rotation_matrix(float theta, vec3 u) {
-		return mat3(
-		vec3(cos(theta)+u.x*u.x*(1-cos(theta)),u.y*u.x*(1-cos(theta))+u.z*sin(theta),u.z*u.x*(1-cos(theta))-u.y*sin(theta)),
-		vec3(u.x*u.y*(1-cos(theta))-u.z*sin(theta),cos(theta)+u.y*u.y*(1-cos(theta)),u.z*u.y*(1-cos(theta))+u.x*sin(theta)),
-		vec3(u.x*u.z*(1-cos(theta))+u.y*sin(theta),u.y*u.z*(1-cos(theta))-u.x*sin(theta),cos(theta)+u.z*u.z*(1-cos(theta))));
-	}
 )",code + R"(
 	fc = blend_mode(texture2D(img,st).r, fc, texture2D(sel,st).r);
 )");

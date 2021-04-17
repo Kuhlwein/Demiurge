@@ -31,6 +31,7 @@ private:
 	Texture* v_scratch;
 	Texture* pressure;
 	Texture* scratch;
+	Texture* divw;
 
 	ShaderProgram* setzero;
 
@@ -39,6 +40,7 @@ private:
 	void divergence(Project* p);
 	void jacobi(Project* p);
 	void subDiv(Project* p);
+	void diffusion(Project* p);
 };
 
 

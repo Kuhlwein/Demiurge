@@ -12,6 +12,9 @@ VectorField::VectorField() : Appearance("Vectorfield") {
 			.include(def_pi)
 			.include(get_slope)
 			.create(replaceSID(R"(
+uniform sampler2D pressure;
+uniform sampler2D v;
+uniform sampler2D divw;
 uniform vec2 dimensions_SID;
 
 vec2 get_st_p(vec2 coord, vec2 dim, inout bool a) {
@@ -90,7 +93,7 @@ arrow = 1;
 
 //OVerwrite value
 value = 0.9;
-value = min(length(vel),2);
+value = max(length(vel),0.2);
 
 if(inArrow(coordinate, radius, value)) arrow -= 0.2;
 
@@ -102,6 +105,24 @@ for (int i=-2; i<=2; i++) {
 
 kk = vec4(0);
 kk.a = 1-arrow;
+
+
+//fc = vec4(texture(pressure,projection(st)).r*8+0.5);
+
+fc = vec4(texture(divw,projection(st)).r*2+0.5);
+
+
+
+
+//vec2 resolution = textureSize(v,0);
+//// Find neighboring velocities:
+//float vNy = texture(v,offset(projection(st),vec2(0,1),resolution)).y;
+//float vSy = texture(v,offset(projection(st),vec2(0,-1),resolution)).y;
+//float vEx = texture(v,offset(projection(st),vec2(1,0),resolution)).x;
+//float vWx = texture(v,offset(projection(st),vec2(-1,0),resolution)).x;
+////Multiply by half cell size??? //TODO
+//vec2 cellsize = 1/resolution*200;
+//fc = vec4(0.5 + 0.5*((vEx - vWx)/cellsize.x + (vNy - vSy)/cellsize.y)/2);
 
 
 

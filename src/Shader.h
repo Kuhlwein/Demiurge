@@ -30,6 +30,16 @@ private:
 static Shader* def_pi = Shader::builder()
 		.create("#define M_PI 3.1415926535897932384626433832795");
 
+static Shader* rotation_matrix = Shader::builder()
+		.create(R"(
+mat3 rotation_matrix(float theta, vec3 u) {
+	return mat3(
+	vec3(cos(theta)+u.x*u.x*(1-cos(theta)),u.y*u.x*(1-cos(theta))+u.z*sin(theta),u.z*u.x*(1-cos(theta))-u.y*sin(theta)),
+	vec3(u.x*u.y*(1-cos(theta))-u.z*sin(theta),cos(theta)+u.y*u.y*(1-cos(theta)),u.z*u.y*(1-cos(theta))+u.x*sin(theta)),
+	vec3(u.x*u.z*(1-cos(theta))+u.y*sin(theta),u.y*u.z*(1-cos(theta))-u.x*sin(theta),cos(theta)+u.z*u.z*(1-cos(theta))));
+}
+)","");
+
 static Shader* cornerCoords = Shader::builder()
 		.include(def_pi)
 		.create(R"(
@@ -48,11 +58,11 @@ vec2 spheric_to_tex(vec2 p) {
 	return p;
 }
 
-vec4 spheric_to_cartesian(vec2 p) {
-	return vec4(cos(p.y)*cos(p.x),cos(p.y)*sin(p.x),sin(p.y),1);
+vec3 spheric_to_cartesian(vec2 p) {
+	return vec3(cos(p.y)*cos(p.x),cos(p.y)*sin(p.x),sin(p.y));
 }
 
-vec2 cartesian_to_spheric(vec4 p) {
+vec2 cartesian_to_spheric(vec3 p) {
 	return vec2(atan(p.y,p.x),asin(p.z));
 }
 

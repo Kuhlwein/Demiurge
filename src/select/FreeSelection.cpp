@@ -53,7 +53,7 @@ uniform vec3 c;
 uniform float s;
 
 bool free_select() {
-	vec3 P = spheric_to_cartesian(tex_to_spheric(st)).xyz;
+	vec3 P = spheric_to_cartesian(tex_to_spheric(st));
 	return s*dot(a,P)>0 && s*dot(b,P)>0 && s*dot(c,P)>0;
 }
 )","");
