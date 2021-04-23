@@ -59,7 +59,7 @@ out vec2 fc;
 )",R"(
 	//fc =  vec2(0.5,sign(st.y-0.5)*pow(abs(st.y-0.5),2)/pow(0.5,2))/10;
 	//fc = length(st-vec2(0.5,0.5))<0.05 ? vec2(0.1,0) : vec2(0,0);
-	fc = vec2(0.2,0);
+	fc = vec2(0,0);
 	//if (abs(0.5-st.x)<0.05 && abs(st.y-0.5)<0.1) fc = vec2(1,0);
 )");
 	ShaderProgram* setzero2 = ShaderProgram::builder()
@@ -84,9 +84,11 @@ void OceanCurrents::run() {
 			diffusion(p);
 
 			divergence(p);
+		});
 
-			jacobi(p);
 
+			jacobi();
+		dispatchGPU([this](Project* p) {
 			subDiv(p);
 
 
@@ -165,19 +167,10 @@ uniform sampler2D scratch2;
 out vec2 fc;
 )", "");
 
-	Shader *advect = Shader::builder()
-			.include(vec2shader)
-			.include(cornerCoords)
-			.include(rotation_matrix)
+	vectorShader = Shader::builder()
 			.create(R"(
-uniform sampler2D v;
-uniform sampler2D vy;
-uniform sampler2D pressure;
-
-
 vec3 v_to_cartesian(vec2 v, vec2 spheric_coord) {
 	vec3 cartesian_coord = spheric_to_cartesian(spheric_coord);
-	//cartesian_coord.z=0;
 	vec2 inward = normalize(cartesian_coord.xy);
 	vec3 y_comp = vec3(sin(spheric_coord.y)*(-inward.x),sin(spheric_coord.y)*(-inward.y),cos(spheric_coord.y));
 
@@ -187,7 +180,6 @@ vec3 v_to_cartesian(vec2 v, vec2 spheric_coord) {
 
 vec2 cartesian_to_v(vec3 v, vec2 spheric_coord) {
 	vec3 cartesian_coord = spheric_to_cartesian(spheric_coord);
-	//cartesian_coord.z=0;
 	vec2 inward = normalize(cartesian_coord.xy);
 	vec3 y_comp = vec3(sin(spheric_coord.y)*(-inward.x),sin(spheric_coord.y)*(-inward.y),cos(spheric_coord.y));
 
@@ -197,6 +189,17 @@ vec2 cartesian_to_v(vec3 v, vec2 spheric_coord) {
 
 	return vec2(((v-z_comp*y_comp)/parallel_comp).x,z_comp);
 }
+)","");
+
+	Shader *advect = Shader::builder()
+			.include(vec2shader)
+			.include(cornerCoords)
+			.include(rotation_matrix)
+			.include(vectorShader)
+			.create(R"(
+uniform sampler2D v;
+uniform sampler2D vy;
+uniform sampler2D pressure;
 
 )", R"(
 vec2 resolution = textureSize(v,0);
@@ -207,17 +210,22 @@ vec2 resolution = textureSize(v,0);
         return;
     }
 
-	float TimeStep = 1/resolution.x;
+	vec2 vel = texture(v, st).xy;
+
+	float timestep = 1*600*2; //hour
 	float Dissipation = 1;
+
+	float distance = length(vel)*timestep;
+	float arclength = 2*3.14159/circumference*distance;
 
 
 	vec2 spheric_coord = tex_to_spheric(st);
 	vec3 cartesian_coord = spheric_to_cartesian(spheric_coord);
 
-	vec3 v_cart = v_to_cartesian(texture(v, st).xy, spheric_coord);
+	vec3 v_cart = v_to_cartesian(vel, spheric_coord);
 	vec3 rotation_direction = normalize(cross(cartesian_coord,v_cart));
 
-	cartesian_coord = rotation_matrix(-0.1,rotation_direction)*cartesian_coord;
+	cartesian_coord = rotation_matrix(-arclength,rotation_direction)*cartesian_coord;
 
 	vec2 spheric_coord_new = cartesian_to_spheric(cartesian_coord);
 
@@ -226,14 +234,21 @@ vec2 resolution = textureSize(v,0);
 
 	vec2 newV = texture(v, coord).xy;
 	vec3 testv = v_to_cartesian(newV, spheric_coord_new);
-	testv = rotation_matrix(0.1,rotation_direction)*testv;
+	testv = rotation_matrix(arclength,rotation_direction)*testv;
 	newV = cartesian_to_v(testv,tex_to_spheric(st));
+
 	//TODO handle 0 vector original??
 	if (any(isnan(newV))) newV = vec2(0,0);
 
     fc = Dissipation * newV;
 
-	if (abs(st.y-0.5)<0.1) fc = fc*0.3 + 0.7*vec2(-1, 0);
+	//if (abs(st.y-0.5)<0.05) fc = fc*0.3 + 0.7*vec2(-1, 0);
+	if (abs(st.x-0.5)<0.01 && st.y>0.5) fc = fc*0.3 + 0.7*vec2(0, 1);
+
+	float phi = 2*(st.y-0.5)*3.14159;
+	vec2 wind = vec2(-cos(phi*3/2),0);
+	if (abs(phi)>3.14159*2/3) wind.x = -wind.x;
+	//fc = fc*0.85 + 0.15*wind;
 )");
 	ShaderProgram *advectProgram = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -249,23 +264,43 @@ vec2 resolution = textureSize(v,0);
 
 void OceanCurrents::divergence(Project *p) {
 	/*
-		 * divergence
-		 */
+	 * divergence
+	 */
 	Shader *divergence = Shader::builder()
 			.include(fragmentBase)
 			.include(cornerCoords)
+			.include(vectorShader)
 			.create(R"(
 uniform sampler2D v;
 uniform sampler2D pressure;
+
+vec2 get_velocity(vec2 st, vec2 o) {
+	vec2 resolution = textureSize(v,0);
+	vec2 st_o = offset(st,o,resolution);
+
+	vec2 d = pixelsize(st);
+	vec2 d_o = pixelsize(st_o);
+
+	vec2 sph = tex_to_spheric(st);
+	vec2 sph_o = tex_to_spheric(st_o);
+
+	vec2 v = texture(v,st_o).xy;
+
+	//TODO better implementation
+	if (abs(abs(sph.x-sph_o.x)-3.14159)<0.1) v = -v;
+	//v = cartesian_to_v(v_to_cartesian(v, sph_o),sph);
+
+	return v * (d_o.x*d_o.y)/(d.x*d.y);
+}
 
 )", R"(
 vec2 resolution = textureSize(v,0);
 
 // Find neighboring velocities:
-float vNy = texture(v,offset(st,vec2(0,1),resolution)).y;
-float vSy = texture(v,offset(st,vec2(0,-1),resolution)).y;
-float vEx = texture(v,offset(st,vec2(1,0),resolution)).x;
-float vWx = texture(v,offset(st,vec2(-1,0),resolution)).x;
+float vNy = get_velocity(st,vec2(0,1)).y;
+float vSy = get_velocity(st,vec2(0,-1)).y;
+float vEx = get_velocity(st,vec2(1,0)).x;
+float vWx = get_velocity(st,vec2(-1,0)).x;
 float vCx = texture(v,st).x;
 float vCy = texture(v,st).y;
 
@@ -282,8 +317,8 @@ if (oE > 0) vEx = 0;
 if (oW > 0) vWx = 0;
 
 //Multiply by half cell size??? //TODO
-vec2 cellsize = vec2(1);
-fc = 0.5*((vEx - vWx)/cellsize.x + (vNy - vSy)/cellsize.y);
+vec2 pixelwidth = pixelsize(st)/420;
+fc = 0.5*((vEx - vWx)/pixelwidth.x + (vNy - vSy)/pixelwidth.y);
 )");
 
 	ShaderProgram *divProgram = ShaderProgram::builder()
@@ -295,20 +330,21 @@ fc = 0.5*((vEx - vWx)/cellsize.x + (vNy - vSy)/cellsize.y);
 	p->setCanvasUniforms(divProgram);
 	p->apply(divProgram, divw);
 
-	//setzero->bind();
-	//p->setCanvasUniforms(setzero);
-	//p->apply(setzero, pressure);
+	setzero->bind();
+	p->setCanvasUniforms(setzero);
+	p->apply(setzero, pressure);
+	//TODO area of pixel?????????????????????????????????????????????????????
 }
 
-void OceanCurrents::jacobi(Project *p) {
+void OceanCurrents::jacobi() {
 	/*
 		 * jacobi
 		 */
-
-	Shader *divergence = Shader::builder()
-			.include(fragmentBase)
-			.include(cornerCoords)
-			.create(R"(
+	dispatchGPU([this](Project* p) {
+		Shader *divergence = Shader::builder()
+				.include(fragmentBase)
+				.include(cornerCoords)
+				.create(R"(
 uniform sampler2D v;
 uniform sampler2D pressure;
 uniform sampler2D divw;
@@ -338,25 +374,28 @@ uniform sampler2D divw;
     if (oW > 0) pW = pC;
 
 	float bC = texture(divw,st).r;
-	//TODO what is alpha
-	float Alpha = -1*1;
-	float InverseBeta = 0.25;
-    fc = (pW + pE + pS + pN + Alpha * bC) * InverseBeta;
+
+	vec2 pixelwidth2 = pow(pixelsize(st)/420,vec2(2,2));
+	float Beta = 2*(1/pixelwidth2.x+1/pixelwidth2.y);
+    fc = ((pW + pE)/pixelwidth2.x + (pS + pN)/pixelwidth2.y - bC) / Beta;
 )");
 
-	ShaderProgram *jacobi = ShaderProgram::builder()
-			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-			.addShader(divergence->getCode(), GL_FRAGMENT_SHADER)
-			.link();
+		jacobiProgram = ShaderProgram::builder()
+				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+				.addShader(divergence->getCode(), GL_FRAGMENT_SHADER)
+				.link();
+	});
 
-	for (int i = 0; i < 5000; ++i) {
+	dispatchGPU([this](Project* p) {
+		for (int i = 0; i < 5000; ++i) {
 
+			jacobiProgram->bind();
+			p->setCanvasUniforms(jacobiProgram);
+			p->apply(jacobiProgram, scratch);
+			pressure->swap(scratch);
 
-		jacobi->bind();
-		p->setCanvasUniforms(jacobi);
-		p->apply(jacobi, scratch);
-		pressure->swap(scratch);
-	}
+		}
+	});
 }
 
 void OceanCurrents::subDiv(Project* p) {
@@ -418,7 +457,8 @@ vec2 resolution = textureSize(v,0);
     vec2 newV = oldV - grad;
 	fc = (vMask*newV) + obstV;
 
-	fc = oldV - vec2(pE-pW,pN-pS);
+	vec2 pixelwidth = pixelsize(st)/420;
+	fc = oldV - 0.5*vec2(pE-pW,pN-pS)/pixelwidth;
 
 
 
@@ -456,16 +496,33 @@ out vec2 fc;
 uniform sampler2D v;
 uniform sampler2D divW;
 
+//TODO remove duplication
+vec2 get_velocity(vec2 st, vec2 o) {
+	vec2 resolution = textureSize(v,0);
+	vec2 st_o = offset(st,o,resolution);
+
+	vec2 sph = tex_to_spheric(st);
+	vec2 sph_o = tex_to_spheric(st_o);
+
+	vec2 v = texture(v,st_o).xy;
+
+	//TODO better implementation
+	if (abs(abs(sph.x-sph_o.x)-3.14159)<0.1) v = -v;
+	//v = cartesian_to_v(v_to_cartesian(v, sph_o),sph);
+
+	return v;
+}
+
 )", R"(
 	vec2 resolution = textureSize(v,0);
 
 
 
 	// Find neighboring pressure:
-	vec2 pN = texture(v,offset(st,vec2(0,1),resolution)).xy;
-	vec2 pS = texture(v,offset(st,vec2(0,-1),resolution)).xy;
-	vec2 pE = texture(v,offset(st,vec2(1,0),resolution)).xy;
-	vec2 pW = texture(v,offset(st,vec2(-1,0),resolution)).xy;
+	vec2 pN = get_velocity(st,vec2(0,1));
+	vec2 pS = get_velocity(st,vec2(0,-1));
+	vec2 pE = get_velocity(st,vec2(1,0));
+	vec2 pW = get_velocity(st,vec2(-1,0));
 	vec2 pC = texture(v,st).xy;
 
     // Find neighboring obstacles:
@@ -481,9 +538,12 @@ uniform sampler2D divW;
     if (oW > 0) pW = pC;
 
 	float bC = texture(v,st).r;
-	float Alpha = 1/resolution.x/1000;
-	float InverseBeta = 1/(4+Alpha);
-    fc = (pW + pE + pS + pN + Alpha * bC) * InverseBeta;
+
+	vec2 pixelwidth2 = 1*1/pow(pixelsize(st),vec2(2,2))*420*420;
+	float Beta = 2*(pixelwidth2.x+pixelwidth2.y) * (1+1/(2*(pixelwidth2.x+pixelwidth2.y)));
+
+
+    fc = ((pW + pE)*pixelwidth2.x + (pS + pN)*pixelwidth2.y - (-bC)) / Beta;
 )");
 
 	ShaderProgram *jacobi = ShaderProgram::builder()

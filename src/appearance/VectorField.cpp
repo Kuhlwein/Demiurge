@@ -50,7 +50,7 @@ bool inArrow(vec2 coordinate, float radius, float value) {
 
 {
 
-float radius = 10;
+float radius = 15;
 float width = radius*2+1;
 
 vec2 coordinate = mod(st*dimensions_SID,width);
@@ -93,7 +93,7 @@ arrow = 1;
 
 //OVerwrite value
 value = 0.9;
-value = max(length(vel),0.2);
+value = max(length(vel),0.4);
 
 if(inArrow(coordinate, radius, value)) arrow -= 0.2;
 
@@ -107,9 +107,9 @@ kk = vec4(0);
 kk.a = 1-arrow;
 
 
-//fc = vec4(texture(pressure,projection(st)).r*8+0.5);
+fc = vec4(texture(pressure,projection(st)).r*8+0.5);
 
-fc = vec4(texture(divw,projection(st)).r*2+0.5);
+//fc = vec4(texture(divw,projection(st)).r*5+0.5);
 
 
 

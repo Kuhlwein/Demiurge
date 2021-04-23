@@ -34,11 +34,13 @@ private:
 	Texture* divw;
 
 	ShaderProgram* setzero;
+	ShaderProgram *jacobiProgram;
+	Shader* vectorShader;
 
 	void advect(Project* p);
 
 	void divergence(Project* p);
-	void jacobi(Project* p);
+	void jacobi();
 	void subDiv(Project* p);
 	void diffusion(Project* p);
 };
