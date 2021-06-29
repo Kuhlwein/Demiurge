@@ -15,6 +15,7 @@ VectorField::VectorField() : Appearance("Vectorfield") {
 uniform sampler2D pressure;
 uniform sampler2D v;
 uniform sampler2D divw;
+uniform sampler2D divw_showcase;
 uniform vec2 dimensions_SID;
 
 vec2 get_st_p(vec2 coord, vec2 dim, inout bool a) {
@@ -76,6 +77,8 @@ float theta = value -3.141592/2 + atan(y,x);
 
 coordinate = getRotatedCoordinate(coordinate, theta);
 
+float ratio = 0.0001;
+
 
 
 
@@ -93,7 +96,7 @@ arrow = 1;
 
 //OVerwrite value
 value = 0.9;
-value = max(length(vel),0.4);
+value = min(length(vel)*8,1.2);
 
 if(inArrow(coordinate, radius, value)) arrow -= 0.2;
 
@@ -107,9 +110,12 @@ kk = vec4(0);
 kk.a = 1-arrow;
 
 
-fc = vec4(texture(pressure,projection(st)).r*8+0.5);
+//if (texture(img,projection(st)).r<0) fc = vec4(texture(pressure,projection(st)).r/50000+0.5);
 
-//fc = vec4(texture(divw,projection(st)).r*5+0.5);
+//if (texture(img,projection(st)).r<0) fc = vec4(texture(divw_showcase,projection(st)).r/20000+0.5);
+
+vel = vec2(texture(scratch1,projection(st)).r,texture(scratch2,projection(st)));
+if (texture(img,projection(st)).r<=0) fc = 1- vec4(length(vel)*8);
 
 
 

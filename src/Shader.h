@@ -73,6 +73,11 @@ vec2 pixelsize(vec2 st) {
 	return vec2((cornerCoords[3]-cornerCoords[2])*cos(geo.y),cornerCoords[1]-cornerCoords[0])*circumference/(2*M_PI) / textureSize(img,0);
 }
 
+vec2 pixelsize(vec2 st, vec2 resolution) {
+	vec2 geo = tex_to_spheric(st);
+	return vec2((cornerCoords[3]-cornerCoords[2])*cos(geo.y),cornerCoords[1]-cornerCoords[0])*circumference/(2*M_PI) / resolution;
+}
+
 uniform bool offset_no_globe_wrap = false;
 vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 	p = p + dp/resolution;

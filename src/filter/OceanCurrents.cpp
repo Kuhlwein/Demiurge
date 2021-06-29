@@ -11,25 +11,63 @@ OceanCurrentsMenu::OceanCurrentsMenu() : FilterModal("OceanCurrents") {
 }
 
 void OceanCurrentsMenu::update_self(Project *p) {
+	ImGuiIO io = ImGui::GetIO();
 
+	ImGui::DragFloat("Pressure", &pressure, 0.01f, 0.1f, 100.0f, "%.2f", 1.0f);
 }
 
 std::shared_ptr<BackupFilter> OceanCurrentsMenu::makeFilter(Project *p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();}, std::move(std::make_unique<OceanCurrents>(p)));
+	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();}, std::move(std::make_unique<OceanCurrents>(p,pressure)));
 }
 
-OceanCurrents::OceanCurrents(Project *p) {
+OceanCurrents::OceanCurrents(Project *p, float pressure) {
 	v = new Texture(p->getWidth(),p->getHeight(),GL_RG32F,"v",GL_LINEAR);
 	v_scratch = new Texture(p->getWidth(),p->getHeight(),GL_RG32F,"v",GL_LINEAR);
-	pressure = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"pressure",GL_LINEAR);
-	scratch = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"scratch",GL_LINEAR);
+	//pressure = new Texture(p->getWidth()/4,p->getHeight()/4,GL_R32F,"pressure",GL_LINEAR);
+	//scratch = new Texture(p->getWidth()/4,p->getHeight()/4,GL_R32F,"scratch",GL_LINEAR);
+
+	pressurefactor = pressure;
+
+	/*
+	 * WIND should never slow down!
+	 * progressive size for all textures
+	 * Possibly other approach to relaxation??
+	 */
+
+	/*
+	 * Wind stuff
+	 * fast current is almost 10km/h (2.7 m/s)
+	 * only 6.5 km/h on average (1.8 m/s)
+	 * eastern currents slow at 0.5km/h (0.15m/s)
+	 * "a wind that blows for 3-4 days will result in current about 2% of the wind speed?"
+	 * typical wind speed is 18-45km/h to (5-12 m/s)
+	 *
+	 * wind stress goes as propto v^2
+	 */
+
+
+
+	pressuresN = 0;
+	jacobi_iterations = 5000;
+	int offset = 0;
+
+	for (int i=pressuresN; i>=0; i--) {
+		Texture* a = new Texture(p->getWidth()/pow(2,i+offset),p->getHeight()/pow(2,i+offset),GL_R32F,"pressure",GL_LINEAR);
+		Texture* b = new Texture(p->getWidth()/pow(2,i+offset),p->getHeight()/pow(2,i+offset),GL_R32F,"scratch",GL_LINEAR);
+		pressures.emplace_back(a,b);
+	}
+
+
+
 	divw = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"divw",GL_LINEAR);
 	p->add_texture(v);
 	p->add_texture(v_scratch);
-	p->add_texture(pressure);
-	p->add_texture(scratch);
+	p->add_texture(pressures.back().first);
+	p->add_texture(pressures.back().second);
 	p->add_texture(divw);
 
+	divw_showcase = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"divw_showcase",GL_NEAREST);
+	p->add_texture(divw_showcase);
 
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
@@ -45,7 +83,7 @@ OceanCurrents::OceanCurrents(Project *p) {
 	setzero->bind();
 	p->setCanvasUniforms(setzero);
 
-	p->apply(setzero,pressure);
+	//p->apply(setzero,pressure);
 
 
 	shader = Shader::builder()
@@ -76,20 +114,22 @@ void OceanCurrents::run() {
 
 
 
-	for(int j=0; j<50; j++) {
+	for(int j=0; j<10000; j++) {
 		dispatchGPU([this](Project* p) {
 
 			advect(p);
 
 			diffusion(p);
 
-			divergence(p);
+			divergence(p,divw);
 		});
 
 
 			jacobi();
 		dispatchGPU([this](Project* p) {
 			subDiv(p);
+
+			divergence(p,divw_showcase);
 
 
 
@@ -137,8 +177,9 @@ uniform sampler2D v;
 	dispatchGPU([this](Project* p) {
 		p->remove_texture(v);
 		p->remove_texture(v_scratch);
-		p->remove_texture(pressure);
-		p->remove_texture(scratch);
+		//p->remove_texture(pressure);
+		//p->remove_texture(scratch);
+		//TODO remove pressure
 	});
 
 	setProgress({true,1.0});
@@ -148,8 +189,9 @@ OceanCurrents::~OceanCurrents() {
 	std::cout << v->getWidth() << " width\n";
 	delete v;
 	delete v_scratch;
-	delete pressure;
-	delete scratch;
+	//delete pressure;
+	//delete scratch;
+	//TODO delete pressure
 	std::cout << "delete\n";
 }
 
@@ -183,11 +225,9 @@ vec2 cartesian_to_v(vec3 v, vec2 spheric_coord) {
 	vec2 inward = normalize(cartesian_coord.xy);
 	vec3 y_comp = vec3(sin(spheric_coord.y)*(-inward.x),sin(spheric_coord.y)*(-inward.y),cos(spheric_coord.y));
 
-	float z_comp = v.z/y_comp.z;
-
 	vec3 parallel_comp = normalize(cross(vec3(0,0,1),cartesian_coord));
 
-	return vec2(((v-z_comp*y_comp)/parallel_comp).x,z_comp);
+	return vec2(dot(v,parallel_comp),dot(v,y_comp));
 }
 )","");
 
@@ -212,7 +252,10 @@ vec2 resolution = textureSize(v,0);
 
 	vec2 vel = texture(v, st).xy;
 
-	float timestep = 1*600*2; //hour
+	float ratio = 0.0001;
+
+	float timestep = 24; //hour
+
 	float Dissipation = 1;
 
 	float distance = length(vel)*timestep;
@@ -240,15 +283,33 @@ vec2 resolution = textureSize(v,0);
 	//TODO handle 0 vector original??
 	if (any(isnan(newV))) newV = vec2(0,0);
 
-    fc = Dissipation * newV;
 
-	//if (abs(st.y-0.5)<0.05) fc = fc*0.3 + 0.7*vec2(-1, 0);
-	if (abs(st.x-0.5)<0.01 && st.y>0.5) fc = fc*0.3 + 0.7*vec2(0, 1);
+
+	vec3 omega = vec3(0,0,1.0/24.0); // hour^-1
+	vec3 coriolis_a = -2*cross(omega,v_to_cartesian(newV, spheric_coord));
+	newV = newV + cartesian_to_v(coriolis_a,spheric_coord)*timestep/5000 * 0.0;
+
+
+
+
+	fc = Dissipation * newV;
+
+
+
+
+	//if (abs(st.y-0.5)<0.05 && st.x>0.75) fc = fc*0.3 + 0.7*vec2(-1, 0);
+
+	//if (abs(st.x-0.5)<0.01 && st.y>0.5) fc = fc*0.3 + 0.7*vec2(0, 1);
 
 	float phi = 2*(st.y-0.5)*3.14159;
-	vec2 wind = vec2(-cos(phi*3/2),0);
-	if (abs(phi)>3.14159*2/3) wind.x = -wind.x;
-	//fc = fc*0.85 + 0.15*wind;
+	vec2 wind = 10*vec2(-cos(phi*3/2),sin(phi*3/2));
+	if (abs(phi*3/2)>3.14159) wind.x = -wind.x;
+	if (abs(phi)>3.14159*1/3 && abs(phi)<3.1459*2/3) wind.y = -wind.y;
+	if (phi<0) wind.y=-wind.y;
+
+	vec2 stress = 1.0+0.0001*pow(abs(wind-fc),vec2(2));
+	fc = fc + wind*(1-pow(stress,-vec2(1.0)/24.0*2))  - fc*(1-pow(vec2(0.4),vec2(1.0/24)));
+	//fc = fc*0.99985 + 0.00015*wind;
 )");
 	ShaderProgram *advectProgram = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -262,7 +323,7 @@ vec2 resolution = textureSize(v,0);
 }
 
 
-void OceanCurrents::divergence(Project *p) {
+void OceanCurrents::divergence(Project *p, Texture* divw) {
 	/*
 	 * divergence
 	 */
@@ -273,9 +334,10 @@ void OceanCurrents::divergence(Project *p) {
 			.create(R"(
 uniform sampler2D v;
 uniform sampler2D pressure;
+uniform float pressurefactor = 100;
 
 vec2 get_velocity(vec2 st, vec2 o) {
-	vec2 resolution = textureSize(v,0);
+	vec2 resolution = textureSize(pressure,0);
 	vec2 st_o = offset(st,o,resolution);
 
 	vec2 d = pixelsize(st);
@@ -290,11 +352,11 @@ vec2 get_velocity(vec2 st, vec2 o) {
 	if (abs(abs(sph.x-sph_o.x)-3.14159)<0.1) v = -v;
 	//v = cartesian_to_v(v_to_cartesian(v, sph_o),sph);
 
-	return v * (d_o.x*d_o.y)/(d.x*d.y);
+	return v * (d_o.x*d_o.y)*pressurefactor; //Multiply pixel area
 }
 
 )", R"(
-vec2 resolution = textureSize(v,0);
+vec2 resolution = textureSize(pressure,0);
 
 // Find neighboring velocities:
 float vNy = get_velocity(st,vec2(0,1)).y;
@@ -328,11 +390,10 @@ fc = 0.5*((vEx - vWx)/pixelwidth.x + (vNy - vSy)/pixelwidth.y);
 
 	divProgram->bind();
 	p->setCanvasUniforms(divProgram);
+	int id = glGetUniformLocation(divProgram->getId(),"pressurefactor");
+	glUniform1f(id,pressurefactor);
 	p->apply(divProgram, divw);
 
-	setzero->bind();
-	p->setCanvasUniforms(setzero);
-	p->apply(setzero, pressure);
 	//TODO area of pixel?????????????????????????????????????????????????????
 }
 
@@ -350,7 +411,7 @@ uniform sampler2D pressure;
 uniform sampler2D divw;
 
 )", R"(
-	vec2 resolution = textureSize(v,0);
+	vec2 resolution = textureSize(pressure,0);
 
 
 
@@ -366,6 +427,7 @@ uniform sampler2D divw;
 	float oS = texture(img,offset(st,vec2(0,-1),resolution)).r;
 	float oE = texture(img,offset(st,vec2(1,0),resolution)).r;
 	float oW = texture(img,offset(st,vec2(-1,0),resolution)).r;
+	float oC = texture(img,st).r;
 
     // Use center pressure for solid cells:
     if (oN > 0) pN = pC;
@@ -373,28 +435,53 @@ uniform sampler2D divw;
     if (oE > 0) pE = pC;
     if (oW > 0) pW = pC;
 
+
 	float bC = texture(divw,st).r;
 
 	vec2 pixelwidth2 = pow(pixelsize(st)/420,vec2(2,2));
 	float Beta = 2*(1/pixelwidth2.x+1/pixelwidth2.y);
     fc = ((pW + pE)/pixelwidth2.x + (pS + pN)/pixelwidth2.y - bC) / Beta;
+	if(oC > 0) fc = 0;
 )");
 
 		jacobiProgram = ShaderProgram::builder()
 				.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 				.addShader(divergence->getCode(), GL_FRAGMENT_SHADER)
 				.link();
+
+		//Zero pressure
+		p->remove_texture(pressures.back().first);
+		p->remove_texture(pressures.back().second);
+		p->add_texture(pressures.front().first);
+		p->add_texture(pressures.front().second);
+
+		setzero->bind();
+		p->setCanvasUniforms(setzero);
+		p->apply(setzero, pressures.front().first);
 	});
 
 	dispatchGPU([this](Project* p) {
-		for (int i = 0; i < 5000; ++i) {
+		for (int j=0; j<pressures.size(); j++) {
+			for (int i = 0; i < jacobi_iterations*sqrt(j+1); ++i) {
+
+				jacobiProgram->bind();
+				p->setCanvasUniforms(jacobiProgram);
+				p->apply(jacobiProgram, pressures[j].second);
+				pressures[j].first->swap(pressures[j].second);
+			}
+
+			if (j==pressures.size()-1) continue;
 
 			jacobiProgram->bind();
 			p->setCanvasUniforms(jacobiProgram);
-			p->apply(jacobiProgram, scratch);
-			pressure->swap(scratch);
+			p->apply(jacobiProgram, pressures[j+1].first);
 
+			p->remove_texture(pressures[j].first);
+			p->remove_texture(pressures[j].second);
+			p->add_texture(pressures[j+1].first);
+			p->add_texture(pressures[j+1].second);
 		}
+
 	});
 }
 
@@ -416,9 +503,10 @@ out vec2 fc;
 uniform sampler2D v;
 uniform sampler2D vy;
 uniform sampler2D pressure;
+uniform float pressurefactor = 100;
 
 )", R"(
-vec2 resolution = textureSize(v,0);
+vec2 resolution = textureSize(pressure,0);
 
 
 
@@ -441,6 +529,13 @@ vec2 resolution = textureSize(v,0);
 	float oE = texture(img,offset(st,vec2(1,0),resolution)).r;
 	float oW = texture(img,offset(st,vec2(-1,0),resolution)).r;
 
+	float oNE = texture(img,offset(st,vec2(1,1),resolution)).r;
+	float oNW = texture(img,offset(st,vec2(-1,1),resolution)).r;
+	float oSE = texture(img,offset(st,vec2(1,-1),resolution)).r;
+	float oSW = texture(img,offset(st,vec2(-1,-1),resolution)).r;
+
+	vec2[] offsets = vec2[8](vec2(1,0),vec2(1,1),vec2(0,1),vec2(-1,1),vec2(-1,0),vec2(-1,-1),vec2(0,-1),vec2(1,-1));
+
     // Use center pressure for solid cells:
     vec2 obstV = vec2(0);
     vec2 vMask = vec2(1);
@@ -450,15 +545,42 @@ vec2 resolution = textureSize(v,0);
     if (oE > 0) { pE = pC; obstV.x = 0; vMask.x = 0; }
     if (oW > 0) { pW = pC; obstV.x = 0; vMask.x = 0; }
 
-    // Enforce the free-slip boundary condition:
+
 	vec2 oldV = texture(v,st).xy;
-	float GradientScale = 1/2;
-    vec2 grad = vec2(pE - pW, pN - pS)*1 * GradientScale;
-    vec2 newV = oldV - grad;
-	fc = (vMask*newV) + obstV;
 
 	vec2 pixelwidth = pixelsize(st)/420;
-	fc = oldV - 0.5*vec2(pE-pW,pN-pS)/pixelwidth;
+	fc = oldV - 0.5*vec2(pE-pW,pN-pS)/pixelwidth / pixelsize(st).x/pixelsize(st).y /pressurefactor; //TODO store variable for pixel area
+
+	// Enforce the free-slip boundary condition:
+
+	//fc = vMask*fc + obstV;
+
+
+
+	float o_array[8];
+	for(int i=0; i<8; i++) {
+		o_array[i] = texture(img,offset(st,offsets[i],resolution)).r;
+	}
+
+	float lower = mod(floor((atan(fc.y,fc.x)/M_PI+1)/2*8+4),8);
+	float upper = mod(ceil((atan(fc.y,fc.x)/M_PI+1)/2*8+4),8);
+	float theta = mod((atan(fc.y,fc.x)/M_PI+1)/2*8+4,8);
+	bool isBorder = o_array[int(lower)]>0 || o_array[int(upper)]>0;
+
+	vec2 nfc = fc;
+	float difference = 2*M_PI;
+	for(int i=0; i<8; i++) {
+		vec2 o = offsets[i];
+		float thetai = mod((atan(o.y,o.x)/M_PI+1)/2*8+4,8);
+		float angleToVel = min((2 * M_PI) - abs(thetai - theta), abs(thetai - theta));
+		if (angleToVel<difference && o_array[int(round(thetai))]<=0) {
+			difference = angleToVel;
+			nfc = o/length(o)*length(nfc);
+		}
+	}
+
+
+	if (isBorder) fc = nfc;
 
 
 
@@ -470,6 +592,8 @@ vec2 resolution = textureSize(v,0);
 
 	subdiv->bind();
 	p->setCanvasUniforms(subdiv);
+	int id = glGetUniformLocation(subdiv->getId(),"pressurefactor");
+	glUniform1f(id,pressurefactor);
 	p->apply(subdiv, v_scratch);
 	v->swap(v_scratch);
 }
