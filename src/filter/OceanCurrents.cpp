@@ -675,7 +675,7 @@ vec2 get_velocity(vec2 st, vec2 o) {
 			.addShader(divergence->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 
-	for (int i = 0; i < 5; ++i) {
+	for (int i = 0; i < 50; ++i) {
 
 		jacobi->bind();
 		p->setCanvasUniforms(jacobi);

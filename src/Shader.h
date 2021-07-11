@@ -265,7 +265,7 @@ vec2 get_texture_gradient(in vec2 st) {
 
 	float a = texture(img, offset(st,-vec2(1,1),resolution)).r;
 	float b = texture(img, offset(st,-vec2(0,1),resolution)).r;
-	float c = texture(img, offset(st,-vec2(-1,0),resolution)).r;
+	float c = texture(img, offset(st,-vec2(-1,1),resolution)).r;
 	float d = texture(img, offset(st,-vec2(1,0),resolution)).r;
 	float f = texture(img, offset(st,-vec2(-1,0),resolution)).r;
 	float g = texture(img, offset(st,-vec2(1,-1),resolution)).r;
@@ -275,6 +275,29 @@ vec2 get_texture_gradient(in vec2 st) {
 	vec2 pixelwidth = pixelsize(st);
 	float delta_x = (-(c + 2*f + i) + (a + 2*d + g))/(8*pixelwidth.x);
 	float delta_y = ((g + 2*h + i) - (a + 2*b + c))/(8*pixelwidth.y);
+	return vec2(delta_x,delta_y);
+}
+
+vec2 get_texture_laplacian(in vec2 st) {
+	vec2 resolution = textureSize(img,0);
+	vec2 geo = tex_to_spheric(st);
+	float factor = cos(geo.y);
+
+	float a = texture(img, offset(st,-vec2(1/factor,1),resolution)).r;
+	float b = texture(img, offset(st,-vec2(0,1),resolution)).r;
+	float c = texture(img, offset(st,-vec2(-1/factor,1),resolution)).r;
+	float d = texture(img, offset(st,-vec2(1/factor,0),resolution)).r;
+	float e = texture(img, offset(st,-vec2(0,0),resolution)).r;
+	float f = texture(img, offset(st,-vec2(-1/factor,0),resolution)).r;
+	float g = texture(img, offset(st,-vec2(1/factor,-1),resolution)).r;
+	float h = texture(img, offset(st,-vec2(0,-1),resolution)).r;
+	float i = texture(img, offset(st,-vec2(-1/factor,-1),resolution)).r;
+
+	vec2 pixelwidth = pixelsize(st);
+	float delta_x = (a - 2*b + c + 2*d - 4*e + 2*f + g - 2*h + i)/(4*pow(pixelwidth.y,2));
+	float delta_y = (a + 2*b + c - 2*d - 4*e - 2*f + g + 2*h + i)/(4*pow(pixelwidth.y,2));
+	if (isnan(delta_x)) delta_x = 0;
+	if (isnan(delta_y)) delta_y = 0;
 	return vec2(delta_x,delta_y);
 }
 )","");

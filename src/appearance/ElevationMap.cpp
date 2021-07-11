@@ -75,7 +75,7 @@ bool ElevationMap::update_self(Project *p) {
 
 	gradient_land->update();
 	int current = -1;
-	const char* items[] = { "Grayscale","Atlas", "Green-yellow-red","Tropic","Contrast","Terrain"};
+	const char* items[] = { "Grayscale","Atlas", "Green-yellow-red","Tropic","Contrast","Terrain","heat"};
 	if(ImGui::Combo("Preset",&current,items,IM_ARRAYSIZE(items))) {
 		switch (current) {
 			case 0:
@@ -96,6 +96,9 @@ bool ElevationMap::update_self(Project *p) {
 			case 5:
 				gradient_land->setGradient(std::vector<int>{8, 9, 5, 51, 51, 33, 32, 60, 40, 40, 86, 57, 55, 116, 76, 113, 165, 100, 160, 184, 110, 217, 207, 120, 211, 185, 104, 190, 148, 78, 186, 122, 59, 213, 127, 63});
 				break;
+            case 6:
+                gradient_land->setGradient(std::vector<int>{254,243,191, 255,213,150, 255,173,117, 254,120,84, 255,62,61, 248,42,52, 217,23,46, 165,0,34});
+                break;
 		}
 	}
 	gradient_land->toTexture(texture_land);
@@ -107,7 +110,7 @@ bool ElevationMap::update_self(Project *p) {
 
 
 	gradient_ocean->update();
-	const char* items2[] = { "Grayscale","Atlas","Blue","Sand","Deep"};
+	const char* items2[] = { "Grayscale","Atlas","Blue","Sand","Deep","heat"};
 	if(ImGui::Combo("Preset##2",&current,items2,IM_ARRAYSIZE(items2))) {
 		switch (current) {
 			case 0:
@@ -125,6 +128,9 @@ bool ElevationMap::update_self(Project *p) {
 			case 4:
 				gradient_ocean->setGradient(std::vector<int>{0, 0, 0, 22, 59, 94, 84, 126, 191, 138, 161, 202, 253, 253, 254});
 				break;
+            case 5:
+                gradient_ocean->setGradient(std::vector<int>{23,29,248, 42,86,254, 65,134,252, 86,176,255, 114,212,255, 153,235,255, 189,249,255, 235,255,255});
+                break;
 		}
 	}
 	gradient_ocean->toTexture(texture_ocean);
