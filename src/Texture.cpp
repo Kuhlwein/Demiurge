@@ -82,6 +82,14 @@ void Texture::swap(Texture* texture) {
     int id = this->id;
     this->id = texture->id;
     texture->id = id;
+
+    int width = this->width;
+    this->width = texture->width;
+    texture->width = width;
+
+    int height = this->height;
+    this->height = texture->height;
+    texture->height = height;
 }
 
 void Texture::bind(GLuint point) {

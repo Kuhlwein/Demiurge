@@ -20,15 +20,8 @@ std::shared_ptr<BackupFilter> OceanCurrentsMenu::makeFilter(Project *p) {
 	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();}, std::move(std::make_unique<OceanCurrents>(p,pressure)));
 }
 
-OceanCurrents::OceanCurrents(Project *p, float pressure) {
-	v = new Texture(p->getWidth(),p->getHeight(),GL_RG32F,"v",GL_LINEAR);
-	v_scratch = new Texture(p->getWidth(),p->getHeight(),GL_RG32F,"v",GL_LINEAR);
-	//pressure = new Texture(p->getWidth()/4,p->getHeight()/4,GL_R32F,"pressure",GL_LINEAR);
-	//scratch = new Texture(p->getWidth()/4,p->getHeight()/4,GL_R32F,"scratch",GL_LINEAR);
-
-	pressurefactor = pressure;
-
-	/*
+OceanCurrents::OceanCurrents(Project *p, float pressure_) {
+	 /*
 	 * WIND should never slow down!
 	 * progressive size for all textures
 	 * Possibly other approach to relaxation??
@@ -46,24 +39,23 @@ OceanCurrents::OceanCurrents(Project *p, float pressure) {
 	 */
 
 
+    v = new Texture(p->getWidth(),p->getHeight(),GL_RG32F,"v",GL_LINEAR);
+    v_scratch = new Texture(p->getWidth(),p->getHeight(),GL_RG32F,"v",GL_LINEAR);
+    pressure = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"pressure",GL_LINEAR);
+    scratch = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"scratch",GL_LINEAR);
 
-	pressuresN = 0;
+    pressurefactor = pressure_;
+
+
 	jacobi_iterations = 5000;
-	int offset = 0;
-
-	for (int i=pressuresN; i>=0; i--) {
-		Texture* a = new Texture(p->getWidth()/pow(2,i+offset),p->getHeight()/pow(2,i+offset),GL_R32F,"pressure",GL_LINEAR);
-		Texture* b = new Texture(p->getWidth()/pow(2,i+offset),p->getHeight()/pow(2,i+offset),GL_R32F,"scratch",GL_LINEAR);
-		pressures.emplace_back(a,b);
-	}
 
 
 
 	divw = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"divw",GL_LINEAR);
 	p->add_texture(v);
 	p->add_texture(v_scratch);
-	p->add_texture(pressures.back().first);
-	p->add_texture(pressures.back().second);
+	p->add_texture(pressure);
+	p->add_texture(scratch);
 	p->add_texture(divw);
 
 	divw_showcase = new Texture(p->getWidth(),p->getHeight(),GL_R32F,"divw_showcase",GL_NEAREST);
@@ -110,6 +102,52 @@ out vec2 fc;
 	p->apply(setzero2,v);
 }
 
+void OceanCurrents::resize(int width, int height, Project* p) {
+    Shader* shader = Shader::builder()
+            .create(R"(
+in vec2 st;
+uniform sampler2D img;
+out float fc;
+)",R"(
+	fc = texture(img,st).r;
+)");
+    ShaderProgram* setzero2 = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+
+
+    Texture* v = new Texture(width,height,GL_RG32F,"v",GL_LINEAR);
+    Texture* v_scratch = new Texture(width,height,GL_RG32F,"v_scratch",GL_LINEAR);
+    Texture* pressure = new Texture(width,height,GL_R32F,"pressure",GL_LINEAR);
+    Texture* scratch = new Texture(width,height,GL_R32F,"scratch",GL_LINEAR);
+
+    Texture* terrain = new Texture(width,height,GL_R32F,"img");
+
+    setzero2->bind();
+    p->setCanvasUniforms(setzero2);
+    p->apply(setzero2,terrain);
+
+    //p->remove_texture(p->get_terrain());
+    //p->add_texture(terrain);
+    p->get_terrain()->swap(terrain);
+
+    p->remove_texture(this->pressure);
+    p->remove_texture(this->scratch);
+    this->pressure = pressure;
+    this->scratch = scratch;
+    p->add_texture(this->pressure);
+    p->add_texture(this->scratch);
+
+    p->remove_texture(this->v);
+    p->remove_texture(this->v_scratch);
+    this->v = v;
+    this->v_scratch = v_scratch;
+    p->add_texture(this->v);
+    p->add_texture(this->v_scratch);
+
+}
+
 void OceanCurrents::run() {
 
 
@@ -126,7 +164,7 @@ void OceanCurrents::run() {
 
 
 			jacobi();
-		dispatchGPU([this](Project* p) {
+		dispatchGPU([j,this](Project* p) {
 			subDiv(p);
 
 			divergence(p,divw_showcase);
@@ -166,8 +204,7 @@ uniform sampler2D v;
 			p->setCanvasUniforms(imageProgram);
 			p->apply(imageProgram,p->get_scratch2());
 
-
-
+            if(j==2) resize(600,200,p);
 
 		});
 	}
@@ -450,38 +487,24 @@ uniform sampler2D divw;
 				.link();
 
 		//Zero pressure
-		p->remove_texture(pressures.back().first);
-		p->remove_texture(pressures.back().second);
-		p->add_texture(pressures.front().first);
-		p->add_texture(pressures.front().second);
+		p->remove_texture(pressure);
+		p->remove_texture(scratch);
+		p->add_texture(pressure);
+		p->add_texture(scratch);
 
 		setzero->bind();
 		p->setCanvasUniforms(setzero);
-		p->apply(setzero, pressures.front().first);
+		p->apply(setzero, pressure);
 	});
 
 	dispatchGPU([this](Project* p) {
-		for (int j=0; j<pressures.size(); j++) {
-			for (int i = 0; i < jacobi_iterations*sqrt(j+1); ++i) {
+        for (int i = 0; i < jacobi_iterations; i++) {
 
-				jacobiProgram->bind();
-				p->setCanvasUniforms(jacobiProgram);
-				p->apply(jacobiProgram, pressures[j].second);
-				pressures[j].first->swap(pressures[j].second);
-			}
-
-			if (j==pressures.size()-1) continue;
-
-			jacobiProgram->bind();
-			p->setCanvasUniforms(jacobiProgram);
-			p->apply(jacobiProgram, pressures[j+1].first);
-
-			p->remove_texture(pressures[j].first);
-			p->remove_texture(pressures[j].second);
-			p->add_texture(pressures[j+1].first);
-			p->add_texture(pressures[j+1].second);
-		}
-
+            jacobiProgram->bind();
+            p->setCanvasUniforms(jacobiProgram);
+            p->apply(jacobiProgram, scratch);
+            pressure->swap(scratch);
+        }
 	});
 }
 
@@ -683,3 +706,4 @@ vec2 get_velocity(vec2 st, vec2 o) {
 		v_scratch->swap(v);
 	}
 }
+

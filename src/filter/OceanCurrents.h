@@ -29,8 +29,8 @@ public:
 private:
 	Texture* v;
 	Texture* v_scratch;
-	//Texture* pressure;
-	//Texture* scratch;
+	Texture* pressure;
+	Texture* scratch;
 	Texture* divw;
 	Texture* divw_showcase;
 
@@ -38,8 +38,6 @@ private:
 	ShaderProgram *jacobiProgram;
 	Shader* vectorShader;
 
-	std::vector<std::pair<Texture*,Texture*>> pressures;
-	int pressuresN;
 	int jacobi_iterations;
 
 	void advect(Project* p);
@@ -48,6 +46,8 @@ private:
 	void jacobi();
 	void subDiv(Project* p);
 	void diffusion(Project* p);
+
+	void resize (int width, int height, Project* p);
 
 	float pressurefactor = 100.0f;
 };
