@@ -35,6 +35,7 @@
 #include <filter/DeTerrace.h>
 #include <filter/OceanCurrents.h>
 #include <filter/Temperature.h>
+#include <filter/Tectonics.h>
 
 
 #include "projections/Projections.h"
@@ -167,6 +168,7 @@ Project::Project(GLFWwindow* window) {
 	math->addMenu(new DeTerraceMenu());
 	math->addMenu(new OceanCurrentsMenu());
 	math->addMenu(new TemperatureMenu());
+    math->addMenu(new TectonicsMenu());
 	filter_menu.push_back(math);
 	filter_menu.push_back(new MorphologicalMenu());
 	filter_menu.push_back(new GradientNoiseMenu());
