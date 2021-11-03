@@ -27,41 +27,67 @@ Tectonics::~Tectonics() {
 }
 
 Tectonics::Tectonics(Project *p) {
-    plate = new Plate(p->getWidth(),p->getHeight());
-    //p->add_texture(plate->getTexture());
+    plates.push_back(new Plate(p->getWidth(),p->getHeight()));
+    plates.push_back(new Plate(p->getWidth(),p->getHeight()));
+    plates[0]->updateRotationBy((float)0.01, glm::vec3(1, 0, 1));
+    plates[1]->updateRotationBy(-(float)0.01, glm::vec3(0, 0, 1));
+
 
 
 	Shader* shader = Shader::builder()
 			.include(fragmentBase)
 			.create("",R"(
-	fc =  texture(img,st).r;
+	fc =  st.x>0.5 ? texture(img,st).r : 0;
 )");
-	ShaderProgram* setzero = ShaderProgram::builder()
+	setzero = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
 			.addShader(shader->getCode(), GL_FRAGMENT_SHADER)
 			.link();
 
 	setzero->bind();
 	p->setCanvasUniforms(setzero);
-	p->apply(setzero,plate->getTexture());
+	p->apply(setzero,plates[0]->getTexture());
+
+	shader = Shader::builder()
+            .include(fragmentBase)
+            .create("",R"(
+	fc =  st.x<0.5 ? texture(img,st).r : 0;
+)");
+    setzero = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+
+    setzero->bind();
+    p->setCanvasUniforms(setzero);
+    p->apply(setzero,plates[1]->getTexture());
 
 
 
-}
+    /*
+     * SET SHADERS
+     */
 
-void Tectonics::run() {
-    for (int i=0; i<10000; i++)
-    dispatchGPU([i,this](Project* p) {
-        p->get_terrain()->swap(p->get_scratch1());
+    shader = Shader::builder()
+            .include(fragmentBase)
+            .include(cornerCoords)
+            .create("",R"(
+	fc = 0;
+)");
+    setzero = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
 
-        Shader* shader = Shader::builder()
-                .include(fragmentBase)
-                .include(cornerCoords)
-                .create(R"(
+    Shader* tectonicShader = Shader::builder()
+            .include(fragmentBase)
+            .include(cornerCoords)
+            .create(R"(
 uniform sampler2D plate;
-uniform float theta;
 uniform mat3 rotationmatrix;
-)",R"(
+uniform float plateIndex;
+
+vec4 plateTexture(sampler2D img, vec2 st) {
     vec2 spheric = tex_to_spheric(st);
     vec3 cartesian = spheric_to_cartesian(spheric);
 
@@ -70,36 +96,60 @@ uniform mat3 rotationmatrix;
     spheric = cartesian_to_spheric(cartesian);
     vec2 st_ = spheric_to_tex(spheric);
 
-	fc =  texture(plate,st_).r;
+	return texture(plate,st_);
+}
+)","");
+
+    shader = Shader::builder()
+            .include(fragmentBase)
+            .include(cornerCoords)
+            .include(tectonicShader)
+            .create("",R"(
+	fc = texture(scratch1,st).r + (plateTexture(plate,st).r>0.0 ? plateIndex : 0.0);
 )");
-        ShaderProgram* setzero = ShaderProgram::builder()
-                .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-                .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
-                .link();
+    foldShader = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+}
 
-        setzero->bind();
+void Tectonics::run() {
+    for (int i=0; i<10000; i++) {
+        for (Plate* p : plates) {
+            p->rotate();
+        }
 
-        int id = glGetUniformLocation(setzero->getId(), "theta");
-        glUniform1f(id,i*M_PI/1000);
 
-        plate->rotate((float)0.01, glm::vec3(1, 0, 0));
+        fold(setzero,foldShader);
 
-        glm::mat3 a = plate->rotation;
-        id = glGetUniformLocation(setzero->getId(),"rotationmatrix");
-        glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(a));
-
-        id = glGetUniformLocation(setzero->getId(),"plates");
-        glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(a));
-
-        //id = glGetUniformLocation(setzero->getId(),"plate");
-        //glBindTexture(id,plate->getTexture()->getId());
-        //NEED TO BIND TO UNIT
-
-        p->setCanvasUniforms(setzero);
-        p->apply(setzero,p->get_terrain());
-    });
+    }
 
     setProgress({true,1});
+}
+
+void Tectonics::fold(ShaderProgram *zero, ShaderProgram *operation) {
+    dispatchGPU([this,zero,operation](Project* p) {
+        zero->bind();
+        p->apply(zero,p->get_terrain());
+        p->get_terrain()->swap(p->get_scratch1());
+
+        float index = 1; //Index 0 is no plate
+        for (Plate* plate : plates) {
+            p->add_texture(plate->getTexture());
+
+            operation->bind();
+            plate->setRotationUniform(operation);
+            int id = glGetUniformLocation(operation->getId(),"plateIndex");
+            glUniform1f(id,index++);
+            p->setCanvasUniforms(operation);
+
+            p->apply(operation,p->get_terrain());
+            p->remove_texture(plate->getTexture());
+            p->get_terrain()->swap(p->get_scratch1());
+        }
+
+        p->get_terrain()->swap(p->get_scratch1());
+    });
 }
 
 Plate::Plate(int width, int height) {
@@ -116,6 +166,30 @@ Texture *Plate::getTexture() {
     return texture;
 }
 
-void Plate::rotate(float theta, glm::vec3 axis) {
-    rotation = glm::rotate(rotation,theta, axis);
+void Plate::rotate() {
+    rotation *= rotationDirection;
 }
+
+void Plate::setRotationUniform(ShaderProgram* shaderProgram) {
+    glm::mat3 a = rotation;
+    int id = glGetUniformLocation(shaderProgram->getId(),"rotationmatrix");
+    glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(a));
+}
+
+void Plate::updateRotationBy(float theta, glm::vec3 axis) {
+    rotationDirection = glm::rotate(rotation,theta, axis);
+}
+
+
+
+
+/*
+ * Ocean:
+ * For each pixel, get current plate
+ * Spread, gaussian-like, remember distance from divergence to plates and from plate to divergence
+ * For each plate generate new crust based on distance
+ *
+ *
+ *
+ *
+ */

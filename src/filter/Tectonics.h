@@ -25,10 +25,17 @@ public:
     Plate(int width, int height);
     ~Plate();
     Texture* getTexture();
-    void rotate(float theta, glm::vec3 axis);
-    glm::mat4 rotation;
+    void rotate();
+    void setRotationUniform(ShaderProgram* shaderProgram);
+    void updateRotationBy(float theta, glm::vec3 axis);
 private:
+    //crust thickness
+    //Crust age
+    //local ridge/fold direction
+    //(orogeny type???)
     Texture* texture;
+    glm::mat4 rotation;
+    glm::mat4 rotationDirection;
 };
 
 class Tectonics : public AsyncSubFilter {
@@ -36,9 +43,12 @@ public:
     Tectonics(Project *p);
 	~Tectonics();
 	void run() override;
+	void fold(ShaderProgram* zero, ShaderProgram* operation);
 private:
-    Plate* plate;
-    Plate* plate2;
+    std::vector<Plate*> plates;
+
+    ShaderProgram* setzero;
+    ShaderProgram* foldShader;
 };
 
 
