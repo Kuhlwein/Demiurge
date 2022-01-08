@@ -98,6 +98,24 @@ vec2 offset(vec2 p, vec2 dp, vec2 resolution) {
 }
 )");//TODO what about comment IMPORTANT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+static Shader* directional = Shader::builder()
+        .include(def_pi)
+        .create(R"(
+vec2 cartesian_to_v(vec3 v, vec2 spheric_coord) {
+        vec3 cartesian_coord = spheric_to_cartesian(spheric_coord);
+
+        //Subtract radial projection
+        v = v - dot(v,cartesian_coord)/dot(cartesian_coord,cartesian_coord)*cartesian_coord;
+
+        vec2 inward = normalize(cartesian_coord.xy);
+        vec3 y_comp = vec3(sin(spheric_coord.y)*(-inward.x),sin(spheric_coord.y)*(-inward.y),cos(spheric_coord.y));
+
+        vec3 parallel_comp = normalize(cross(vec3(0,0,1),cartesian_coord));
+
+        return vec2(dot(v,parallel_comp),dot(v,y_comp));
+    }
+)");
+
 /*
  *  Vertex shaders
  */

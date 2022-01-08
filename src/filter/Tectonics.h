@@ -26,7 +26,7 @@ public:
     ~Plate();
     Texture* getTexture();
     void rotate();
-    void setRotationUniform(ShaderProgram* shaderProgram);
+    void setPlateUniforms(ShaderProgram* shaderProgram, int indextsh);
     void updateRotationBy(float theta, glm::vec3 axis);
 private:
     //crust thickness
@@ -35,7 +35,7 @@ private:
     //(orogeny type???)
     Texture* texture;
     glm::mat4 rotation;
-    glm::mat4 rotationDirection;
+    glm::vec3 angularVelocity;
 };
 
 class Tectonics : public AsyncSubFilter {
@@ -43,9 +43,12 @@ public:
     Tectonics(Project *p);
 	~Tectonics();
 	void run() override;
-	void fold(ShaderProgram* zero, ShaderProgram* operation);
+	void fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1, Texture* t2, Project *p);
 private:
     std::vector<Plate*> plates;
+
+    Texture* a;
+    Texture* b;
 
     ShaderProgram* setzero;
     ShaderProgram* foldShader;
