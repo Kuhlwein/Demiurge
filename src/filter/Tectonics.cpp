@@ -38,9 +38,9 @@ Tectonics::Tectonics(Project *p) {
 
 
 	Shader* shader = Shader::builder()
-			.include(fragmentBase)
+			.include(fragmentColor)
 			.create("",R"(
-	fc =  st.x>0.5 ? 1.0 : 0;
+	fc =  st.x>0.5 ? vec4(1.0) : vec4(0);
 )");
 	setzero = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -52,9 +52,9 @@ Tectonics::Tectonics(Project *p) {
 	p->apply(setzero,plates[0]->getTexture());
 
 	shader = Shader::builder()
-            .include(fragmentBase)
+            .include(fragmentColor)
             .create("",R"(
-	fc =  st.x<0.5 ? 1.0 : 0;
+	fc =  st.x<0.5 ? vec4(1.0) : vec4(0);
 )");
     setzero = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -66,12 +66,12 @@ Tectonics::Tectonics(Project *p) {
     p->apply(setzero,plates[1]->getTexture());
 
 
-    Shader* tectonicShader = Shader::builder()
-            .include(fragmentColor)
-            .include(cornerCoords)
+    tectonicSamplingShader = Shader::builder()
             .create(R"(
 uniform sampler2D plate;
+
 uniform mat3 rotationmatrix;
+uniform mat3 inverserotationmatrix;
 uniform float plateIndex;
 uniform vec3 plateVelocity;
 
@@ -84,7 +84,19 @@ vec4 plateTexture(sampler2D img, vec2 st) {
     spheric = cartesian_to_spheric(cartesian);
     vec2 st_ = spheric_to_tex(spheric);
 
-	return texture(plate,st_);
+	return texture(img,st_);
+}
+
+vec4 inverseplateTexture(sampler2D img, vec2 st) {
+    vec2 spheric = tex_to_spheric(st);
+    vec3 cartesian = spheric_to_cartesian(spheric);
+
+    cartesian = inverserotationmatrix*cartesian;
+
+    spheric = cartesian_to_spheric(cartesian);
+    vec2 st_ = spheric_to_tex(spheric);
+
+	return texture(img,st_);
 }
 )","");
 
@@ -95,7 +107,7 @@ vec4 plateTexture(sampler2D img, vec2 st) {
     shader = Shader::builder()
             .include(fragmentColor)
             .include(cornerCoords)
-            .include(tectonicShader)
+            .include(tectonicSamplingShader)
             .create("",R"(
 	fc = vec4(0.0);
 )");
@@ -107,7 +119,7 @@ vec4 plateTexture(sampler2D img, vec2 st) {
     shader = Shader::builder()
             .include(fragmentColor)
             .include(cornerCoords)
-            .include(tectonicShader)
+            .include(tectonicSamplingShader)
             .include(directional)
             .create(R"(
     uniform sampler2D foldtex;
@@ -199,7 +211,7 @@ void Tectonics::run() {
                 p->apply(foldShader2,a,{{b,"foldtex"}});
                 a->swap(b);
             }
-            for (int i=N; i>=0; i--) {
+            for (int i=N; i>0; i--) {
                 foldShader2->bind();
                 p->setCanvasUniforms(foldShader2);
                 int id = glGetUniformLocation(foldShader2->getId(),"radius");
@@ -211,7 +223,9 @@ void Tectonics::run() {
 
 
 
-
+            /*
+            // Render
+            */
 
             auto shader = Shader::builder()
                     .include(fragmentBase)
@@ -221,6 +235,7 @@ void Tectonics::run() {
 )",R"(
 	fc = texture(foldtex,st).z;
     if(fc==0) fc = texture(foldtex,st).x;
+    fc = texture(foldtex,st).x;
 )");
 
             ShaderProgram* foldShader = ShaderProgram::builder()
@@ -230,7 +245,46 @@ void Tectonics::run() {
             foldShader->bind();
 
             p->setCanvasUniforms(foldShader);
+
             p->apply(foldShader,p->get_terrain(),{{b,"foldtex"}});
+
+            /*
+             * Back to plates
+             */
+
+            auto shader3 = Shader::builder()
+                    .include(fragmentColor)
+                    .include(cornerCoords)
+                    .include(distance)
+                    .include(directional)
+                    .include(tectonicSamplingShader)
+                    .create(R"(
+    uniform sampler2D foldtex;
+)",R"(
+    vec4 a = inverseplateTexture(foldtex,st);
+    fc = a.x == plateIndex ? vec4(1.0) : vec4(0.0);
+    //fc = a-plateIndex;
+
+    //fc = plateIndex==1 ? (st.x>0.5 ? vec4(1.0) : vec4(-1.0)) : (st.x<0.5 ? vec4(1.0) : vec4(-1.0));
+)");
+
+            ShaderProgram* unfoldshader = ShaderProgram::builder()
+                    .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+                    .addShader(shader3->getCode(), GL_FRAGMENT_SHADER)
+                    .link();
+
+            float index = 1; //Index 0 is no plate
+            for (Plate* plate : plates) {
+                //a->swap(plate->getTexture());
+
+                unfoldshader->bind();
+                p->setCanvasUniforms(unfoldshader);
+                plate->setPlateUniforms(unfoldshader,index++);
+
+
+                p->apply(unfoldshader,plate->getTexture(),{{b,"foldtex"}});
+            }
+
 
         });
     }
@@ -257,7 +311,7 @@ void Tectonics::fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1,
 }
 
 Plate::Plate(int width, int height) {
-    texture = new Texture(width,height,GL_RG32F,"plate");
+    texture = new Texture(width,height,GL_RGBA32F,"plate");
 
     rotation = glm::mat4(1);
     angularVelocity = glm::vec3(0);
@@ -282,6 +336,10 @@ void Plate::setPlateUniforms(ShaderProgram* shaderProgram, int index) {
     glm::mat3 a = rotation;
     id = glGetUniformLocation(shaderProgram->getId(),"rotationmatrix");
     glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(a));
+
+    glm::mat3 b = glm::transpose(a);
+    id = glGetUniformLocation(shaderProgram->getId(),"inverserotationmatrix");
+    glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(b));
 
     id = glGetUniformLocation(shaderProgram->getId(),"plateVelocity");
     glUniform3f(id,angularVelocity.x,angularVelocity.y,angularVelocity.z);

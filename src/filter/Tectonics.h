@@ -30,9 +30,9 @@ public:
     void updateRotationBy(float theta, glm::vec3 axis);
 private:
     //crust thickness
-    //Crust age
+    //Crust age (negative when not part of plate)
     //local ridge/fold direction
-    //(orogeny type???)
+    //(orogeny type???) [ocean=0, subduction=1, continental collision=2]
     Texture* texture;
     glm::mat4 rotation;
     glm::vec3 angularVelocity;
@@ -52,6 +52,8 @@ private:
 
     ShaderProgram* setzero;
     ShaderProgram* foldShader;
+
+    Shader* tectonicSamplingShader;
 };
 
 
