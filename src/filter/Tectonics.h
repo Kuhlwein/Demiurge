@@ -44,11 +44,13 @@ public:
 	~Tectonics();
 	void run() override;
 	void fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1, Texture* t2, Project *p);
+	void oceanSpreading(Project* p);
 private:
     std::vector<Plate*> plates;
 
     Texture* a;
     Texture* b;
+    Texture* c;
 
     ShaderProgram* setzero;
     ShaderProgram* foldShader;

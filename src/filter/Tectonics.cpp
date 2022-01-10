@@ -32,15 +32,18 @@ Tectonics::Tectonics(Project *p) {
     plates[0]->updateRotationBy((float)0.01, glm::vec3(1, 0, 0));
     plates[1]->updateRotationBy(-(float)0.01, glm::vec3(0, 0, 1));
 
-    a = new Texture(p->getWidth(),p->getWidth(),GL_RGBA32F,"");
-    b = new Texture(p->getWidth(),p->getWidth(),GL_RGBA32F,"");
+    a = new Texture(p->getWidth()*1,p->getWidth()*1,GL_RGBA32F,"");
+    b = new Texture(p->getWidth()*1,p->getWidth()*1,GL_RGBA32F,"");
+    c = new Texture(p->getWidth(),p->getWidth(),GL_RGBA32F,"");
 
 
 
 	Shader* shader = Shader::builder()
 			.include(fragmentColor)
 			.create("",R"(
-	fc =  st.x>0.5 ? vec4(1.0) : vec4(0);
+    vec4 a = texture(img, st);
+    float h = a.x>0 ? a.x : -1;
+	fc =  st.x>0.5 ? vec4(h,1.0,0,0) : vec4(0,-1,0,0);
 )");
 	setzero = ShaderProgram::builder()
 			.addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -54,7 +57,9 @@ Tectonics::Tectonics(Project *p) {
 	shader = Shader::builder()
             .include(fragmentColor)
             .create("",R"(
-	fc =  st.x<0.5 ? vec4(1.0) : vec4(0);
+    vec4 a = texture(img, st);
+    float h = a.x>0 ? a.x : -2;
+	fc =  st.x<0.5 ? vec4(h,1.0,0,0) : vec4(0,-1,0,0);
 )");
     setzero = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -109,7 +114,8 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
             .include(cornerCoords)
             .include(tectonicSamplingShader)
             .create("",R"(
-	fc = vec4(0.0);
+    //plate id, height, age, collision
+	fc = vec4(0.0,-1,-1,0);
 )");
     setzero = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -133,7 +139,13 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
     vec2 spheric_v = cartesian_to_v(v,spheric_coord);
     float theta = atan(spheric_v.y,spheric_v.x);
 
-    if (plateTexture(plate,st).r>0) fc = vec4(index,theta,0,0);
+    vec4 p = plateTexture(plate,st);
+
+    //mark collision
+    float collision = p.y>0 && fc.z>0 ? 1 : 0;
+    if (p.y>0 && fc.z>0) fc.a = collision;
+
+    if (p.y>0 && !(p.x<=0 && fc.y>0)) fc = vec4(index,p.x,p.y,fc.a);
 )");
     foldShader = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -151,23 +163,126 @@ void Tectonics::run() {
 
         dispatchGPU([this](Project* p) {
 
-            //Sets distance to zero, sets direction of movement, and plate index, (and age???)
+            //Sets b to [plate index, height, age, and collision bool]
             fold(setzero, foldShader, a, b, p);
 
-
-            //set distance for all to zero, set plate for all to plate
-            //Check neighbours distance, if shorter than current or currently not part of plate, update current plate and distance
-            //ONLY if direction of plate movement matches!!
-
-            //When finished, do backwards from borders between plates
+            //Create new crust with age=0
+            oceanSpreading(p);
 
 
-            auto shader2 = Shader::builder()
+
+
+            /*
+            // Render
+            */
+
+            auto shader = Shader::builder()
+                    .include(fragmentBase)
+                    .include(cornerCoords)
+                    .create(R"(
+    uniform sampler2D foldtex;
+)",R"(
+	fc = texture(foldtex,st).y;
+    //if(fc==0) fc = texture(foldtex,st).x;
+    //fc = texture(foldtex,st).z;
+
+    if (texture(foldtex,st).a>0) fc = 100;
+)");
+
+            ShaderProgram* foldShader = ShaderProgram::builder()
+                    .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+                    .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+                    .link();
+            foldShader->bind();
+
+            p->setCanvasUniforms(foldShader);
+
+            p->apply(foldShader,p->get_terrain(),{{b,"foldtex"}});
+
+            /*
+             * Back to plates
+             */
+
+            auto shader3 = Shader::builder()
                     .include(fragmentColor)
                     .include(cornerCoords)
                     .include(distance)
                     .include(directional)
+                    .include(tectonicSamplingShader)
                     .create(R"(
+    uniform sampler2D foldtex;
+    uniform sampler2D oldPlate;
+)",R"(
+    vec4 a = inverseplateTexture(foldtex,st);
+
+    fc = texture(oldPlate,st);
+    //fc.y = fc.y + 1; //Increment age
+
+
+    // delete stuff? (index does not match, if deleting land, must not be replaced by land)
+    if(a.x != plateIndex && !(a.y<=0 && fc.x>0)) fc = vec4(0,-1,0,0);
+
+    //create new, age of old must be negative (nonexisting),
+    if(fc.y<0 && a.x == plateIndex) fc = vec4(-plateIndex,1,0,0);
+
+)");
+
+            ShaderProgram* unfoldshader = ShaderProgram::builder()
+                    .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+                    .addShader(shader3->getCode(), GL_FRAGMENT_SHADER)
+                    .link();
+
+            float index = 1; //Index 0 is no plate
+            for (Plate* plate : plates) {
+                c->swap(plate->getTexture());
+
+                unfoldshader->bind();
+                p->setCanvasUniforms(unfoldshader);
+                plate->setPlateUniforms(unfoldshader,index++);
+
+
+                p->apply(unfoldshader,plate->getTexture(),{{b,"foldtex"},{c,"oldPlate"}});
+            }
+
+
+        });
+    }
+
+    setProgress({true,1});
+}
+
+//Apply operations to t1
+void Tectonics::fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1, Texture* t2, Project *p) {
+    zero->bind();
+    p->apply(zero,t1);
+    t1->swap(t2);
+
+    float index = 1; //Index 0 is no plate
+    for (Plate* plate : plates) {
+
+        operation->bind();
+        plate->setPlateUniforms(operation,index++);
+        p->setCanvasUniforms(operation);
+
+        p->apply(operation,t1,{{t2,"foldtex"},{plate->getTexture(),"plate"}});
+        t1->swap(t2);
+    }
+}
+
+void Tectonics::oceanSpreading(Project* p) {
+    //set distance for all to zero, set plate for all to plate
+    //Check neighbours distance, if shorter than current or currently not part of plate, update current plate and distance
+    //ONLY if direction of plate movement matches!!
+
+    //When finished, do backwards from borders between plates
+
+
+    auto shader2 = Shader::builder()
+            .include(fragmentColor)
+            .include(cornerCoords)
+            .include(distance)
+            .include(directional)
+            .create(R"(
     uniform sampler2D foldtex;
     uniform float radius;
 )",R"(
@@ -193,120 +308,31 @@ void Tectonics::run() {
 
         //&& abs(ntheta-a.y)<2*M_PI/N
 
-        if((nz < fc.z || fc.x==0) && a.x != 0) fc = vec4(a.x, a.y, nz, a.a);
+        if((nz < fc.z || fc.x==0) && a.x != 0) fc = vec4(a.x, -1.1, nz, 0);
     }
 )");
 
-            ShaderProgram* foldShader2 = ShaderProgram::builder()
-                    .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-                    .addShader(shader2->getCode(), GL_FRAGMENT_SHADER)
-                    .link();
+    ShaderProgram* foldShader2 = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader2->getCode(), GL_FRAGMENT_SHADER)
+            .link();
 
-            int N = 5;
-            for (int i=0; i<N; i++) {
-                foldShader2->bind();
-                p->setCanvasUniforms(foldShader2);
-                int id = glGetUniformLocation(foldShader2->getId(),"radius");
-                glUniform1f(id,pow(2,i));
-                p->apply(foldShader2,a,{{b,"foldtex"}});
-                a->swap(b);
-            }
-            for (int i=N; i>0; i--) {
-                foldShader2->bind();
-                p->setCanvasUniforms(foldShader2);
-                int id = glGetUniformLocation(foldShader2->getId(),"radius");
-                glUniform1f(id,pow(2,i));
-                p->apply(foldShader2,a,{{b,"foldtex"}});
-                a->swap(b);
-            }
-
-
-
-
-            /*
-            // Render
-            */
-
-            auto shader = Shader::builder()
-                    .include(fragmentBase)
-                    .include(cornerCoords)
-                    .create(R"(
-    uniform sampler2D foldtex;
-)",R"(
-	fc = texture(foldtex,st).z;
-    if(fc==0) fc = texture(foldtex,st).x;
-    fc = texture(foldtex,st).x;
-)");
-
-            ShaderProgram* foldShader = ShaderProgram::builder()
-                    .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-                    .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
-                    .link();
-            foldShader->bind();
-
-            p->setCanvasUniforms(foldShader);
-
-            p->apply(foldShader,p->get_terrain(),{{b,"foldtex"}});
-
-            /*
-             * Back to plates
-             */
-
-            auto shader3 = Shader::builder()
-                    .include(fragmentColor)
-                    .include(cornerCoords)
-                    .include(distance)
-                    .include(directional)
-                    .include(tectonicSamplingShader)
-                    .create(R"(
-    uniform sampler2D foldtex;
-)",R"(
-    vec4 a = inverseplateTexture(foldtex,st);
-    fc = a.x == plateIndex ? vec4(1.0) : vec4(0.0);
-    //fc = a-plateIndex;
-
-    //fc = plateIndex==1 ? (st.x>0.5 ? vec4(1.0) : vec4(-1.0)) : (st.x<0.5 ? vec4(1.0) : vec4(-1.0));
-)");
-
-            ShaderProgram* unfoldshader = ShaderProgram::builder()
-                    .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
-                    .addShader(shader3->getCode(), GL_FRAGMENT_SHADER)
-                    .link();
-
-            float index = 1; //Index 0 is no plate
-            for (Plate* plate : plates) {
-                //a->swap(plate->getTexture());
-
-                unfoldshader->bind();
-                p->setCanvasUniforms(unfoldshader);
-                plate->setPlateUniforms(unfoldshader,index++);
-
-
-                p->apply(unfoldshader,plate->getTexture(),{{b,"foldtex"}});
-            }
-
-
-        });
+    int N = 5;
+    for (int i=0; i<N; i++) {
+        foldShader2->bind();
+        p->setCanvasUniforms(foldShader2);
+        int id = glGetUniformLocation(foldShader2->getId(),"radius");
+        glUniform1f(id,pow(2,i));
+        p->apply(foldShader2,a,{{b,"foldtex"}});
+        a->swap(b);
     }
-
-    setProgress({true,1});
-}
-
-//Apply operations to t1
-void Tectonics::fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1, Texture* t2, Project *p) {
-    zero->bind();
-    p->apply(zero,t1);
-    t1->swap(t2);
-
-    float index = 1; //Index 0 is no plate
-    for (Plate* plate : plates) {
-
-        operation->bind();
-        plate->setPlateUniforms(operation,index++);
-        p->setCanvasUniforms(operation);
-
-        p->apply(operation,t1,{{t2,"foldtex"},{plate->getTexture(),"plate"}});
-        t1->swap(t2);
+    for (int i=N; i>0; i--) {
+        foldShader2->bind();
+        p->setCanvasUniforms(foldShader2);
+        int id = glGetUniformLocation(foldShader2->getId(),"radius");
+        glUniform1f(id,pow(2,i));
+        p->apply(foldShader2,a,{{b,"foldtex"}});
+        a->swap(b);
     }
 }
 
