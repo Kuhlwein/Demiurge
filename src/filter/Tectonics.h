@@ -45,6 +45,7 @@ public:
 	void run() override;
 	void fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1, Texture* t2, Project *p);
 	void oceanSpreading(Project* p);
+    void collision(Project* p);
 private:
     std::vector<Plate*> plates;
 

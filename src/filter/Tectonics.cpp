@@ -169,7 +169,10 @@ void Tectonics::run() {
             //Create new crust with age=0
             oceanSpreading(p);
 
-
+            /*
+             * Collision
+             */
+            collision(p);
 
 
             /*
@@ -186,7 +189,9 @@ void Tectonics::run() {
     //if(fc==0) fc = texture(foldtex,st).x;
     //fc = texture(foldtex,st).z;
 
-    if (texture(foldtex,st).a>0) fc = 100;
+    if (texture(foldtex,st).a>0) fc = texture(foldtex,st).a/0.002;
+
+    //fc = texture(foldtex,st).z;
 )");
 
             ShaderProgram* foldShader = ShaderProgram::builder()
@@ -197,7 +202,7 @@ void Tectonics::run() {
 
             p->setCanvasUniforms(foldShader);
 
-            p->apply(foldShader,p->get_terrain(),{{b,"foldtex"}});
+            p->apply(foldShader,p->get_terrain(),{{c,"foldtex"}});
 
             /*
              * Back to plates
@@ -334,6 +339,119 @@ void Tectonics::oceanSpreading(Project* p) {
         p->apply(foldShader2,a,{{b,"foldtex"}});
         a->swap(b);
     }
+}
+
+void Tectonics::collision(Project* p) {
+    Shader* shader = Shader::builder()
+            .include(fragmentColor)
+            .create("",R"(
+	fc =  vec4(0,0,0,0);
+)");
+    ShaderProgram* setzero = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+
+    shader = Shader::builder()
+            .include(fragmentColor)
+            .include(cornerCoords)
+            .include(tectonicSamplingShader)
+            .include(directional)
+            .create(R"(
+    uniform sampler2D foldtex;
+    uniform sampler2D plateIndices;
+)",R"(
+    fc = texture(foldtex,st);
+	float index = plateIndex;
+
+
+
+    vec4 p = texture(plateIndices,st);
+
+
+
+    if (p.x == plateIndex) fc = vec4(plateVelocity.x,plateVelocity.y,plateVelocity.z,0);
+)");
+    ShaderProgram* setrotation = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+
+    setzero->bind();
+    p->apply(setzero,a);
+    a->swap(c);
+    float index = 1; //Index 0 is no plate
+    for (Plate* plate : plates) {
+
+        setrotation->bind();
+        plate->setPlateUniforms(setrotation,index++);
+        p->setCanvasUniforms(setrotation);
+
+        p->apply(setrotation,a,{{c,"foldtex"},{b,"plateIndices"}});
+        a->swap(c);
+    }
+
+
+    shader = Shader::builder()
+            .include(fragmentColor)
+            .include(cornerCoords)
+            .create(R"(
+    uniform sampler2D foldtex;
+    uniform sampler2D plateIndices;
+)",R"(
+    float index = texture(plateIndices,st).x;
+
+    vec3 v = texture(foldtex,st).xyz;
+    vec3 otherv;
+
+    vec3 p = vec3(0);
+    vec3 otherp = vec3(0);
+    int count = 0;
+    int othercount = 0;
+    vec2 res = textureSize(foldtex,0);
+
+    for(int i=-1; i<=1; i++) for(int j=-1; j<=1; j++) {
+        vec2 o = offset(st,vec2(i,j),res);
+
+        float n_index = texture(plateIndices,o).x;
+        vec3 n_v = texture(foldtex,o).xyz;
+        vec2 spheric_coord = tex_to_spheric(o);
+	    vec3 n_p = spheric_to_cartesian(spheric_coord);
+
+        if(n_index==index) {
+            p += n_p;
+            count++;
+        } else {
+            otherp += n_p;
+            othercount++;
+            otherv = n_v;
+        }
+    }
+
+    p = p/count;
+    otherp = otherp/othercount;
+
+    v = cross(v,p);
+    otherv = cross(otherv,p);
+
+    vec3 d = othercount>0 ? v-otherv : vec3(0);
+    vec3 deltap = p-otherp;
+
+    float magnitude = dot(d, normalize(deltap));
+    if (texture(plateIndices,st).a<=0) magnitude = 0;
+    if (othercount==0) magnitude = 0;
+
+    fc = texture(plateIndices,st);
+    fc.a = magnitude;
+)");
+    ShaderProgram* collisionspeed = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+    collisionspeed->bind();
+    p->setCanvasUniforms(collisionspeed);
+    p->apply(collisionspeed,a,{{c,"foldtex"},{b,"plateIndices"}});
+    a->swap(c);
 }
 
 Plate::Plate(int width, int height) {
