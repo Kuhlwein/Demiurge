@@ -5,8 +5,9 @@
 #ifndef DEMIURGE_TECTONICS_H
 #define DEMIURGE_TECTONICS_H
 
-#include "Filter.h"
-#include "FilterModal.h"
+#include "../Filter.h"
+#include "../FilterModal.h"
+#include "Plate.h"
 
 class Project;
 
@@ -17,25 +18,6 @@ public:
 	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
 private:
 
-};
-
-
-class Plate {
-public:
-    Plate(int width, int height);
-    ~Plate();
-    Texture* getTexture();
-    void rotate();
-    void setPlateUniforms(ShaderProgram* shaderProgram, int indextsh);
-    void updateRotationBy(float theta, glm::vec3 axis);
-private:
-    //crust thickness
-    //Crust age (negative when not part of plate)
-    //local ridge/fold direction
-    //(orogeny type???) [ocean=0, subduction=1, continental collision=2]
-    Texture* texture;
-    glm::mat4 rotation;
-    glm::vec3 angularVelocity;
 };
 
 class Tectonics : public AsyncSubFilter {

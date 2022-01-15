@@ -29,7 +29,8 @@ Tectonics::~Tectonics() {
 Tectonics::Tectonics(Project *p) {
     plates.push_back(new Plate(p->getWidth(),p->getHeight()));
     plates.push_back(new Plate(p->getWidth(),p->getHeight()));
-    plates[0]->updateRotationBy((float)0.01, glm::vec3(1, 0, 0));
+    plates[0]->updateRotationBy((float)0.01, glm::vec3(0, 0, 1));
+    //plates[0]->updateRotationBy((float)0.01, glm::vec3(1, 0, 0));
     plates[1]->updateRotationBy(-(float)0.01, glm::vec3(0, 0, 1));
 
     a = new Texture(p->getWidth()*1,p->getWidth()*1,GL_RGBA32F,"");
@@ -59,7 +60,7 @@ Tectonics::Tectonics(Project *p) {
             .create("",R"(
     vec4 a = texture(img, st);
     float h = a.x>0 ? a.x : -2;
-	fc =  st.x<0.5 ? vec4(h,1.0,0,0) : vec4(0,-1,0,0);
+	fc =  st.x<0.5 ? vec4(h,0.5,0,0) : vec4(0,-1,0,0);
 )");
     setzero = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -140,12 +141,25 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
     float theta = atan(spheric_v.y,spheric_v.x);
 
     vec4 p = plateTexture(plate,st);
+    float plateHeight = p.x;
+    float plateAge = p.y;
+
+    float previousAge = fc.z;
+    float previousHeight = fc.y;
 
     //mark collision
-    float collision = p.y>0 && fc.z>0 ? 1 : 0;
-    if (p.y>0 && fc.z>0) fc.a = collision;
+    bool overlap = plateAge>=0 && previousAge>=0;
+    if (overlap) fc.a = 1;
 
-    if (p.y>0 && !(p.x<=0 && fc.y>0)) fc = vec4(index,p.x,p.y,fc.a);
+    bool oceanOnLand = plateHeight <= 0 && previousHeight>0;
+    //if (plateAge >= 0 && !oceanOnLand) fc = vec4(index,plateHeight,plateAge,fc.a);
+
+    if (plateAge >= 0 && !overlap) fc = vec4(index,plateHeight,plateAge,fc.a);
+
+    bool landOnOcean = plateHeight>0 && previousHeight<=0;
+    bool plateYounger = plateAge<previousAge;
+    bool plateOnTop = (plateYounger && plateHeight<=0 && previousHeight<=0) || (!plateYounger && plateHeight>0 && previousHeight>0) || landOnOcean;
+    if (overlap && plateOnTop) fc = vec4(index,plateHeight,plateAge,fc.a);
 )");
     foldShader = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -154,7 +168,7 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
 }
 
 void Tectonics::run() {
-    for (int i=0; i<100000; i++) {
+    for (int i=0; i<90; i++) {
         for (Plate* p : plates) {
             p->rotate();
         }
@@ -382,7 +396,6 @@ void Tectonics::collision(Project* p) {
     a->swap(c);
     float index = 1; //Index 0 is no plate
     for (Plate* plate : plates) {
-
         setrotation->bind();
         plate->setPlateUniforms(setrotation,index++);
         p->setCanvasUniforms(setrotation);
@@ -409,6 +422,15 @@ void Tectonics::collision(Project* p) {
     int count = 0;
     int othercount = 0;
     vec2 res = textureSize(foldtex,0);
+
+
+    int N = 16;
+    float phi = tex_to_spheric(st).y;
+    float factor = 1/cos(abs(phi));
+    //for (int xx=0; xx<N; xx++) {
+        //int i = int(cos(2*3.14159*xx/N)*5*factor);
+        //int j = int(sin(2*3.14159*xx/N)*5);
+
 
     for(int i=-1; i<=1; i++) for(int j=-1; j<=1; j++) {
         vec2 o = offset(st,vec2(i,j),res);
@@ -453,64 +475,3 @@ void Tectonics::collision(Project* p) {
     p->apply(collisionspeed,a,{{c,"foldtex"},{b,"plateIndices"}});
     a->swap(c);
 }
-
-Plate::Plate(int width, int height) {
-    texture = new Texture(width,height,GL_RGBA32F,"plate");
-
-    rotation = glm::mat4(1);
-    angularVelocity = glm::vec3(0);
-}
-
-Plate::~Plate() {
-    delete texture;
-}
-
-Texture *Plate::getTexture() {
-    return texture;
-}
-
-void Plate::rotate() {
-    rotation = glm::rotate(rotation,glm::length(angularVelocity), glm::normalize(angularVelocity));
-}
-
-void Plate::setPlateUniforms(ShaderProgram* shaderProgram, int index) {
-    int id = glGetUniformLocation(shaderProgram->getId(),"plateIndex");
-    glUniform1f(id,index);
-
-    glm::mat3 a = rotation;
-    id = glGetUniformLocation(shaderProgram->getId(),"rotationmatrix");
-    glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(a));
-
-    glm::mat3 b = glm::transpose(a);
-    id = glGetUniformLocation(shaderProgram->getId(),"inverserotationmatrix");
-    glUniformMatrix3fv(id,1,GL_FALSE,glm::value_ptr(b));
-
-    id = glGetUniformLocation(shaderProgram->getId(),"plateVelocity");
-    glUniform3f(id,angularVelocity.x,angularVelocity.y,angularVelocity.z);
-}
-
-void Plate::updateRotationBy(float theta, glm::vec3 axis) {
-    angularVelocity += theta*axis;
-}
-
-
-
-/*
- * plateID (PLATE elevation/age/direction)
- */
-
-
-
-/*
- * Index, movement-direction, distance
- */
-/*
- * Ocean:
- * For each pixel, get current plate
- * Spread, gaussian-like, remember distance from divergence to plates and from plate to divergence
- * For each plate generate new crust based on distance
- *
- *
- *
- *
- */

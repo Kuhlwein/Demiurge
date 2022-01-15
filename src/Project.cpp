@@ -35,7 +35,7 @@
 #include <filter/DeTerrace.h>
 #include <filter/OceanCurrents.h>
 #include <filter/Temperature.h>
-#include <filter/Tectonics.h>
+#include <filter/tectonics/Tectonics.h>
 
 
 #include "projections/Projections.h"

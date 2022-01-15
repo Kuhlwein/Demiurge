@@ -24,7 +24,7 @@ zfp = $(LIB)/zfp
 EXE = example_glfw_opengl3.out
 SOURCES = src/main.cpp
 SOURCES = $(IMGUI)/examples/imgui_impl_glfw.cpp $(IMGUI)/examples/examples/imgui_impl_opengl3.cpp
-SOURCES += $(wildcard src/*.cpp) $(wildcard src/*/*.cpp)  $(wildcard $(IMGUI)/*.cpp)
+SOURCES += $(wildcard src/*.cpp) $(wildcard src/*/*.cpp) $(wildcard src/*/*/*.cpp)  $(wildcard $(IMGUI)/*.cpp)
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
 
@@ -86,6 +86,9 @@ endif
 	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/
 
 %.o:src/*/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/
+
+%.o:src/*/*/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $< -I src/
 
 %.o:$(IMGUI)/%.cpp
