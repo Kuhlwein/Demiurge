@@ -29,9 +29,9 @@ Tectonics::~Tectonics() {
 Tectonics::Tectonics(Project *p) {
     plates.push_back(new Plate(p->getWidth(),p->getHeight()));
     plates.push_back(new Plate(p->getWidth(),p->getHeight()));
-    plates[0]->updateRotationBy((float)0.01, glm::vec3(0, 0, 1));
+    plates[0]->updateRotationBy((float)0.01, glm::vec3(-1, 0, 0));
     //plates[0]->updateRotationBy((float)0.01, glm::vec3(1, 0, 0));
-    plates[1]->updateRotationBy(-(float)0.01, glm::vec3(0, 0, 1));
+    plates[1]->updateRotationBy(-(float)0.01, glm::vec3(-1, 0, 0));
 
     a = new Texture(p->getWidth()*1,p->getWidth()*1,GL_RGBA32F,"");
     b = new Texture(p->getWidth()*1,p->getWidth()*1,GL_RGBA32F,"");
@@ -116,7 +116,7 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
             .include(tectonicSamplingShader)
             .create("",R"(
     //plate id, height, age, collision
-	fc = vec4(0.0,-1,-1,0);
+	fc = vec4(0.0,-1,-1,-1.1e6);
 )");
     setzero = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -149,7 +149,7 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
 
     //mark collision
     bool overlap = plateAge>=0 && previousAge>=0;
-    if (overlap) fc.a = 1;
+    if (overlap) fc.a = plateHeight;
 
     bool oceanOnLand = plateHeight <= 0 && previousHeight>0;
     //if (plateAge >= 0 && !oceanOnLand) fc = vec4(index,plateHeight,plateAge,fc.a);
@@ -159,7 +159,7 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
     bool landOnOcean = plateHeight>0 && previousHeight<=0;
     bool plateYounger = plateAge<previousAge;
     bool plateOnTop = (plateYounger && plateHeight<=0 && previousHeight<=0) || (!plateYounger && plateHeight>0 && previousHeight>0) || landOnOcean;
-    if (overlap && plateOnTop) fc = vec4(index,plateHeight,plateAge,fc.a);
+    if (overlap && plateOnTop) fc = vec4(index,plateHeight,plateAge,previousHeight);
 )");
     foldShader = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -168,7 +168,7 @@ vec4 inverseplateTexture(sampler2D img, vec2 st) {
 }
 
 void Tectonics::run() {
-    for (int i=0; i<90; i++) {
+    for (int i=0; i<70; i++) {
         for (Plate* p : plates) {
             p->rotate();
         }
@@ -180,12 +180,14 @@ void Tectonics::run() {
             //Sets b to [plate index, height, age, and collision bool]
             fold(setzero, foldShader, a, b, p);
 
-            //Create new crust with age=0
+            //Create new crust [plate index, height, distance from plate, collision bool]
+            //TODO explicitly mark ocean crust type and use for creating new crust on plates
             oceanSpreading(p);
 
             /*
              * Collision
              */
+            //Should be [plate index, height, difference in height]
             collision(p);
 
 
@@ -206,6 +208,7 @@ void Tectonics::run() {
     if (texture(foldtex,st).a>0) fc = texture(foldtex,st).a/0.002;
 
     //fc = texture(foldtex,st).z;
+    fc = texture(foldtex,st).y;
 )");
 
             ShaderProgram* foldShader = ShaderProgram::builder()
@@ -235,7 +238,7 @@ void Tectonics::run() {
     vec4 a = inverseplateTexture(foldtex,st);
 
     fc = texture(oldPlate,st);
-    //fc.y = fc.y + 1; //Increment age
+    if(fc.y>=0) fc.y += 0.01; //Increment age
 
 
     // delete stuff? (index does not match, if deleting land, must not be replaced by land)
@@ -289,6 +292,7 @@ void Tectonics::fold(ShaderProgram *zero, ShaderProgram *operation, Texture* t1,
 }
 
 void Tectonics::oceanSpreading(Project* p) {
+    //TODO distance should be on sphere!!
     //set distance for all to zero, set plate for all to plate
     //Check neighbours distance, if shorter than current or currently not part of plate, update current plate and distance
     //ONLY if direction of plate movement matches!!
@@ -327,7 +331,7 @@ void Tectonics::oceanSpreading(Project* p) {
 
         //&& abs(ntheta-a.y)<2*M_PI/N
 
-        if((nz < fc.z || fc.x==0) && a.x != 0) fc = vec4(a.x, -1.1, nz, 0);
+        if((nz < fc.z || fc.x==0) && a.x != 0) fc = vec4(a.x, -1.1, nz, -1.1e6);
     }
 )");
 
@@ -378,11 +382,7 @@ void Tectonics::collision(Project* p) {
     fc = texture(foldtex,st);
 	float index = plateIndex;
 
-
-
     vec4 p = texture(plateIndices,st);
-
-
 
     if (p.x == plateIndex) fc = vec4(plateVelocity.x,plateVelocity.y,plateVelocity.z,0);
 )");
@@ -412,9 +412,13 @@ void Tectonics::collision(Project* p) {
     uniform sampler2D foldtex;
     uniform sampler2D plateIndices;
 )",R"(
-    float index = texture(plateIndices,st).x;
+    fc = texture(plateIndices,st);
+
+    float index = fc.x;
+    float subductedHeight = fc.a;
 
     vec3 v = texture(foldtex,st).xyz;
+    vec3 originalv = v;
     vec3 otherv;
 
     vec3 p = vec3(0);
@@ -453,18 +457,31 @@ void Tectonics::collision(Project* p) {
     p = p/count;
     otherp = otherp/othercount;
 
-    v = cross(v,p);
-    otherv = cross(otherv,p);
+    //v = cross(v,p);
+    //otherv = cross(otherv,p);
 
-    vec3 d = othercount>0 ? v-otherv : vec3(0);
+    //vec3 d = othercount>0 ? v-otherv : vec3(0);
     vec3 deltap = p-otherp;
 
-    float magnitude = dot(d, normalize(deltap));
-    if (texture(plateIndices,st).a<=0) magnitude = 0;
-    if (othercount==0) magnitude = 0;
+    //float magnitude = dot(d, normalize(deltap));
+    //if (subductedHeight <= -1e6 && subductedHeight>0) magnitude = 0;
+    //if (othercount==0) magnitude = 0;
 
-    fc = texture(plateIndices,st);
-    fc.a = magnitude;
+    v = otherv - dot(v,normalize(otherv))*normalize(otherv);
+    vec2 spheric_coord = tex_to_spheric(st);
+    vec3 cartesian_coord = spheric_to_cartesian(spheric_coord);
+    float magnitude = length(cross(v,cartesian_coord));
+
+    vec3 k = cross(v,cartesian_coord);
+
+    if (subductedHeight <= -1e6 || subductedHeight>0 || othercount==0) {
+        magnitude = 0;
+        fc = vec4(1e6,0,0,0);
+    } else {
+        fc = vec4(0,magnitude,acos(originalv.z/length(originalv.xyz)),atan(originalv.y,originalv.x));
+    }
+
+    //distance, scale, theta, phi
 )");
     ShaderProgram* collisionspeed = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
@@ -474,4 +491,91 @@ void Tectonics::collision(Project* p) {
     p->setCanvasUniforms(collisionspeed);
     p->apply(collisionspeed,a,{{c,"foldtex"},{b,"plateIndices"}});
     a->swap(c);
+
+
+
+    shader = Shader::builder()
+            .include(fragmentColor)
+            .include(cornerCoords)
+            .include(distance)
+            .create(R"(
+    uniform sampler2D foldtex;
+    uniform sampler2D plateIndices;
+    uniform float radius;
+
+vec3 delta_spheric_to_cartesian(vec2 p, vec2 delta) {
+    vec3 dx = vec3(-cos(p.y)*sin(p.x),cos(p.y)*cos(p.x),0);
+    vec3 dy = vec3(-sin(p.y)*cos(p.x),-sin(p.y)*sin(p.x),cos(p.y));
+    delta = delta/length(delta);
+	return -abs(delta.x)*dx + delta.y*dy;
+}
+)",R"(
+    float index = texture(plateIndices,st).x;
+    fc = texture(foldtex,st);
+
+    vec2 res = textureSize(foldtex,0);
+
+
+    int N = 16;
+    float theta = fc.z;
+    float phi = fc.a;
+    vec3 omega = vec3(cos(phi)*sin(theta),sin(phi)*sin(theta),cos(theta));
+
+    float minangle = 20;
+
+    for (int xx=0; xx<N; xx++) {
+        int i = int(cos(2*3.14159*xx/N)*radius);
+        int j = int(sin(2*3.14159*xx/N)*radius);
+
+        vec2 o = offset(st,vec2(i,j),res);
+
+        vec4 fold = texture(foldtex,o);
+        float sampleIndex = texture(plateIndices,o).x;
+
+
+
+        vec3 cartesian_coord = spheric_to_cartesian(tex_to_spheric(st));
+        //vec3 cartesian_o = spheric_to_cartesian(tex_to_spheric(o));
+        //vec3 diff = cartesian_coord-cartesian_o;
+        vec3 diff = delta_spheric_to_cartesian(tex_to_spheric(st),vec2(i,j));
+        vec3 diff2 = -cross(omega,cartesian_coord);
+
+        float angle = acos(clamp(dot(normalize(diff2),normalize(diff)),-1.0,1.0));
+
+        if (sampleIndex==index && geodistance(st,o,res)+fold.x < fc.x && angle<3.14*2/5) {
+            fc = fold;
+            fc.x = fold.x + geodistance(st,o,res);
+            minangle = angle;
+        }
+
+    }
+
+    fc.y = texture(plateIndices,st).x;
+    fc.y = fc.x;
+    //fc.y = minangle;
+    //fc.y = -cross(omega,spheric_to_cartesian(tex_to_spheric(st))).y;
+    //fc.y -= delta_spheric_to_cartesian(tex_to_spheric(st),vec2(1,0)).y;
+
+    //vec3 a = -cross(omega,spheric_to_cartesian(tex_to_spheric(st)));
+    //vec3 b = delta_spheric_to_cartesian(tex_to_spheric(st),vec2(1,0));
+    //fc.y = acos(dot(normalize(a),normalize(b)));
+    //distance, scale, anglefactor, shaping parameter
+)");
+    collisionspeed = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+
+    for(int j=0; j<1; j++)for (int i=0; i<5; i++) {
+        collisionspeed->bind();
+        p->setCanvasUniforms(collisionspeed);
+        int id = glGetUniformLocation(collisionspeed->getId(), "radius");
+        glUniform1f(id, (int) pow(2,i));
+        p->apply(collisionspeed, a, {{c, "foldtex"},{b, "plateIndices"}});
+        a->swap(c);
+    }
+
+
+
+
 }
