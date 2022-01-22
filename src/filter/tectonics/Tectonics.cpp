@@ -8,20 +8,6 @@
 #include "Project.h"
 #include "Tectonics.h"
 
-
-
-void TectonicsMenu::update_self(Project *p) {
-
-}
-
-std::shared_ptr<BackupFilter> TectonicsMenu::makeFilter(Project *p) {
-	return std::make_shared<ProgressFilter>(p, [](Project* p){return p->get_terrain();}, std::move(std::make_unique<Tectonics>(p)));
-}
-
-TectonicsMenu::TectonicsMenu() : FilterModal("Tectonics") {
-
-}
-
 Tectonics::~Tectonics() {
 
 }
@@ -191,6 +177,8 @@ void Tectonics::run() {
             collision(p);
 
 
+
+            // Target is [plate index, height(or rather difference), direction, type enum]
             /*
             // Render
             */
@@ -542,7 +530,7 @@ vec3 delta_spheric_to_cartesian(vec2 p, vec2 delta) {
 
         float angle = acos(clamp(dot(normalize(diff2),normalize(diff)),-1.0,1.0));
 
-        if (sampleIndex==index && geodistance(st,o,res)+fold.x < fc.x && angle<3.14*2/5) {
+        if (sampleIndex==index && geodistance(st,o,res)+fold.x < fc.x && angle<minangle) {
             fc = fold;
             fc.x = fold.x + geodistance(st,o,res);
             minangle = angle;
@@ -551,7 +539,7 @@ vec3 delta_spheric_to_cartesian(vec2 p, vec2 delta) {
     }
 
     fc.y = texture(plateIndices,st).x;
-    fc.y = fc.x;
+    //fc.y = fc.x;
     //fc.y = minangle;
     //fc.y = -cross(omega,spheric_to_cartesian(tex_to_spheric(st))).y;
     //fc.y -= delta_spheric_to_cartesian(tex_to_spheric(st),vec2(1,0)).y;
@@ -566,11 +554,11 @@ vec3 delta_spheric_to_cartesian(vec2 p, vec2 delta) {
             .addShader(shader->getCode(), GL_FRAGMENT_SHADER)
             .link();
 
-    for(int j=0; j<1; j++)for (int i=0; i<5; i++) {
+    for (int i=0; i<10; i++) {
         collisionspeed->bind();
         p->setCanvasUniforms(collisionspeed);
         int id = glGetUniformLocation(collisionspeed->getId(), "radius");
-        glUniform1f(id, (int) pow(2,i));
+        glUniform1f(id, i);
         p->apply(collisionspeed, a, {{c, "foldtex"},{b, "plateIndices"}});
         a->swap(c);
     }

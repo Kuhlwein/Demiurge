@@ -11,15 +11,6 @@
 
 class Project;
 
-class TectonicsMenu : public FilterModal {
-public:
-	TectonicsMenu();
-	void update_self(Project* p) override;
-	std::shared_ptr<BackupFilter> makeFilter(Project* p) override;
-private:
-
-};
-
 class Tectonics : public AsyncSubFilter {
 public:
     Tectonics(Project *p);
