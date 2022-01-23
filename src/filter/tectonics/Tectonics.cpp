@@ -230,10 +230,23 @@ void Tectonics::run() {
 
 
     // delete stuff? (index does not match, if deleting land, must not be replaced by land)
-    if(a.x != plateIndex && !(a.y<=0 && fc.x>0)) fc = vec4(0,-1,0,0);
 
-    //create new, age of old must be negative (nonexisting),
-    if(fc.y<0 && a.x == plateIndex) fc = vec4(-plateIndex,1,0,0);
+
+    vec2 resolution = textureSize(foldtex,0);
+    float phi = tex_to_spheric(st).y;
+    float factor = 1/cos(abs(phi));
+
+    bool differentIndex = true;
+
+    for(int i=-1; i<=1; i++) for(int j=-1; j<=1; j++) {
+        vec2 o = offset(st,vec2(i*factor,j),resolution);
+        vec4 a = inverseplateTexture(foldtex, o);
+        differentIndex = differentIndex && a.x!=plateIndex;
+    }
+    if(differentIndex && !(a.y<=0 && fc.x>0)) fc = vec4(0,-1,0,0);
+
+    //create new, age of old must be negative (nonexisting), enum must be 1.0 (ocean ridge)
+    if(fc.y<0 && a.x == plateIndex && abs(a.z-1.0)<0.01) fc = vec4(-plateIndex,1,0,0);
 
 )");
 
@@ -287,8 +300,29 @@ void Tectonics::oceanSpreading(Project* p) {
 
     //When finished, do backwards from borders between plates
 
-
     auto shader2 = Shader::builder()
+            .include(fragmentColor)
+            .include(cornerCoords)
+            .include(distance)
+            .include(directional)
+            .create(R"(
+    uniform sampler2D foldtex;
+    uniform float radius;
+)",R"(
+	fc = texture(foldtex,st);
+    fc.z = 0.0;
+)");
+
+    ShaderProgram* foldShader2 = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader2->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+    foldShader2->bind();
+    p->setCanvasUniforms(foldShader2);
+    p->apply(foldShader2,a,{{b,"foldtex"}});
+    a->swap(b);
+
+    shader2 = Shader::builder()
             .include(fragmentColor)
             .include(cornerCoords)
             .include(distance)
@@ -309,21 +343,13 @@ void Tectonics::oceanSpreading(Project* p) {
         vec2 neighbour = offset(st, vec2(cos(2*3.14159*i/N)*radius*factor,sin(2*3.14159*i/N)*radius),resolution);
         vec4 a = texture(foldtex, neighbour);
 
-        //float theta = atan(sin(2*3.14159*i/N),cos(2*3.14159*i/N));
-
-        //vec3 ndiff = spheric_to_cartesian(tex_to_spheric(neighbour)) - spheric_to_cartesian(tex_to_spheric(st));
-        //vec2 v = cartesian_to_v(ndiff,tex_to_spheric(st));
-        //float ntheta = atan(v.y,v.x);
-
         float nz = a.z+geodistance(neighbour,st,resolution);
-
-        //&& abs(ntheta-a.y)<2*M_PI/N
 
         if((nz < fc.z || fc.x==0) && a.x != 0) fc = vec4(a.x, -1.1, nz, -1.1e6);
     }
 )");
 
-    ShaderProgram* foldShader2 = ShaderProgram::builder()
+    foldShader2 = ShaderProgram::builder()
             .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
             .addShader(shader2->getCode(), GL_FRAGMENT_SHADER)
             .link();
@@ -345,6 +371,29 @@ void Tectonics::oceanSpreading(Project* p) {
         p->apply(foldShader2,a,{{b,"foldtex"}});
         a->swap(b);
     }
+
+
+    shader2 = Shader::builder()
+            .include(fragmentColor)
+            .include(cornerCoords)
+            .include(distance)
+            .include(directional)
+            .create(R"(
+    uniform sampler2D foldtex;
+    uniform float radius;
+)",R"(
+	fc = texture(foldtex,st);
+    fc.z = fc.z>0.0 ? 1.0 : 0.0;
+)");
+
+    foldShader2 = ShaderProgram::builder()
+            .addShader(vertex2D->getCode(), GL_VERTEX_SHADER)
+            .addShader(shader2->getCode(), GL_FRAGMENT_SHADER)
+            .link();
+    foldShader2->bind();
+    p->setCanvasUniforms(foldShader2);
+    p->apply(foldShader2,a,{{b,"foldtex"}});
+    a->swap(b);
 }
 
 void Tectonics::collision(Project* p) {
